@@ -127,8 +127,10 @@ class Game {
   requestChange(t, manual) {
     if (t.change || this.state !== 'play') { if (manual && this.state !== 'play') t.change = { to: this.pickLine(t), t: 0 }; return; }
     const to = this.pickLine(t);
+    const going = t.skaters.filter((p) => p.line !== to);
+    if (!going.length) return;
     t.change = { to, t: 0 };
-    for (const p of t.skaters) p.goBench = true;
+    for (const p of going) p.goBench = true;
     if (t.humans.length) this.toast = { text: 'STŘÍDÁNÍ: FORMACE ' + (to + 1), t: 0, dur: 1.8 };
   }
   updateEnergy(h) {
@@ -142,7 +144,8 @@ class Game {
   updateChanges(h) {
     for (const t of this.teams) {
       const ch = t.change;
-      if (!ch || !t.skaters.some((p) => p.goBench)) continue;
+      if (!ch) continue;
+      if (!t.skaters.some((p) => p.goBench)) { t.line = ch.to; t.change = null; continue; }
       ch.t += h;
       const door = this.benchDoor(t);
       for (const p of t.skaters.slice()) {
@@ -1035,10 +1038,17 @@ class Game {
     const pk = this.puck, opp = this.other(t), owner = pk.owner || pk.held;
     const ais = t.skaters.filter((p) => p.ctrl < 0 && p.downT <= 0 && !p.goBench), hum = t.skaters.filter((p) => p.ctrl >= 0);
     // automatické střídání za běhu
+    // jen když máme puk, nebo je volný v útočném pásmu soupeře a soupeř ho nemá
     if (!t.change && (t.cpu || this.autoChange) && this.state === 'play') {
-      const e = this.lineEnergy(t, t.line), s = t.dir, pu = s * pk.x, oppHas = owner && owner.team !== t;
-      const safe = oppHas ? pu > 30 : pu > -20;
-      if ((e < 0.5 && safe) || e < 0.28) this.requestChange(t);
+      const e = t.skaters.reduce((a, p) => a + p.stamina, 0) / Math.max(1, t.skaters.length), pu = t.dir * pk.x;
+      const ownHas = owner && owner.team === t;
+      const deepLoose = !owner && pu > RINK.BLUE_X + 2 && !(pk.passTarget && pk.passTarget.team !== t);
+      if (e < 0.5 && (ownHas || deepLoose)) this.requestChange(t);
+    }
+    // soupeř získal puk během střídání: kdo je ještě daleko od střídačky, zůstává ve hře
+    if (t.change && owner && owner.team !== t && this.state === 'play') {
+      const dr = this.benchDoor(t);
+      for (const p of t.skaters) if (p.goBench && p.ctrl < 0 && Math.hypot(p.x - dr.x, p.y - dr.y) > 28) p.goBench = false;
     }
     t.chaser = null; t.presser = null; t.marks = new Map();
     const near = (list, x, y) => { let b = null, bd = 1e9; for (const p of list) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; b = p; } } return [b, bd]; };
@@ -1163,6 +1173,7 @@ class Game {
     const pressure = td < 9 && front;
     if (best && ((pressure && bs > my - 4 && Math.random() < 0.55) || (bs > my + 10 && Math.random() < 0.4))) { this.pass(p, best, false); return; }
     if (pressure && u > -15 && u < 28 && Math.random() < 0.18) { this.dump(p); return; }
+    if (t.change && u > -30 && u < 40 && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
   }
   openScore(q, from) {
