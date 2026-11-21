@@ -59,6 +59,13 @@ Chromium v režimu kiosku s povoleným zvukem bez kliknutí. Log je v `~/.cache/
 Najde i Google Chrome, Brave nebo Edge (flatpak), případně Firefox (tam ale zvuk může začít až
 po stisku klávesy).
 
+## Na mobilu / tabletu
+
+Hra má dotykové ovládání: virtuální páčka vlevo (kdekoli na levé polovině displeje), vpravo tlačítka
+A / B / X / Y jako na gamepadu, SPRINT, STŘÍDÁNÍ, ZOOM a pauza. Objeví se po prvním dotyku a zmizí,
+jakmile použiješ gamepad nebo klávesnici. Telefon drž na šířku. Na telefonu se automaticky použije
+grafika STŘEDNÍ (jde změnit v Nastavení).
+
 ## Na počítači
 
 Spusť `./hokej.sh`, nebo ve složce hry `python3 -m http.server 47098` a otevři

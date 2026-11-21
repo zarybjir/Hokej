@@ -48,9 +48,11 @@ const Input = {
     this.kb = KB_MAPS.map((m, i) => { const d = new Device('kb' + i, 'kb', m.name); d.active = false; d.map = m; return d; });
     this.devices.push(...this.kb);
     this.merged = new Device('all', 'merged', 'Vše');
+    this.touchDev = new Device('touch', 'touch', 'Dotyk'); this.touchDev.active = false; this.devices.push(this.touchDev);
     window.addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
       this.keys.add(e.code); this.anyEvent = true;
+      if (window.Touch && Touch.visible && !e.repeat) Touch.visible = false;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
@@ -95,9 +97,13 @@ const Input = {
       }
       s.lx = lx; s.ly = ly;
       d.st = s;
-      if (BTN.some((b) => s[b])) this.anyEvent = true;
+      if (BTN.some((b) => s[b])) { this.anyEvent = true; if (window.Touch) Touch.visible = false; }
     }
     for (const k in this.pads) if (!seen.has(+k)) { const d = this.pads[k]; d.connected = false; d.prev = d.st; d.st = blankState(); }
+    // dotykové ovládání jako další „ovladač"
+    const td = this.touchDev; td.prev = td.st;
+    td.st = window.Touch && Touch.visible ? Touch.read(blankState()) : blankState();
+    if (window.Touch && Touch.visible) td.active = true;
     // sloučené ovládání pro menu
     const M = this.merged; M.prev = M.st; const s = blankState();
     for (const d of this.devices) {

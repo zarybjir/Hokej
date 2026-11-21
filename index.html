@@ -2,10 +2,11 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Hokej '98</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
   canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; }
   #msg { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
          font: bold 22px sans-serif; text-align: center; padding: 40px; }

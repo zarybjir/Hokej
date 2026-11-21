@@ -38,7 +38,7 @@ const App = {
     }
     switch (this.screen) {
       case 'press':
-        if (M.pressed('a') || M.pressed('start') || (Input.anyEvent && Input.keys.size)) { Sfx.init(); Sfx.resume(); this.go('title'); }
+        if (M.pressed('a') || M.pressed('start') || (Input.anyEvent && Input.keys.size) || (Touch.visible && Touch.touches.size)) { Sfx.init(); Sfx.resume(); this.go('title'); }
         break;
       case 'title': {
         const items = 4;
@@ -395,6 +395,7 @@ const App = {
 (function main() {
   const cv = document.getElementById('c');
   R.init(cv);
+  Touch.init(cv);
   if (!G3.init(document.getElementById('gl'))) {
     document.body.insertAdjacentHTML('beforeend', '<div id="msg">WebGL není k dispozici — zapni hardwarovou akceleraci v prohlížeči.</div>');
   }
@@ -413,7 +414,7 @@ const App = {
     Input.poll(dt);
     try { App.update(dt); } catch (e) { console.error(e); }
     R.begin();
-    try { App.draw(dt); } catch (e) { console.error(e); }
+    try { App.draw(dt); if (Touch.visible) Touch.draw(); } catch (e) { console.error(e); }
     R.end();
     requestAnimationFrame(frame);
   }

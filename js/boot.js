@@ -9,7 +9,7 @@ window.GLTFLoader = GLTFLoader;
 window.SkeletonUtils = SkeletonUtils;
 
 const msg = document.getElementById('msg');
-const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'render3d', 'players3d', 'app'];
+const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'touch', 'render3d', 'players3d', 'app'];
 try {
   for (const f of files) {
     await new Promise((res, rej) => {

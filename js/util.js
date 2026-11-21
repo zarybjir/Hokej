@@ -90,7 +90,10 @@ function segDist(px, py, ax, ay, bx, by) {
 const Settings = {
   data: { cam: 'top', zoom: 1, gfx: 'high', autoChange: true, penalties: true, tags: true, vol: 8, comm: true, replay: true, periodLen: 3, diff: 1, home: 0, away: 1, fps: false },
   load() {
-    try { const s = JSON.parse(localStorage.getItem('hokej98') || '{}'); Object.assign(this.data, s); } catch (e) {}
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem('hokej98') || '{}'); Object.assign(this.data, s); } catch (e) {}
+    // telefon/tablet: šetrnější grafika, pokud ji hráč sám nezměnil
+    if (!s.gfx && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) this.data.gfx = 'mid';
   },
   save() { try { localStorage.setItem('hokej98', JSON.stringify(this.data)); } catch (e) {} },
 };
