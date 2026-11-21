@@ -4,6 +4,13 @@ Arkádový hokej ve stylu her z konce 90. let v plném 3D (WebGL / Three.js): le
 plexisklo s odlesky, hráči jako 3D modely s kostrou v hokejové výstroji (dres se jménem a číslem,
 helma s plexi štítem, rukavice, brusle, brankářské betony a maska) animovaní inverzní kinematikou,
 stíny, tribuny plné diváků a LED pás.
+Každý tým má 3 formace (centr, 2 křídla, 2 obránci) a 2 brankáře. Hráči mají atributy **síla**
+(bodyčeky, krytí puku, tvrdost střely), **rychlost**, **přesnost** (střely, přihrávky) a **stamina**
+(jak rychle se unaví); brankáři reflexy. Na ledě se hráči unavují, unavení jsou pomalejší a méně
+přesní, na střídačce se zotaví. Formace se střídají za běhu (hráči dojedou ke dvířkům střídačky)
+nebo při přerušení — automaticky, nebo ručně tlačítkem **LB**. Na ledě jsou rozhodčí (hlavní
+s oranžovými pásky a dva čároví), kteří vhazují a signalizují. Čísla jsou na zádech, ramenou
+a helmě, nad hráčem s pukem je jmenovka.
 HUD je ve stylu bílého bodového LED displeje jako na stadionu; ovládaný hráč má pod sebou
 na ledě rozsegmentovaný kruh ve své barvě (1P žlutá, 2P tyrkysová).
 Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru
@@ -63,9 +70,12 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 | X | střela — ťuknutí = zápěstí, držení = příklep | bodyček |
 | B | klička | šťouchnutí holí |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
-| LB | zoom kamery | zoom kamery |
+| LB | střídání formace | střídání formace |
+| View (Back) | zoom kamery | zoom kamery |
 | Menu | pauza | pauza |
 
+- **Střídání:** LB pošle formaci na střídačku, nastoupí nejodpočatější. Energii formací ukazuje
+  panel hráče vlevo dole (F1–F3). Počítač střídá vždy sám.
 - **Golfák z první:** zmáčkni X, zatímco k tobě letí přihrávka.
 - **Míření:** páčka do strany při vystřelení = levá/pravá tyč (bez míření střílí hráč sám k volnější tyči).
 - Páčka vždy odpovídá obrazovce: nahoru = nahoru po ledě. Domácí útočí v 1. a 3. třetině nahoru, ve 2. dolů (hosté naopak).
@@ -73,7 +83,10 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 
 ## Nastavení
 
-Délka třetiny (1–20 min), obtížnost (lehká/normální/těžká), kamera (seshora / z boku),
+V menu *Exhibice*: domácí a hosté (karty s hodnocením týmu, **Y = soupiska** se statistikami všech
+hráčů), délka třetiny, obtížnost (lehká / normální / těžká / legenda), střídání (automaticky / ručně).
+
+V Nastavení dále: kamera (seshora / z boku),
 zoom (5 úrovní, ve hře i tlačítkem LB), kvalita grafiky (vysoká = zrcadlení ledu a ostré stíny,
 střední, nízká — pokud by hra na zařízení trhala), hlasitost, hlasový komentář
 (systémová syntéza řeči — pokud v systému není, hra je prostě bez komentáře), záznam po gólu.

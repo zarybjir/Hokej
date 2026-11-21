@@ -60,21 +60,37 @@ vPos = position;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
+uniform float uRef;
 varying vec3 vPos;
 `;
 const BODY_FRAG = `
 {
   float ax = abs(vPos.x), y = vPos.y;
   vec3 c;
-  if (ax > 0.17 && y > 1.29) {
+  if (ax > 0.17 && y > 1.29 && uRef > 0.5) {
+    // rozhodčí: pruhované rukávy, hlavní má oranžové pásky
+    c = fract(atan(y - 1.438, vPos.z) / 6.2832 * 8.0) < 0.5 ? uJersey : uStripe;
+    if (ax > 0.66) c = uGlove;
+    else if (ax > 0.6) c = uStripe;
+    else if (uRef > 1.5 && ax > 0.27 && ax < 0.33) c = vec3(1.0, 0.35, 0.0);
+  } else if (ax > 0.17 && y > 1.29) {
     if (ax > 0.66) c = uGlove;
     else if (ax > 0.47 && ax < 0.515) c = uStripe;
     else if ((ax > 0.455 && ax < 0.47) || (ax > 0.515 && ax < 0.53)) c = uTrim;
     else if (ax > 0.6) c = uStripe;
     else c = uJersey;
+    // číslo na horní straně ramen (čitelné z kamery shora)
+    if (ax > 0.19 && ax < 0.35 && y > 1.445) {
+      vec2 st = vec2((ax - 0.19) / 0.16, 0.5 - sign(vPos.x) * vPos.z / 0.17);
+      vec4 t = texture2D(uNum, vec2(st.x * 0.5, 0.11 + clamp(st.y, 0.0, 1.0) * 0.6));
+      c = mix(c, t.rgb, t.a * step(0.0, st.y) * step(st.y, 1.0));
+    }
   } else if (y > 1.535 && ax < 0.15) c = uSkin;
   else if (y > 1.5 && ax < 0.08) c = vec3(0.06);     // chránič krku
-  else if (y > 0.99) {
+  else if (y > 0.99 && uRef > 0.5) {
+    c = fract(atan(vPos.x, vPos.z) / 6.2832 * 14.0) < 0.5 ? uJersey : uStripe;
+    if (y > 1.44) c = uStripe;
+  } else if (y > 0.99) {
     c = uJersey;
     if (y > 1.03 && y < 1.08) c = uStripe;
     if ((y > 1.015 && y < 1.03) || (y > 1.08 && y < 1.095)) c = uTrim;
@@ -101,6 +117,7 @@ const BODY_FRAG = `
 
 function bodyMaterial(T, p) {
   const [c, g] = mkCanvas(512, 320);
+  if (p.isRef) return bodyMaterialFinish(T, p, c, true);
   // levá polovina: záda (jméno + číslo), pravá: znak na hrudi
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillStyle = T.numCol;
@@ -116,14 +133,19 @@ function bodyMaterial(T, p) {
   g.fillStyle = trim; g.beginPath(); g.arc(384, 160, 98, 0, TAU); g.fill();
   g.fillStyle = T.def.c1 === T.jersey ? T.stripe : T.def.c1;
   g.font = 'italic 900 78px "Arial Black", "DejaVu Sans", sans-serif'; g.fillText(T.def.abbr, 384, 166);
+  return bodyMaterialFinish(T, p, c, false);
+}
+function bodyMaterialFinish(T, p, c, ref) {
   const tex = canvasTex(c, true, 4);
+  const trim = lightness(T.jersey) > 0.7 ? T.def.c3 : '#ffffff';
   const col = (h) => new THREE.Color(h);
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
     uInfl: { value: p.isGoalie ? 1.55 : 1 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
-    uPants: { value: col(T.pants) }, uGlove: { value: col(p.isGoalie ? '#f2f2f2' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
-    uSkin: { value: col('#d6a184') }, uSock: { value: col(T.jersey) }, uNum: { value: tex },
+    uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
+    uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
+    uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.uniforms);
@@ -135,11 +157,26 @@ function bodyMaterial(T, p) {
   return m;
 }
 
+// helma s číslem vzadu a po stranách
+function helmetMaterial(T, p) {
+  const [c, g] = mkCanvas(512, 128);
+  g.fillStyle = T.helmet; g.fillRect(0, 0, 512, 128);
+  if (!p.isRef) {
+    const nc = lightness(T.helmet) > 0.55 ? '#111111' : '#ffffff';
+    g.fillStyle = nc; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 54px "DejaVu Sans", Arial, sans-serif';
+    for (const x of [384, 256, 0, 512]) g.fillText(String(p.num), x, 70);
+  }
+  const m = new THREE.MeshPhysicalMaterial({ map: canvasTex(c, true, 4), roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.08 });
+  return m;
+}
+
 // ---------- model hráče ----------
 class HModel {
   constructor(G, p) {
     this.G = G; this.goalie = p.isGoalie;
     const T = p.team, tm = G.teamMats(T);
+    this.isRef = !!p.isRef;
+    this.helmetMat = helmetMaterial(T, p);
     this.root = new THREE.Group();
     const sc = SkeletonUtils.clone(G.base.scene);
     this.root.add(sc);
@@ -166,8 +203,10 @@ class HModel {
       add(F, G.hgeo.holder, white, x, -0.005, 0.045);
       add(F, G.hgeo.runner, steel, x, -0.032, 0.045, false);
     }
-    if (!p.isGoalie) {
-      add(B.Head, G.hgeo.helmet, tm.helmet, 0, 1.69, -0.006);
+    if (p.isRef) {
+      add(B.Head, G.hgeo.helmet, this.helmetMat, 0, 1.69, -0.006);
+    } else if (!p.isGoalie) {
+      add(B.Head, G.hgeo.helmet, this.helmetMat, 0, 1.69, -0.006);
       add(B.Head, G.hgeo.visor, G.mat.visor, 0, 1.685, -0.006, false);
       for (const s of [1, -1]) add(B.Head, G.hgeo.earGuard, tm.helmet, s * 0.112, 1.63, 0.0);
       for (const s of [1, -1]) {
@@ -204,7 +243,9 @@ class HModel {
     else { this.blade = sm(G.geo.blade, G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); }
     G.scene.add(this.root, this.stick);
   }
+  setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef; }
   dispose() {
+    this.helmetMat.map.dispose(); this.helmetMat.dispose();
     this.G.scene.remove(this.root, this.stick);
     this.root.traverse((o) => { if (o.isSkinnedMesh && o.skeleton) o.skeleton.dispose(); });
     this.mat.userData.tex.dispose(); this.mat.dispose();
@@ -218,6 +259,7 @@ class HModel {
     this.root.quaternion.setFromAxisAngle(UPV, Math.atan2(F.x, F.z));
     this.stick.position.set(0, 0, 0); this.stick.quaternion.identity();
     const down = p.downT > 0;
+    if (this.isRef) return this.poseRef(p, t, O, F, Lv, J);
     if (this.goalie) this.poseGoalie(p, t, O, F, Lv, J);
     else this.poseSkater(down ? { ...p, spdN: 0, windT: 0, pokeA: 0, carry: false, stride: 0 } : p, t, O, F, Lv, J, down);
     if (down) {
@@ -299,6 +341,29 @@ class HModel {
     aimBone(bH, bM, wpos(bH).addScaledVector(sdir, 0.5));
     const ta = p.dir + p.hand * 0.7, toe = new THREE.Vector3(Math.cos(ta), 0, -Math.sin(ta));
     this.placeStick(heel, top, toe, F);
+  }
+  poseRef(p, t, O, F, Lv, J) {
+    const B = this.b, spd = Math.min(1, (p.spdN || 0) / 24), ph = p.stride || 0;
+    this.root.position.set(O.x, 0.15 - (0.2 + 0.35 * spd), O.z);
+    this.root.updateMatrixWorld(true);
+    rotAxis(B.Hips, Lv, 0.15 + 0.25 * spd);
+    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.12 * spd);
+    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, (0.05 + 0.2 * spd) / 3);
+    rotAxis(B.Neck, Lv, -0.25 * spd);
+    const sw = Math.sin(ph) * spd, cw = Math.cos(ph);
+    const fL = J(0.1 - 0.75 * sw, 0.48 + 0.45 * Math.max(0, -sw), Math.max(0, cw) * 0.35 * spd);
+    const fR = J(0.1 + 0.75 * sw, -0.48 - 0.45 * Math.max(0, sw), Math.max(0, -cw) * 0.35 * spd);
+    this.legs(fL, fR, F.clone().addScaledVector(Lv, 0.2), F.clone().addScaledVector(Lv, -0.2), 0.12, -0.12, F);
+    const H = wpos(B.Hips), dn = new THREE.Vector3(0, -1, 0), back = F.clone().negate();
+    for (const side of [1, -1]) {
+      const [A, Fa, Hd] = side > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand] : [B.RightArm, B.RightForeArm, B.RightHand];
+      const sh = wpos(A);
+      let tgt = H.clone().addScaledVector(Lv, side * 0.85).addScaledVector(F, 0.35 + Math.sin(ph + (side > 0 ? Math.PI : 0)) * 0.5 * spd).add(new THREE.Vector3(0, -0.35, 0));
+      if (side < 0 && p.arm === 1) tgt = sh.clone().add(new THREE.Vector3(0, 2.3, 0)).addScaledVector(Lv, -0.3);
+      if (side < 0 && p.arm === 2) { const a = p.armDir || 0; tgt = sh.clone().add(new THREE.Vector3(Math.cos(a) * 2.2, 0.4, -Math.sin(a) * 2.2)); }
+      if (side < 0 && p.arm === 3) tgt = sh.clone().addScaledVector(F, 1.9).add(new THREE.Vector3(0, -0.4, 0));
+      ik2(A, Fa, Hd, tgt, p.arm && side < 0 ? back.clone() : dn.clone().addScaledVector(Lv, side * 0.5).addScaledVector(F, -0.4), this.L.upper, this.L.fore);
+    }
   }
   poseGoalie(p, t, O, F, Lv, J) {
     const B = this.b, sv = p.saveT > 0 ? p.saveKind : 0, bf = sv === 1;

@@ -88,7 +88,7 @@ function segDist(px, py, ax, ay, bx, by) {
 }
 
 const Settings = {
-  data: { cam: 'top', zoom: 1, gfx: 'high', vol: 8, comm: true, replay: true, periodLen: 3, diff: 1, home: 0, away: 1, fps: false },
+  data: { cam: 'top', zoom: 1, gfx: 'high', autoChange: true, tags: true, vol: 8, comm: true, replay: true, periodLen: 3, diff: 1, home: 0, away: 1, fps: false },
   load() {
     try { const s = JSON.parse(localStorage.getItem('hokej98') || '{}'); Object.assign(this.data, s); } catch (e) {}
   },

@@ -33,8 +33,19 @@ const R = {
   setPreset() { G3.setView(); },
   updateCam(tx, dt, snap, shake, ty = 0) { G3.follow(tx, ty, dt, snap, shake); },
   drawWorld(g, players, pk, t, dt, opts = {}) {
-    G3.render(g, players, pk, t, dt, opts);
+    G3.render(g, players, pk, t, dt, opts.refs);
     const ctx = this.ctx;
+    // jmenovka nad hráčem s pukem
+    const o = g && opts.rings && g.puck.owner;
+    if (o && Settings.data.tags !== false) {
+      const sp = G3.toScreen(o.x, o.y, 7.8);
+      if (sp) {
+        const txt = '#' + o.num + ' ' + o.name, w = LED.width(txt, 2) + 30;
+        LED.panel(ctx, sp[0] - w / 2, sp[1] - 26, w, 24, 2, 0.8);
+        this.chip(o.team, sp[0] - w / 2 + 6, sp[1] - 21, 14);
+        LED.text(ctx, txt, sp[0] - w / 2 + 22, sp[1] - 14, 2);
+      }
+    }
     if (g) for (const pp of g.pops) {
       const s = G3.toScreen(pp.x, pp.y, 8 + pp.t * 4);
       if (!s) continue;
@@ -54,15 +65,16 @@ const R = {
     }
   },
   drawGame(g, t, dt) {
-    let players = g.all, pk = g.puck;
+    let players = g.all, pk = g.puck, refs = g.refs;
     if (g.state === 'replay' && g.replay) {
       const fr = g.replay.frames[Math.min(g.replay.frames.length - 1, Math.floor(g.replay.f))];
       players = fr.pl; pk = { x: fr.px, y: fr.py, z: fr.pz, vx: 0, vy: 0 };
+      refs = fr.refs || [];
     }
     const lead = g.state === 'play' ? clamp(pk.vx || 0, -30, 30) * 0.3 : 0;
     this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
     g.camSnap = false;
-    this.drawWorld(g, players, pk, g.time, dt, { rings: g.state !== 'replay' });
+    this.drawWorld(g, players, pk, g.time, dt, { rings: g.state !== 'replay', refs });
     this.drawHUD(g, t);
   },
 
@@ -110,15 +122,25 @@ const R = {
     const st = `STŘELY ${A.shots}-${B.shots}`;
     LED.panel(ctx, x, y + H + 5, LED.width(st, 2.5) + 24, 30, 2.5);
     LED.text(ctx, st, x + 12, y + H + 20, 2.5);
-    // lidští hráči
+    // lidští hráči: energie + formace
     g.humans.forEach((h, i) => {
       const pl = h.player; if (!pl) return;
-      const w = 320, hx = i % 2 === 0 ? 16 : this.W - 16 - w, hy = this.H - 66 - Math.floor(i / 2) * 60;
-      LED.panel(ctx, hx, hy, w, 56, 3);
-      LED.text(ctx, (i + 1) + 'P', hx + 12, hy + 20, 3, { color: h.color });
-      LED.text(ctx, '#' + pl.num + ' ' + pl.name, hx + 56, hy + 20, 3);
-      LED.bar(ctx, hx + 12, hy + 37, Math.floor((w - 24) / 4), 4, pl.stamina, pl.stamina > 0.3 ? LED.WHITE : '#ff5a46', 2);
+      const T = h.team, w = 320, hx = i % 2 === 0 ? 16 : this.W - 16 - w, hy = this.H - 92 - Math.floor(i / 2) * 96;
+      LED.panel(ctx, hx, hy, w, 82, 3);
+      LED.text(ctx, (i + 1) + 'P', hx + 12, hy + 18, 3, { color: h.color });
+      LED.text(ctx, '#' + pl.num + ' ' + pl.name, hx + 56, hy + 18, 3);
+      LED.bar(ctx, hx + 12, hy + 34, Math.floor((w - 24) / 4), 4, pl.stamina, pl.stamina > 0.35 ? LED.WHITE : '#ff5a46', 2);
+      for (let L = 0; L < 3; L++) {
+        const x0 = hx + 12 + L * 102, e = g.lineEnergy(T, L), cur = T.line === L, next = T.change && T.change.to === L;
+        LED.text(ctx, 'F' + (L + 1), x0, hy + 63, 2.5, { color: cur ? '#ffd21f' : next ? '#7dff8a' : '#8a93a6' });
+        LED.bar(ctx, x0 + 26, hy + 59, 15, 4, e, e > 0.6 ? '#7dff8a' : e > 0.35 ? '#ffd21f' : '#ff5a46', 2);
+      }
     });
+    if (g.toast) {
+      const w = LED.width(g.toast.text, 3) + 36;
+      LED.panel(ctx, this.W / 2 - w / 2, 132, w, 42, 3);
+      LED.text(ctx, g.toast.text, this.W / 2, 154, 3, { align: 'center', color: '#7dff8a' });
+    }
     // držitel puku
     const o = g.puck.owner;
     if (o && g.state === 'play') {

@@ -113,6 +113,7 @@ class PModel {
     G.scene.add(this.root);
   }
   dispose() { this.G.scene.remove(this.root); this.jTex.dispose(); this.jMat.dispose(); }
+  setVisible(v) { this.root.visible = v; }
   pose(p, t) {
     const P = this.parts, d = p.dir, c = Math.cos(d), s = Math.sin(d);
     const O = new THREE.Vector3(p.x, 0, -p.y), F = new THREE.Vector3(c, 0, -s), Lv = new THREE.Vector3(-s, 0, -c);
@@ -231,7 +232,7 @@ const G3 = {
     this.cam = new THREE.PerspectiveCamera(36, 1.6, 2, 1500);
     this.camT = { x: 0, y: 0 };
     this.clipNear = new THREE.Plane(new THREE.Vector3(0, 0, -1), RINK.HW + 5);
-    this.models = []; this.modelGame = null; this.teamCache = new Map();
+    this.modelMap = new Map(); this.modelGame = null; this.teamCache = new Map();
     this.buildShared(); this.buildEnv(); this.buildLights(); this.buildIce(); this.buildBoards(); this.buildStands();
     this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights();
     this.quality = null;
@@ -780,17 +781,27 @@ const G3 = {
     }, undefined, (e) => console.warn('Model hráče se nenačetl, používám náhradní', e));
   },
   buildModels(g) {
-    for (const m of this.models) m.dispose();
-    this.models = g.all.map((p) => {
-      if (this.base) { try { return new HModel(this, p); } catch (e) { console.error(e); } }
-      return new PModel(this, p);
-    });
-    this.modelGame = g;
+    for (const m of this.modelMap.values()) m.dispose();
+    this.modelMap = new Map(); this.modelGame = g;
   },
-  render(g, players, pk, t, dt) {
+  // modely se tvoří až když hráč poprvé vyjede na led (střídání)
+  modelFor(key) {
+    let m = this.modelMap.get(key);
+    if (m) return m;
+    if (this.base) { try { m = new HModel(this, key); } catch (e) { console.error(e); m = null; } }
+    if (!m && !key.isRef) m = new PModel(this, key);
+    if (m) this.modelMap.set(key, m);
+    return m;
+  },
+  render(g, players, pk, t, dt, refs) {
     if (this.fail) return;
     if (g && this.modelGame !== g) this.buildModels(g);
-    for (let i = 0; i < this.models.length; i++) if (players[i]) this.models[i].pose(players[i], t);
+    const vis = new Set();
+    for (const p of refs ? players.concat(refs) : players) {
+      const m = this.modelFor(p.ref || p); if (!m) continue;
+      m.setVisible(true); m.pose(p, t); vis.add(m);
+    }
+    for (const m of this.modelMap.values()) if (!vis.has(m)) m.setVisible(false);
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
     this.puck.visible = !(g && g.puck.held && g.state !== 'replay');
     const used = new Set();
