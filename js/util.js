@@ -67,8 +67,8 @@ function rinkOutline(n) {
 function bladeOffset(dir, hand, carry, t, wind, poke) {
   const fx = Math.cos(dir), fy = Math.sin(dir);
   const lx = -fy, ly = fx; // levá strana hráče
-  let f = 2.9, s = hand * 0.9, z = 0;
-  if (carry) { s += Math.sin(t * 9) * 0.75; f = 2.6 + Math.cos(t * 4.5) * 0.35; }
+  let f = 3.3, s = hand * 0.9, z = 0;
+  if (carry) { s += Math.sin(t * 9) * 0.75; f = 3.0 + Math.cos(t * 4.5) * 0.35; }
   if (poke > 0) f += 2.4 * Math.sin(Math.min(1, poke) * Math.PI);
   if (wind > 0) {
     const w = Math.min(1, wind);

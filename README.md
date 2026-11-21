@@ -1,7 +1,9 @@
 # Hokej '98
 
 Arkádový hokej ve stylu her z konce 90. let v plném 3D (WebGL / Three.js): lesklý led se zrcadlením,
-plexisklo s odlesky, polygonoví hráči s animací, stíny, tribuny plné diváků a LED pás.
+plexisklo s odlesky, hráči jako 3D modely s kostrou v hokejové výstroji (dres se jménem a číslem,
+helma s plexi štítem, rukavice, brusle, brankářské betony a maska) animovaní inverzní kinematikou,
+stíny, tribuny plné diváků a LED pás.
 HUD je ve stylu bílého bodového LED displeje jako na stadionu; ovládaný hráč má pod sebou
 na ledě rozsegmentovaný kruh ve své barvě (1P žlutá, 2P tyrkysová).
 Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru
@@ -75,3 +77,9 @@ Délka třetiny (1–20 min), obtížnost (lehká/normální/těžká), kamera (
 zoom (5 úrovní, ve hře i tlačítkem LB), kvalita grafiky (vysoká = zrcadlení ledu a ostré stíny,
 střední, nízká — pokud by hra na zařízení trhala), hlasitost, hlasový komentář
 (systémová syntéza řeči — pokud v systému není, hra je prostě bez komentáře), záznam po gólu.
+
+## Zdroje
+
+- 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).
+- Model postavy: „X Bot“ z [Mixamo](https://www.mixamo.com) (Adobe), převzatý z ukázek Three.js
+  (`models/xbot.glb`). Výstroj, barvy dresů a animace bruslení jsou dělané kódem ve hře.

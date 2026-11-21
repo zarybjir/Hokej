@@ -235,6 +235,7 @@ const G3 = {
     this.buildShared(); this.buildEnv(); this.buildLights(); this.buildIce(); this.buildBoards(); this.buildStands();
     this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights();
     this.quality = null;
+    this.loadBase();
     this.setView();
     this.applyQuality(Settings.data.gfx || 'high');
     return true;
@@ -271,8 +272,26 @@ const G3 = {
       steel: new THREE.MeshStandardMaterial({ color: 0xdfe6ee, roughness: 0.15, metalness: 1.0 }),
       visor: new THREE.MeshPhysicalMaterial({ color: 0x8ea4c4, transparent: true, opacity: 0.35, roughness: 0.05, clearcoat: 1, depthWrite: false }),
       shaft: new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.4, metalness: 0.2 }),
-      blade: new THREE.MeshStandardMaterial({ color: 0xf1f1f1, roughness: 0.85 }),
+      blade: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6 }),
       cage: new THREE.MeshStandardMaterial({ color: 0x222222, wireframe: true, metalness: 0.8, roughness: 0.3 }),
+      whitePlastic: new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.35 }),
+      tape: new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.9 }),
+      goalieGear: new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 }),
+    };
+    // výstroj pro model s kostrou (metry, bind póza)
+    this.hgeo = {
+      boot: new THREE.CapsuleGeometry(0.045, 0.16, 4, 12).rotateX(Math.PI / 2).scale(1, 1.35, 1), toeCap: new THREE.SphereGeometry(0.048, 12, 8).scale(0.95, 0.7, 1.1),
+      tendon: new THREE.BoxGeometry(0.05, 0.06, 0.03), holder: new THREE.BoxGeometry(0.03, 0.045, 0.29),
+      runner: new THREE.BoxGeometry(0.007, 0.035, 0.31),
+      helmet: new THREE.SphereGeometry(0.135, 28, 16, 0, TAU, 0, Math.PI * 0.6).scale(1.02, 0.98, 1.12),
+      visor: new THREE.SphereGeometry(0.143, 24, 6, Math.PI / 2 - 0.9, 1.8, Math.PI * 0.47, Math.PI * 0.13).scale(1.02, 1, 1.1),
+      earGuard: new THREE.BoxGeometry(0.03, 0.07, 0.08),
+      glove: new THREE.CapsuleGeometry(0.062, 0.1, 4, 12).rotateZ(Math.PI / 2).scale(1, 1, 1.12), cuff: new THREE.CylinderGeometry(0.078, 0.07, 0.085, 14).rotateZ(Math.PI / 2),
+      mask: new THREE.SphereGeometry(0.14, 28, 18).scale(1, 1.1, 1.12),
+      cage: new THREE.SphereGeometry(0.147, 14, 8, Math.PI / 2 - 0.9, 1.8, Math.PI * 0.42, Math.PI * 0.34),
+      pad: new THREE.BoxGeometry(0.27, 0.64, 0.17), thighPad: new THREE.BoxGeometry(0.25, 0.22, 0.15),
+      catcher: new THREE.CylinderGeometry(0.145, 0.13, 0.1, 24).rotateX(Math.PI / 2), catcherCuff: new THREE.BoxGeometry(0.09, 0.17, 0.17),
+      blocker: new THREE.BoxGeometry(0.2, 0.3, 0.05), tape: new THREE.BoxGeometry(0.075, 0.24, 0.5),
     };
     void g;
   },
@@ -753,9 +772,19 @@ const G3 = {
   },
 
   // ---------- snímek ----------
+  loadBase() {
+    if (!window.GLTFLoader) return;
+    new GLTFLoader().load('models/xbot.glb', (gl) => {
+      gl.animations = [];
+      this.base = gl; this.modelGame = null; // přestavět hráče na nový model
+    }, undefined, (e) => console.warn('Model hráče se nenačetl, používám náhradní', e));
+  },
   buildModels(g) {
     for (const m of this.models) m.dispose();
-    this.models = g.all.map((p) => new PModel(this, p));
+    this.models = g.all.map((p) => {
+      if (this.base) { try { return new HModel(this, p); } catch (e) { console.error(e); } }
+      return new PModel(this, p);
+    });
     this.modelGame = g;
   },
   render(g, players, pk, t, dt) {

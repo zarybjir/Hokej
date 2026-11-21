@@ -1,11 +1,15 @@
 // Zavaděč: načte Three.js (ES modul) a pak klasické skripty hry
 import * as THREE from 'three';
 import { Reflector } from '../lib/Reflector.js';
+import { GLTFLoader } from '../lib/loaders/GLTFLoader.js';
+import * as SkeletonUtils from '../lib/utils/SkeletonUtils.js';
 window.THREE = THREE;
 window.Reflector = Reflector;
+window.GLTFLoader = GLTFLoader;
+window.SkeletonUtils = SkeletonUtils;
 
 const msg = document.getElementById('msg');
-const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'render3d', 'app'];
+const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'render3d', 'players3d', 'app'];
 try {
   for (const f of files) {
     await new Promise((res, rej) => {
