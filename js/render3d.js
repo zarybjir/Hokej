@@ -761,8 +761,9 @@ const G3 = {
     if (!this.r) return;
     const q = GFX[this.quality || 'high'];
     this.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1) * q.pr);
-    this.r.setSize(window.innerWidth, window.innerHeight, false);
-    this.cam.aspect = window.innerWidth / Math.max(1, window.innerHeight); this.cam.updateProjectionMatrix();
+    const vw = R.vw || window.innerWidth, vh = R.vh || window.innerHeight;
+    this.r.setSize(vw, vh, false);
+    this.cam.aspect = vw / Math.max(1, vh); this.cam.updateProjectionMatrix();
     this.computeLims(); this.sizeReflector();
   },
   toScreen(x, y, z) {

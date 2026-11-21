@@ -20,8 +20,10 @@ const Touch = {
   init(el) {
     const opt = { passive: false };
     const toLogical = (t) => {
-      const dpr = R.cv.width / window.innerWidth;
-      return [(t.clientX * dpr - R.ox) / R.s, (t.clientY * dpr - R.oy) / R.s];
+      const dpr = R.cv.width / R.vw;
+      // v otočeném režimu: obsah je otočený o -90°, takže osy prohodíme
+      const cx = R.rot ? window.innerHeight - t.clientY : t.clientX, cy = R.rot ? t.clientX : t.clientY;
+      return [(cx * dpr - R.ox) / R.s, (cy * dpr - R.oy) / R.s];
     };
     const update = (e) => {
       e.preventDefault();
@@ -81,11 +83,7 @@ const Touch = {
   },
   draw() {
     const ctx = R.ctx;
-    if (window.innerHeight > window.innerWidth) {
-      ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0, 0, R.W, R.H);
-      R.chromeText('OTOČ TELEFON NA ŠÍŘKU', R.W / 2, R.H / 2, 48);
-      return;
-    }
+
     ctx.save();
     // páčka
     const bx = this.stick ? this.stick.ox : 170, by = this.stick ? this.stick.oy : R.H - 190;

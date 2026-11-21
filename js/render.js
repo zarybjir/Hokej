@@ -12,8 +12,16 @@ const R = {
   },
   resize() {
     if (!this.cv) return;
+    // telefon na výšku: hru vykreslíme otočenou o 90°, stačí otočit telefon (i když se prohlížeč neotočí)
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    this.rot = mobile && window.innerHeight > window.innerWidth;
+    this.vw = this.rot ? window.innerHeight : window.innerWidth; this.vh = this.rot ? window.innerWidth : window.innerHeight;
+    for (const c of document.querySelectorAll('canvas')) {
+      if (this.rot) Object.assign(c.style, { width: this.vw + 'px', height: this.vh + 'px', transformOrigin: '0 0', transform: `translateY(${this.vw}px) rotate(-90deg)` });
+      else Object.assign(c.style, { width: '', height: '', transformOrigin: '', transform: '' });
+    }
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(320, Math.floor(window.innerWidth * dpr)), h = Math.max(200, Math.floor(window.innerHeight * dpr));
+    const w = Math.max(320, Math.floor(this.vw * dpr)), h = Math.max(200, Math.floor(this.vh * dpr));
     this.cv.width = w; this.cv.height = h;
     let s = h / 800, W = w / s;
     if (W < 1280) { s = w / 1280; W = 1280; }
