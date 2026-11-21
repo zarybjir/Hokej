@@ -14,7 +14,7 @@ try {
   for (const f of files) {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = 'js/' + f + '.js';
+      s.src = 'js/' + f + '.js'; s.charset = 'utf-8';
       s.onload = res; s.onerror = () => rej(new Error('Nelze načíst ' + f + '.js'));
       document.body.appendChild(s);
     });
