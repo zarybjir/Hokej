@@ -219,8 +219,9 @@ const G3 = {
   init(canvas) {
     this.cv = canvas;
     try {
-      this.r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+      this.r = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, powerPreference: 'high-performance' });
     } catch (e) { this.fail = true; return false; }
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showError('Grafika telefonu to nezvládla (WebGL context lost). Zkus Nastavení → Grafika: NÍZKÁ a načti stránku znovu.'); });
     const r = this.r;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1.0;
@@ -496,8 +497,9 @@ const G3 = {
     const at = (i) => pts[i % N], nr = (i) => L.nrm[i % N];
     const P = L.P;
     // reklamní mantinel
-    const [ac, ag] = mkCanvas(8192, 128), ppf = 8192 / P;
-    ag.fillStyle = '#f4f5f6'; ag.fillRect(0, 0, 8192, 128);
+    const AW = IS_MOBILE ? 4096 : 8192;
+    const [ac, ag] = mkCanvas(AW, 128), ppf = AW / P;
+    ag.fillStyle = "#f4f5f6"; ag.fillRect(0, 0, AW, 128);
     const rnd = mulberry32(7);
     let k = 0;
     for (let s = 3; s < P - 12; s += 15, k++) {
@@ -510,7 +512,7 @@ const G3 = {
       ag.fillStyle = fg; ag.font = 'italic 900 70px "Arial Black","DejaVu Sans",sans-serif'; ag.textAlign = 'center'; ag.textBaseline = 'middle';
       const tw = ag.measureText(txt).width; ag.save(); ag.translate(x0 + w / 2, 66); ag.scale(Math.min(1, (w - 20) / tw), 1); ag.fillText(txt, 0, 0); ag.restore();
     }
-    for (let i = 0; i < 900; i++) { ag.fillStyle = `rgba(20,20,20,${0.1 + rnd() * 0.35})`; ag.beginPath(); ag.arc(rnd() * 8192, 70 + rnd() * 55, 1 + rnd() * 3, 0, TAU); ag.fill(); }
+    for (let i = 0; i < 900; i++) { ag.fillStyle = `rgba(20,20,20,${0.1 + rnd() * 0.35})`; ag.beginPath(); ag.arc(rnd() * AW, 70 + rnd() * 55, 1 + rnd() * 3, 0, TAU); ag.fill(); }
     const adTex = canvasTex(ac, true, this.aniso);
     const u = (i) => (P - L.s[i]) / P; // zevnitř čteno zleva doprava
     const wall = (z0, z1, off, mat, uvf) => {
@@ -712,6 +714,7 @@ const G3 = {
     if (q.shadow) { this.key.shadow.mapSize.set(q.shadow, q.shadow); if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; } }
     this.resize();
     this.setReflector(q.refl);
+    if (this.bodies) { const n = this.seats.length; this.bodies.count = this.heads.count = name === 'low' ? Math.floor(n * 0.55) : n; }
     if (changedIce) this.paintIce();
   },
   setView() {
@@ -760,7 +763,7 @@ const G3 = {
   resize() {
     if (!this.r) return;
     const q = GFX[this.quality || 'high'];
-    this.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1) * q.pr);
+    this.r.setPixelRatio(Math.min(IS_MOBILE ? 1.5 : 2, window.devicePixelRatio || 1) * q.pr);
     const vw = R.vw || window.innerWidth, vh = R.vh || window.innerHeight;
     this.r.setSize(vw, vh, false);
     this.cam.aspect = vw / Math.max(1, vh); this.cam.updateProjectionMatrix();

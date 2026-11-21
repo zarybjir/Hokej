@@ -87,13 +87,29 @@ function segDist(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
 }
 
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent || ''));
+// chybová hláška na obrazovce (aby šlo nahlásit, co se pokazilo)
+function showError(msg) {
+  try {
+    let el = document.getElementById('err');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'err';
+      el.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99;background:rgba(120,0,0,.9);color:#fff;font:13px/1.35 monospace;padding:8px 10px;border-radius:6px;white-space:pre-wrap;pointer-events:none';
+      document.body.appendChild(el);
+    }
+    if (el.textContent.length < 1200) el.textContent += (el.textContent ? '\n' : '') + msg;
+  } catch (e) {}
+}
+window.addEventListener('error', (e) => showError('Chyba: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')));
+window.addEventListener('unhandledrejection', (e) => showError('Chyba: ' + (e.reason && e.reason.message || e.reason)));
+
 const Settings = {
   data: { cam: 'top', zoom: 1, gfx: 'high', autoChange: true, penalties: true, tags: true, vol: 8, comm: true, replay: true, periodLen: 3, diff: 1, home: 0, away: 1, fps: false },
   load() {
     let s = {};
     try { s = JSON.parse(localStorage.getItem('hokej98') || '{}'); Object.assign(this.data, s); } catch (e) {}
     // telefon/tablet: šetrnější grafika, pokud ji hráč sám nezměnil
-    if (!s.gfx && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) this.data.gfx = 'mid';
+    if (!s.gfx && IS_MOBILE) this.data.gfx = 'low';
   },
   save() { try { localStorage.setItem('hokej98', JSON.stringify(this.data)); } catch (e) {} },
 };

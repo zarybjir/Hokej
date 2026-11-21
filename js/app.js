@@ -394,6 +394,7 @@ const App = {
 // ---------- start ----------
 (function main() {
   const cv = document.getElementById('c');
+  Settings.load(); // před 3D enginem, aby se hned použila správná kvalita grafiky
   R.init(cv);
   Touch.init(cv);
   if (!G3.init(document.getElementById('gl'))) {
@@ -412,7 +413,7 @@ const App = {
     last = ts;
     App.fps = lerp(App.fps, 1 / Math.max(dt, 0.001), 0.05);
     Input.poll(dt);
-    try { App.update(dt); } catch (e) { console.error(e); }
+    try { App.update(dt); } catch (e) { console.error(e); if (!App.errShown) { App.errShown = true; showError('Chyba ve hře: ' + e.message); } }
     R.begin();
     try { App.draw(dt); if (Touch.visible) Touch.draw(); } catch (e) { console.error(e); }
     R.end();
