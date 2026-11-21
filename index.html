@@ -6,17 +6,16 @@
 <title>Hokej '98</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
-  canvas { display: block; width: 100vw; height: 100vh; }
+  canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; }
+  #msg { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
+         font: bold 22px sans-serif; text-align: center; padding: 40px; }
 </style>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 </head>
 <body>
+<canvas id="gl"></canvas>
 <canvas id="c"></canvas>
-<script src="js/util.js"></script>
-<script src="js/data.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/input.js"></script>
-<script src="js/game.js"></script>
-<script src="js/render.js"></script>
-<script src="js/app.js"></script>
+<div id="msg">Načítám…<br><small>(hru spouštěj přes hokej.sh — z file:// se moduly nenačtou)</small></div>
+<script type="module" src="js/boot.js"></script>
 </body>
 </html>

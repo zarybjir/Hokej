@@ -1,11 +1,14 @@
 # Hokej '98
 
-Arkádový hokej ve stylu her z konce 90. let — pohled seshora (kluziště na výšku, scrolluje se
-nahoru/dolů; v Nastavení lze přepnout na TV kameru z boku), příklepy, golfáky z první,
+Arkádový hokej ve stylu her z konce 90. let v plném 3D (WebGL / Three.js): lesklý led se zrcadlením,
+plexisklo s odlesky, polygonoví hráči s animací, stíny, tribuny plné diváků a LED pás.
+Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru
+z boku) s nastavitelným zoomem. Příklepy, golfáky z první,
 bodyčeky, varhany, houkačka, záznam gólu a tři hvězdy zápasu. Pro 1–2 hráče (až 4)
 proti počítači nebo proti sobě, i ve spolupráci.
 
-Běží v prohlížeči (HTML5 + Gamepad API), bez instalace čehokoli dalšího.
+Běží v prohlížeči (WebGL + Gamepad API), bez instalace čehokoli dalšího — Three.js je přibalené
+ve složce `lib/`, takže hra funguje i offline.
 Týmy a hráči jsou smyšlení.
 
 ## Legion Go S / Steam Deck (SteamOS)
@@ -39,7 +42,9 @@ po stisku klávesy).
 
 ## Na počítači
 
-Otevři `index.html` v Chromu/Firefoxu (nebo spusť `./hokej.sh`). Funguje gamepad i klávesnice:
+Spusť `./hokej.sh`, nebo ve složce hry `python3 -m http.server 47098` a otevři
+<http://127.0.0.1:47098/>. (Přímé otevření `index.html` z disku nefunguje — prohlížeč z `file://`
+nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 
 - **Klávesnice 1:** WASD, J = A, K = X, L = B, I = Y, Mezerník = sprint, Esc = pauza
 - **Klávesnice 2:** šipky, Num1 = A, Num2 = X, Num3 = B, Num5 = Y, Num0 = sprint, Enter = pauza
@@ -54,6 +59,7 @@ Otevři `index.html` v Chromu/Firefoxu (nebo spusť `./hokej.sh`). Funguje gamep
 | X | střela — ťuknutí = zápěstí, držení = příklep | bodyček |
 | B | klička | šťouchnutí holí |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
+| LB | zoom kamery | zoom kamery |
 | Menu | pauza | pauza |
 
 - **Golfák z první:** zmáčkni X, zatímco k tobě letí přihrávka.
@@ -63,5 +69,7 @@ Otevři `index.html` v Chromu/Firefoxu (nebo spusť `./hokej.sh`). Funguje gamep
 
 ## Nastavení
 
-Délka třetiny (1–20 min), obtížnost (lehká/normální/těžká), kamera (seshora / z boku), hlasitost, hlasový komentář
+Délka třetiny (1–20 min), obtížnost (lehká/normální/těžká), kamera (seshora / z boku),
+zoom (5 úrovní, ve hře i tlačítkem LB), kvalita grafiky (vysoká = zrcadlení ledu a ostré stíny,
+střední, nízká — pokud by hra na zařízení trhala), hlasitost, hlasový komentář
 (systémová syntéza řeči — pokud v systému není, hra je prostě bez komentáře), záznam po gólu.

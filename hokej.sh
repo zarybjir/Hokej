@@ -21,7 +21,7 @@ fi
 cleanup() { [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; }
 trap cleanup EXIT INT TERM
 
-FLAGS=(--kiosk --start-fullscreen --autoplay-policy=no-user-gesture-required --no-first-run
+FLAGS=(--kiosk --start-fullscreen --autoplay-policy=no-user-gesture-required --ignore-gpu-blocklist --no-first-run
        --no-default-browser-check --disable-translate --disable-features=Translate,MediaRouter
        --password-store=basic --app="$URL")
 

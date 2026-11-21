@@ -81,7 +81,7 @@ const App = {
         break;
       }
       case 'settings': {
-        const n = 7;
+        const n = 9;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
         if (this.sel === 0 && d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); }
@@ -90,7 +90,9 @@ const App = {
         if (this.sel === 3 && (d || a)) S.fps = !S.fps;
         if (this.sel === 4 && a) this.toggleFull();
         if (this.sel === 5 && (d || a)) { S.cam = S.cam === 'side' ? 'top' : 'side'; R.setPreset(S.cam); }
-        if ((this.sel === 6 && a) || M.pressed('b')) { Settings.save(); this.go('title', 1); }
+        if (this.sel === 6 && (d || a)) { G3.zoomStep(d || 1); G3.toast = null; }
+        if (this.sel === 7 && (d || a)) { const i = GFX_ORDER.indexOf(S.gfx || 'high'); S.gfx = GFX_ORDER[(i + (d || 1) + 3) % 3]; G3.applyQuality(S.gfx); }
+        if ((this.sel === 8 && a) || M.pressed('b')) { Settings.save(); this.go('title', 1); }
         if (d || a) Settings.save();
         break;
       }
@@ -113,6 +115,7 @@ const App = {
         }
         if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; Sfx.whistle(); break; }
         if (M.pressed('a') || M.pressed('start')) g.confirm();
+        if (M.pressed('lb')) G3.zoomStep(Settings.data.zoom >= ZOOMS.length - 1 ? -(ZOOMS.length - 1) : 1);
         for (let i = 0; i < this.speed; i++) g.update(dt);
         if (g.over) { this.game = null; this.newDemo(); this.go('title'); }
         break;
@@ -156,7 +159,7 @@ const App = {
     }
     // pozadí: ukázkový zápas
     const d = this.demo;
-    R.updateCam(d.puck.x, dt, d.camSnap, 0); d.camSnap = false;
+    R.updateCam(d.puck.x, dt, d.camSnap, 0, d.puck.y); d.camSnap = false;
     R.drawWorld(d, d.all, d.puck, d.time, dt, { puckSpeed: Math.hypot(d.puck.vx, d.puck.vy) });
     this.dim(this.screen === 'press' ? 0.35 : 0.6);
     if (this.screen === 'press' || this.screen === 'title') this.drawLogo();
@@ -291,16 +294,18 @@ const App = {
     const ctx = R.ctx, S = Settings.data;
     R.chromeText('NASTAVENÍ', R.W / 2, 90, 46);
     const rows = [['HLASITOST', '▮'.repeat(S.vol) + '▯'.repeat(10 - S.vol)], ['KOMENTÁŘ (HLAS)', S.comm ? 'ZAP' : 'VYP'],
-      ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'], ['ZPĚT', '']];
+      ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'],
+      ['ZOOM', '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►'], ['GRAFIKA', '◄ ' + GFX[S.gfx || 'high'].name + ' ►'], ['ZPĚT', '']];
     rows.forEach(([n, v], i) => {
-      const y = 180 + i * 62, on = this.sel === i;
-      R.panel(R.W / 2 - 330, y - 25, 660, 50, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 24, 658, 48); }
+      const y = 150 + i * 54, on = this.sel === i;
+      R.panel(R.W / 2 - 330, y - 23, 660, 46, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 22, 658, 44); }
       ctx.font = font(20); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(n, R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(v, R.W / 2 + 305, y);
     });
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
-    ctx.fillText('Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.', R.W / 2, 640);
+    ctx.fillText('Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.', R.W / 2, 660);
+    ctx.fillText('Zoom jde měnit i během zápasu tlačítkem LB. Při trhání zkus grafiku STŘEDNÍ.', R.W / 2, 684);
   },
   drawHelp() {
     const ctx = R.ctx;
@@ -314,7 +319,7 @@ const App = {
       ['', ''], ['BEZ PUKU', ''],
       ['A', 'přepnout na hráče nejblíž puku'], ['X', 'bodyček'], ['B', 'šťouchnutí holí (poke)'],
       ['A když má puk spoluhráč', '„dej mi ho!" — přihraje ti'], ['BULY', 'stiskni A/X přesně, když puk dopadne'],
-      ['MENU / START', 'pauza'],
+      ['LB', 'změna zoomu'], ['MENU / START', 'pauza'],
     ];
     L.forEach(([a, b], i) => {
       const y = 120 + i * 30;
@@ -338,6 +343,9 @@ const App = {
 (function main() {
   const cv = document.getElementById('c');
   R.init(cv);
+  if (!G3.init(document.getElementById('gl'))) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="msg">WebGL není k dispozici — zapni hardwarovou akceleraci v prohlížeči.</div>');
+  }
   Input.init();
   App.init();
   try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => Voice.pickVoice(); } catch (e) {}
