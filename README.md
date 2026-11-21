@@ -11,6 +11,14 @@ přesní, na střídačce se zotaví. Formace se střídají za běhu (hráči d
 nebo při přerušení — automaticky, nebo ručně tlačítkem **LB**. Na ledě jsou rozhodčí (hlavní
 s oranžovými pásky a dva čároví), kteří vhazují a signalizují. Čísla jsou na zádech, ramenou
 a helmě, nad hráčem s pukem je jmenovka.
+
+**Fauly a vyloučení:** rozhodčí trestá hákování (šťouchnutí zezadu), podrážení (hůl do nohou místo
+do puku), sekání (šťouchnutí do hráče bez puku), napadení zezadu, narážení na mantinel, bránění ve hře
+(bodyček do hráče bez puku) a hrubost. Když má faulovaný tým puk, je vyloučení **odložené** — rozhodčí
+zvedne ruku a píská, až se puku dotkne faulující tým (gól v té chvíli vyloučení ruší). Vyloučený hráč jde
+na trestnou lavici a tým hraje v oslabení (5 na 4, nejvýš 5 na 3); gól v přesilovce trest ukončí.
+Délka trestu „2 minuty“ se přepočítává podle délky třetiny (u 3min třetin 25 s, u 20min třetin 2 min).
+Fauly lze vypnout v menu *Exhibice* nebo v Nastavení.
 HUD je ve stylu bílého bodového LED displeje jako na stadionu; ovládaný hráč má pod sebou
 na ledě rozsegmentovaný kruh ve své barvě (1P žlutá, 2P tyrkysová).
 Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru

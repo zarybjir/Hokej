@@ -65,7 +65,7 @@ const R = {
     }
   },
   drawGame(g, t, dt) {
-    let players = g.all, pk = g.puck, refs = g.refs;
+    let players = g.penalties.length ? g.all.concat(g.boxPlayers()) : g.all, pk = g.puck, refs = g.refs;
     if (g.state === 'replay' && g.replay) {
       const fr = g.replay.frames[Math.min(g.replay.frames.length - 1, Math.floor(g.replay.f))];
       players = fr.pl; pk = { x: fr.px, y: fr.py, z: fr.pz, vx: 0, vy: 0 };
@@ -122,6 +122,23 @@ const R = {
     const st = `STŘELY ${A.shots}-${B.shots}`;
     LED.panel(ctx, x, y + H + 5, LED.width(st, 2.5) + 24, 30, 2.5);
     LED.text(ctx, st, x + 12, y + H + 20, 2.5);
+    // vyloučení a přesilovka
+    let py = y + H + 40;
+    const nA = g.penalties.filter((pn) => pn.team === A).length, nB = g.penalties.filter((pn) => pn.team === B).length;
+    if (nA !== nB) {
+      const pp = nA > nB ? B : A, txt = `PŘESILOVKA ${pp.def.abbr} ${5 - Math.min(nA, nB) === 5 ? 5 : 5 - Math.min(nA, nB)} NA ${5 - Math.max(nA, nB)}`;
+      LED.panel(ctx, x, py, LED.width(txt, 2.5) + 24, 30, 2.5); LED.text(ctx, txt, x + 12, py + 15, 2.5, { color: '#ffd21f' }); py += 34;
+    }
+    for (const pn of g.penalties) {
+      const txt = `${pn.team.def.abbr} #${pn.player.num} ${pn.player.name}  ${this.clockStr(pn.left)}`;
+      LED.panel(ctx, x, py, LED.width(txt, 2.5) + 40, 30, 2.5);
+      this.chip(pn.team, x + 8, py + 7, 16);
+      LED.text(ctx, txt, x + 26, py + 15, 2.5, { color: '#ff7a5a' }); py += 34;
+    }
+    if (g.pending && Math.floor(t * 3) % 2 === 0) {
+      const txt = 'ODLOŽENÉ VYLOUČENÍ ' + g.pending.team.def.abbr;
+      LED.panel(ctx, x, py, LED.width(txt, 2.5) + 24, 30, 2.5); LED.text(ctx, txt, x + 12, py + 15, 2.5, { color: '#ff5a46' });
+    }
     // lidští hráči: energie + formace
     g.humans.forEach((h, i) => {
       const pl = h.player; if (!pl) return;
@@ -190,7 +207,7 @@ const R = {
   },
   statsTable(g, x, y) {
     const ctx = this.ctx, [A, B] = g.teams;
-    const rows = [['GÓLY', A.score, B.score], ['STŘELY', A.shots, B.shots], ['HITY', A.hits, B.hits]];
+    const rows = [['GÓLY', A.score, B.score], ['STŘELY', A.shots, B.shots], ['HITY', A.hits, B.hits], ['VYLOUČENÍ', A.pim, B.pim], ['PŘESILOVKY', A.ppg + '/' + A.ppOpp, B.ppg + '/' + B.ppOpp]];
     this.chip(A, x - 160, y - 12, 24); LED.text(ctx, A.def.abbr, x - 90, y, 3, { align: 'right' });
     this.chip(B, x + 150, y - 12, 24); LED.text(ctx, B.def.abbr, x + 90, y, 3);
     rows.forEach((r, i) => {
@@ -201,7 +218,7 @@ const R = {
     });
   },
   drawPeriodEnd(g, t) {
-    const ctx = this.ctx, w = 600, h = 300, x = this.W / 2 - w / 2, y = 190;
+    const ctx = this.ctx, w = 600, h = 360, x = this.W / 2 - w / 2, y = 170;
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, this.W, this.H);
     LED.panel(ctx, x, y, w, h, 4, 0.94);
     LED.text(ctx, 'KONEC ' + (g.period > 3 ? 'PRODLOUŽENÍ' : g.period + '. TŘETINY'), this.W / 2, y + 44, 4, { align: 'center' });
@@ -209,16 +226,16 @@ const R = {
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - POKRAČOVAT', this.W / 2, y + h - 28, 2.5, { align: 'center', color: '#ffd21f' });
   },
   drawFinal(g, t) {
-    const ctx = this.ctx, w = 680, h = 480, x = this.W / 2 - w / 2, y = 116;
+    const ctx = this.ctx, w = 680, h = 520, x = this.W / 2 - w / 2, y = 96;
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, this.W, this.H);
     LED.panel(ctx, x, y, w, h, 4, 0.95);
     LED.text(ctx, 'KONEC ZÁPASU', this.W / 2, y + 42, 5, { align: 'center' });
     const win = g.winner ? 'VÍTĚZ: ' + g.winner.def.city + ' ' + g.winner.def.name : 'REMÍZA';
     LED.text(ctx, win, this.W / 2, y + 88, 3, { align: 'center', color: '#ffd21f' });
     this.statsTable(g, this.W / 2, y + 136);
-    LED.text(ctx, 'HVĚZDY ZÁPASU', this.W / 2, y + 300, 3, { align: 'center' });
+    LED.text(ctx, 'HVĚZDY ZÁPASU', this.W / 2, y + 338, 3, { align: 'center' });
     (g.stars || []).forEach((p, i) => {
-      const yy = y + 340 + i * 32;
+      const yy = y + 372 + i * 30;
       LED.text(ctx, '★'.repeat(3 - i), x + 40, yy, 2.5, { color: '#ffd21f' });
       this.chip(p.team, x + 120, yy - 10, 20);
       LED.text(ctx, `#${p.num} ${p.first} ${p.name} (${p.team.def.abbr})`, x + 140, yy, 2.5);

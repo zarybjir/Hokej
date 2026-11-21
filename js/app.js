@@ -53,7 +53,7 @@ const App = {
         break;
       }
       case 'setup': {
-        this.menuMove(0, 6, dt);
+        this.menuMove(0, 7, dt);
         const d = this.lr(dt);
         if (d) {
           const nx = (v, o) => { v = (v + d + TEAMS.length) % TEAMS.length; return v === o ? (v + d + TEAMS.length) % TEAMS.length : v; };
@@ -62,13 +62,15 @@ const App = {
           if (this.sel === 2) { const i = PERIOD_OPTS.indexOf(S.periodLen); S.periodLen = PERIOD_OPTS[clamp((i < 0 ? 2 : i) + d, 0, PERIOD_OPTS.length - 1)]; }
           if (this.sel === 3) S.diff = clamp(S.diff + d, 0, DIFF.length - 1);
           if (this.sel === 4) S.autoChange = !S.autoChange;
+          if (this.sel === 5) S.penalties = S.penalties === false;
           Sfx.stick(0.4); Settings.save();
         }
         if (M.pressed('y')) { this.rosterTeam = this.sel === 1 ? S.away : S.home; this.rosterFrom = this.sel; this.go('roster'); break; }
         if (M.pressed('a') || M.pressed('start')) {
-          if (this.sel === 5 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
+          if (this.sel === 6 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
           else if (this.sel === 4) { S.autoChange = !S.autoChange; Settings.save(); }
-          else this.sel = Math.min(5, this.sel + 1);
+          else if (this.sel === 5) { S.penalties = S.penalties === false; Settings.save(); }
+          else this.sel = Math.min(6, this.sel + 1);
         }
         if (M.pressed('b')) this.go('title');
         break;
@@ -90,7 +92,7 @@ const App = {
         break;
       }
       case 'settings': {
-        const n = 12;
+        const n = 13;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
         if (this.sel === 0 && d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); }
@@ -104,7 +106,8 @@ const App = {
         if (this.sel === 8 && (d || a)) S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length;
         if (this.sel === 9 && (d || a)) S.autoChange = !S.autoChange;
         if (this.sel === 10 && (d || a)) S.tags = !S.tags;
-        if ((this.sel === 11 && a) || M.pressed('b')) { Settings.save(); this.go('title', 1); }
+        if (this.sel === 11 && (d || a)) S.penalties = S.penalties === false;
+        if ((this.sel === 12 && a) || M.pressed('b')) { Settings.save(); this.go('title', 1); }
         if (d || a) Settings.save();
         break;
       }
@@ -150,7 +153,7 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1 });
     }
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false });
+    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false });
     this.screen = 'game'; this.sel = 0;
   },
   toggleFull() {
@@ -173,7 +176,7 @@ const App = {
     const d = this.demo;
     R.updateCam(d.puck.x, dt, d.camSnap, 0, d.puck.y); d.camSnap = false;
     R.drawWorld(d, d.all, d.puck, d.time, dt, { puckSpeed: Math.hypot(d.puck.vx, d.puck.vy) });
-    this.dim(this.screen === 'press' ? 0.35 : 0.6);
+    this.dim(this.screen === 'press' ? 0.35 : this.screen === 'help' || this.screen === 'roster' ? 0.82 : 0.6);
     if (this.screen === 'press' || this.screen === 'title') this.drawLogo();
     if (this.screen === 'press') {
       if (Math.floor(this.t * 1.6) % 2 === 0) R.chromeText('STISKNI  A  /  START', R.W / 2, 560, 34, '#fff', '#ffd21f');
@@ -263,16 +266,16 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [['DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)']];
+      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP']];
     rows.forEach(([n, v], i) => {
-      const y = 462 + i * 46, on = this.sel === i + 2;
-      R.panel(R.W / 2 - 300, y - 21, 600, 42, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 299, y - 20, 598, 40); }
+      const y = 452 + i * 42, on = this.sel === i + 2;
+      R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 299, y - 18, 598, 36); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(n, R.W / 2 - 280, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText((on ? '◄  ' : '') + v + (on ? '  ►' : ''), R.W / 2 + 280, y);
     });
-    const on = this.sel === 5;
-    R.chromeText('POKRAČOVAT  ►', R.W / 2, 620, on ? 38 : 30, on ? '#fff8d0' : '#fff', on ? '#ffcc33' : '#8fa4c8');
+    const on = this.sel === 6;
+    R.chromeText('POKRAČOVAT  ►', R.W / 2, 640, on ? 38 : 30, on ? '#fff8d0' : '#fff', on ? '#ffcc33' : '#8fa4c8');
     ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
     ctx.fillText('↑↓ výběr   ◄► změna   A potvrdit   Y soupiska a statistiky hráčů   B zpět', R.W / 2, 760);
   },
@@ -343,9 +346,9 @@ const App = {
       ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'],
       ['ZOOM', '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►'], ['GRAFIKA', '◄ ' + GFX[S.gfx || 'high'].name + ' ►'],
       ['OBTÍŽNOST', '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►'], ['STŘÍDÁNÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'],
-      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['ZPĚT', '']];
+      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZPĚT', '']];
     rows.forEach(([n, v], i) => {
-      const y = 128 + i * 46, on = this.sel === i;
+      const y = 124 + i * 43, on = this.sel === i;
       R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
       if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 19, 658, 38); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(n, R.W / 2 - 305, y);
@@ -377,6 +380,7 @@ const App = {
       ctx.font = font(16, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(b, R.W / 2 + 20, y);
     });
     ctx.font = font(12, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
+    ctx.fillText('Fauly: šťouchnutí zezadu, hůl do nohou, bodyček zezadu, na mantinel nebo do hráče bez puku → vyloučení (hra 5 na 4).', R.W / 2, 668);
     ctx.fillText('Klávesnice 1: WASD, J=A, K=X, L=B, I=Y, Mezerník=sprint, Esc=pauza   •   Klávesnice 2: šipky, Num1=A, Num2=X, Num3=B, Num5=Y, Num0=sprint, Enter=pauza', R.W / 2, 690);
     ctx.font = font(14, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.fillText('A / B — zpět', R.W / 2, 740);
   },
