@@ -776,10 +776,16 @@ const G3 = {
   // ---------- snímek ----------
   loadBase() {
     if (!window.GLTFLoader) return;
-    new GLTFLoader().load('models/xbot.glb', (gl) => {
-      gl.animations = [];
-      this.base = gl; this.modelGame = null; // přestavět hráče na nový model
-    }, undefined, (e) => console.warn('Model hráče se nenačetl, používám náhradní', e));
+    const done = (gl) => { gl.animations = []; this.base = gl; this.modelGame = null; }; // přestavět hráče na nový model
+    const fail = (e) => console.warn('Model hráče se nenačetl, používám náhradní', e);
+    const parse = (buf) => new GLTFLoader().parse(buf, 'models/', done, fail);
+    // .glb, nebo záložně base64 text (kde server .glb neposílá)
+    fetch('models/xbot.glb').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then(parse)
+      .catch(() => fetch('models/xbot.glb.b64.txt').then((r) => (r.ok ? r.text() : Promise.reject(r.status))).then((t) => {
+        const bin = atob(t.trim()), u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        parse(u.buffer);
+      }).catch(fail));
   },
   buildModels(g) {
     for (const m of this.modelMap.values()) m.dispose();
