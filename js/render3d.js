@@ -654,7 +654,7 @@ const G3 = {
   },
   buildRings() {
     // rozsegmentovaný kruh na ledě pod aktivním hráčem
-    const N = 8, gap = 0.22;
+    const N = 4, gap = 0.45;
     this.rings = HUMAN_COLORS.map((c) => {
       const grp = new THREE.Group();
       const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
