@@ -653,10 +653,21 @@ const G3 = {
     this.puck.castShadow = true; this.scene.add(this.puck);
   },
   buildRings() {
+    // rozsegmentovaný kruh na ledě pod aktivním hráčem
+    const N = 8, gap = 0.22;
     this.rings = HUMAN_COLORS.map((c) => {
-      const m = new THREE.Mesh(new THREE.RingGeometry(1.75, 2.2, 48).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }));
-      m.renderOrder = 2; m.visible = false; this.scene.add(m); return m;
+      const grp = new THREE.Group();
+      const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+      const inner = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+      for (let i = 0; i < N; i++) {
+        const a0 = (i / N) * TAU + gap / 2, len = TAU / N - gap;
+        const seg = new THREE.Mesh(new THREE.RingGeometry(1.85, 2.3, 8, 1, a0, len).rotateX(-Math.PI / 2), mat);
+        seg.renderOrder = 2; grp.add(seg);
+        const tick = new THREE.Mesh(new THREE.RingGeometry(1.55, 1.7, 8, 1, a0 + len * 0.25, len * 0.5).rotateX(-Math.PI / 2), inner);
+        tick.renderOrder = 2; grp.add(tick);
+      }
+      grp.visible = false; this.scene.add(grp);
+      return grp;
     });
   },
   buildGoalLights() {
@@ -754,7 +765,7 @@ const G3 = {
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
     this.puck.visible = !(g && g.puck.held && g.state !== 'replay');
     const used = new Set();
-    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl]; m.position.set(p.x, 0.04, -p.y); m.visible = true; used.add(p.ctrl); }
+    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl]; m.position.set(p.x, 0.04, -p.y); m.rotation.y += dt * 1.6; const k = 1 + Math.sin(t * 6) * 0.04; m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl); }
     this.rings.forEach((m, i) => { if (!used.has(i)) m.visible = false; });
     for (const L of this.gLights) {
       const on = g && g.goalLight === L.sN && g.goalLightT > 0 && Math.floor(t * 6) % 2 === 0;

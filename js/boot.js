@@ -5,7 +5,7 @@ window.THREE = THREE;
 window.Reflector = Reflector;
 
 const msg = document.getElementById('msg');
-const files = ['util', 'data', 'audio', 'input', 'game', 'render', 'render3d', 'app'];
+const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'render3d', 'app'];
 try {
   for (const f of files) {
     await new Promise((res, rej) => {

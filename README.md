@@ -2,6 +2,8 @@
 
 Arkádový hokej ve stylu her z konce 90. let v plném 3D (WebGL / Three.js): lesklý led se zrcadlením,
 plexisklo s odlesky, polygonoví hráči s animací, stíny, tribuny plné diváků a LED pás.
+HUD je ve stylu bílého bodového LED displeje jako na stadionu; ovládaný hráč má pod sebou
+na ledě rozsegmentovaný kruh ve své barvě (1P žlutá, 2P tyrkysová).
 Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru
 z boku) s nastavitelným zoomem. Příklepy, golfáky z první,
 bodyčeky, varhany, houkačka, záznam gólu a tři hvězdy zápasu. Pro 1–2 hráče (až 4)
