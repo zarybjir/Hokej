@@ -106,6 +106,24 @@ zoom (5 úrovní, ve hře i tlačítkem LB), kvalita grafiky (vysoká = zrcadlen
 střední, nízká — pokud by hra na zařízení trhala), hlasitost, hlasový komentář
 (systémová syntéza řeči — pokud v systému není, hra je prostě bez komentáře), záznam po gólu.
 
+## Kariéra
+
+V hlavním menu **KARIÉRA** převezmeš jeden z 10 klubů a vedeš ho sezónu po sezóně (pozice se ukládá
+do prohlížeče, rozehranou kariéru jde kdykoli načíst).
+
+- **Liga:** 10 týmů, dvoukolově každý s každým (18 kol). Výhra 3 body, výhra po prodloužení
+  či nájezdech 2, prohra po prodloužení 1. Tabulka, výsledky kola a statistiky střelců.
+- **Play-off:** nejlepších 8 hraje na 2 vítězné zápasy (1–8, 4–5, 2–7, 3–6), pavouk až do finále.
+- **Pohár:** vyřazovací pohár 8 týmů, kola se hrají mezi ligovými koly (po 5., 11. a 17. kole).
+- **Zápasy** odehraješ sám (všechny připojené ovladače hrají za tvůj tým, soupeř je počítač)
+  nebo je necháš **simulovat**; jde i „simulovat do konce sezóny“.
+- **Soupiska a sestava:** přeskládání formací (A prohodí dva hráče, Y seřadí automaticky).
+- **Přestupy:** přestupní okno je otevřené do 13. kola. Hráče koupíš výměnou za svého hráče
+  na stejném postu plus doplatek z rozpočtu; počítačové týmy přestupují mezi sebou, nabízejí
+  se i volní hráči. Rozpočet roste z diváků na domácích zápasech a z prémií za umístění.
+- **Mezi sezónami** hráči stárnou: mladí se zlepšují, starší ztrácejí, nad 35 let končí
+  a nahradí je junioři. Zprávy shrnují přestupy, ocenění a historii vítězů.
+
 ## Zdroje
 
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).

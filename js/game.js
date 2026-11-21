@@ -21,7 +21,7 @@ function lightness(hex) {
 
 class Player {
   constructor(team, info) {
-    Object.assign(this, { team, role: info.role, name: info.name, first: info.first, num: info.num, hand: info.hand, line: info.line || 0 });
+    Object.assign(this, { team, id: info.id, role: info.role, name: info.name, first: info.first, num: info.num, hand: info.hand, line: info.line || 0 });
     this.isGoalie = info.role === 'G';
     // atributy (40–99) → herní parametry
     const A = this.at = info.at || {}, n = (v, lo, hi) => lo + ((v || 75) - 55) / 44 * (hi - lo);
@@ -79,7 +79,7 @@ class Game {
     const def = TEAMS[idx];
     const t = { idx, def, side, dir: 1, players: [], skaters: [], goalie: null, score: 0, shots: 0, hits: 0, humans: [],
       chaser: null, presser: null, marks: new Map(), thinkT: Math.random() * 0.15, cpu: true, spdMod: 1, line: 0, change: null, pim: 0, ppg: 0, ppOpp: 0 };
-    const R = buildRoster(idx);
+    const R = (this.cfg.rosters && this.cfg.rosters[side]) || buildRoster(idx);
     t.lines = R.lines.map((l) => l.map((r) => new Player(t, r)));
     t.goalies = R.goalies.map((r) => new Player(t, r));
     t.goalie = t.goalies[0]; t.goalie.onIce = true;

@@ -41,13 +41,14 @@ const App = {
         if (M.pressed('a') || M.pressed('start') || (Input.anyEvent && Input.keys.size) || (Touch.visible && Touch.touches.size)) { Sfx.init(); Sfx.resume(); this.go('title'); }
         break;
       case 'title': {
-        const items = 4;
+        const items = 5;
         this.menuMove(0, items, dt);
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 0) this.go('setup');
-          else if (this.sel === 1) this.go('settings');
-          else if (this.sel === 2) { this.helpFrom = 'title'; this.go('help'); }
-          else if (this.sel === 3) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
+          else if (this.sel === 1) { this.go('career'); Career.enter(); }
+          else if (this.sel === 2) this.go('settings');
+          else if (this.sel === 3) { this.helpFrom = 'title'; this.go('help'); }
+          else if (this.sel === 4) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
         if (this.quitMsg) this.quitMsg = Math.max(0, this.quitMsg - dt);
         break;
@@ -75,6 +76,7 @@ const App = {
         if (M.pressed('b')) this.go('title');
         break;
       }
+      case 'career': Career.update(dt); break;
       case 'roster': {
         const d = this.lr(dt);
         if (d) { this.rosterTeam = (this.rosterTeam + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
@@ -107,13 +109,13 @@ const App = {
         if (this.sel === 9 && (d || a)) S.autoChange = !S.autoChange;
         if (this.sel === 10 && (d || a)) S.tags = !S.tags;
         if (this.sel === 11 && (d || a)) S.penalties = S.penalties === false;
-        if ((this.sel === 12 && a) || M.pressed('b')) { Settings.save(); this.go('title', 1); }
+        if ((this.sel === 12 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
         if (d || a) Settings.save();
         break;
       }
       case 'help':
         if (M.pressed('a') || M.pressed('b') || M.pressed('start')) {
-          if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 2);
+          if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 3);
         }
         break;
       case 'game': {
@@ -124,7 +126,10 @@ const App = {
           else if (M.pressed('a')) {
             if (this.sel === 0) g.paused = false;
             else if (this.sel === 1) { this.helpFrom = 'pause'; this.screen = 'help'; }
-            else { this.game = null; this.newDemo(); this.go('title'); try { speechSynthesis.cancel(); } catch (e) {} }
+            else {
+              this.game = null; this.newDemo(); try { speechSynthesis.cancel(); } catch (e) {}
+              if (this.careerMatch) { this.careerMatch = null; this.screen = 'career'; Career.go('hub'); } else this.go('title');
+            }
           }
           break;
         }
@@ -132,7 +137,10 @@ const App = {
         if (M.pressed('a') || M.pressed('start')) g.confirm();
         if (M.pressed('back')) G3.zoomStep(Settings.data.zoom >= ZOOMS.length - 1 ? -(ZOOMS.length - 1) : 1);
         for (let i = 0; i < this.speed; i++) g.update(dt);
-        if (g.over) { this.game = null; this.newDemo(); this.go('title'); }
+        if (g.over) {
+          if (this.careerMatch) { Career.finishPlayed(g); this.game = null; this.newDemo(); this.screen = 'career'; }
+          else { this.game = null; this.newDemo(); this.go('title'); }
+        }
         break;
       }
     }
@@ -176,20 +184,21 @@ const App = {
     const d = this.demo;
     R.updateCam(d.puck.x, dt, d.camSnap, 0, d.puck.y); d.camSnap = false;
     R.drawWorld(d, d.all, d.puck, d.time, dt, { puckSpeed: Math.hypot(d.puck.vx, d.puck.vy) });
-    this.dim(this.screen === 'press' ? 0.35 : this.screen === 'help' || this.screen === 'roster' ? 0.82 : 0.6);
+    this.dim(this.screen === 'press' ? 0.35 : this.screen === 'help' || this.screen === 'roster' || this.screen === 'career' ? 0.82 : 0.6);
     if (this.screen === 'press' || this.screen === 'title') this.drawLogo();
     if (this.screen === 'press') {
       if (Math.floor(this.t * 1.6) % 2 === 0) R.chromeText('STISKNI  A  /  START', R.W / 2, 560, 34, '#fff', '#ffd21f');
       ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
       ctx.fillText('1–2 hráči  •  gamepad nebo klávesnice', R.W / 2, 620);
     }
-    if (this.screen === 'title') this.drawList(['EXHIBICE', 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 470);
+    if (this.screen === 'title') this.drawList(['EXHIBICE', 'KARIÉRA', 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 450);
     if (this.screen === 'title' && this.quitMsg) {
       ctx.font = font(15, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.textAlign = 'center';
       ctx.fillText('Ukonči přes tlačítko Steam → Ukončit hru (nebo Alt+F4)', R.W / 2, 740);
     }
     if (this.screen === 'setup') this.drawSetup();
     if (this.screen === 'roster') this.drawRoster();
+    if (this.screen === 'career') Career.draw();
     if (this.screen === 'ctrl') this.drawCtrl();
     if (this.screen === 'settings') this.drawSettings();
     if (this.screen === 'help') this.drawHelp();
