@@ -32,7 +32,8 @@ run_flatpak() { # $1 = flatpak id
   local prof="$HOME/.var/app/$1/hokej98-profile"
   mkdir -p "$prof"
   # flatpak prohlížeč musí vidět ovladače (/dev/input), jinak Gamepad API nic nehlásí
-  flatpak override --user --device=all "$1" 2>/dev/null || true
+  # (+ /run/udev, aby zjistil připojené ovladače – bez toho Gamepad API ve flatpaku nic nevidí)
+  flatpak override --user --device=all --filesystem=/run/udev:ro "$1" 2>/dev/null || true
   flatpak run "$1" --user-data-dir="$prof" "${FLAGS[@]}"
 }
 
