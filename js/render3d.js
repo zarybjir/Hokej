@@ -229,6 +229,31 @@ class PModel {
   }
 }
 
+// hokejová přilba: hranatější půdorys, plošší temeno, protažená dozadu, týl níž než čelo, lem nad štítem
+function hockeyHelmetGeo() {
+  const g = new THREE.SphereGeometry(0.135, 40, 22, 0, TAU, 0, Math.PI * 0.64), P = g.attributes.position, r0 = 0.135;
+  for (let i = 0; i < P.count; i++) {
+    let x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    const rh = Math.hypot(x, z);
+    if (rh > 1e-6) {
+      // superelipsa v půdorysu (n = 3): hranatější boky
+      const a = Math.atan2(z, x), c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+      const k = 1 / Math.pow(Math.pow(c, 3) + Math.pow(s, 3), 1 / 3);
+      const f = 1 + (k - 1) * 0.55;
+      x *= f; z *= f;
+    }
+    const top = clamp(y / r0, 0, 1);
+    y = y * (1 - 0.14 * top * top);                         // plošší temeno
+    const back = clamp(-z / r0, 0, 1), low = clamp(-y / r0, 0, 1);
+    y -= low * back * 0.05;                                 // týl sahá níž
+    z *= 1.1; x *= 1.04;
+    if (z > 0 && y > -0.02 && y < 0.03) z += 0.006 * (1 - Math.abs(y - 0.005) / 0.025) * clamp(z / r0, 0, 1); // lem nad štítem
+    P.setXYZ(i, x, y, z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
 const G3 = {
   init(canvas) {
     this.cv = canvas;
@@ -299,7 +324,7 @@ const G3 = {
       boot: new THREE.CapsuleGeometry(0.045, 0.16, 4, 12).rotateX(Math.PI / 2).scale(1, 1.35, 1), toeCap: new THREE.SphereGeometry(0.048, 12, 8).scale(0.95, 0.7, 1.1),
       tendon: new THREE.BoxGeometry(0.05, 0.06, 0.03), holder: new THREE.BoxGeometry(0.03, 0.045, 0.29),
       runner: new THREE.BoxGeometry(0.007, 0.035, 0.31),
-      helmet: new THREE.SphereGeometry(0.135, 28, 16, 0, TAU, 0, Math.PI * 0.6).scale(1.02, 0.98, 1.12),
+      helmet: hockeyHelmetGeo(),
       visor: new THREE.SphereGeometry(0.143, 24, 6, Math.PI / 2 - 0.9, 1.8, Math.PI * 0.47, Math.PI * 0.13).scale(1.02, 1, 1.1),
       earGuard: new THREE.BoxGeometry(0.03, 0.07, 0.08),
       glove: new THREE.CapsuleGeometry(0.062, 0.1, 4, 12).rotateZ(Math.PI / 2).scale(1, 1, 1.12), cuff: new THREE.CylinderGeometry(0.078, 0.07, 0.085, 14).rotateZ(Math.PI / 2),

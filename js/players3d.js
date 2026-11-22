@@ -40,18 +40,51 @@ function ik2(a, b, c, target, pole, la, lb) {
 const BODY_VERT_HEAD = `
 uniform float uInfl;
 varying vec3 vPos;
+// trup pod dresem: místo úzkého pasu modelu souvislý tvar přes chrániče (elipsa v průřezu)
+float torsoM(vec3 p) {
+  float ax = abs(p.x), armM = smoothstep(0.15, 0.21, ax) * smoothstep(1.27, 1.33, p.y);
+  return (1.0 - armM) * smoothstep(0.9, 0.99, p.y) * (1.0 - smoothstep(1.43, 1.5, p.y));
+}
+vec2 torsoR(float y) { return vec2(mix(0.2, 0.215, smoothstep(1.05, 1.38, y)), mix(0.13, 0.15, smoothstep(1.05, 1.32, y))); }
+`;
+const BODY_NORMAL = `
+vec3 objectNormal = vec3( normal );
+{
+  float tm = torsoM(position);
+  if (tm > 0.0) {
+    vec2 h = vec2(position.x, position.z - 0.01), R = torsoR(position.y);
+    vec3 rad = normalize(vec3(h.x / (R.x * R.x), 0.0, h.y / (R.y * R.y)) + vec3(0.0, 0.0001, 0.0));
+    objectNormal = normalize(mix(objectNormal, rad, tm * 0.85));
+  }
+}
+#ifdef USE_TANGENT
+  vec3 objectTangent = vec3( tangent.xyz );
+#endif
 `;
 const BODY_VERT = `
 vec3 transformed = vec3( position );
 vPos = position;
+{
+  float tm = torsoM(position);
+  if (tm > 0.0) {
+    vec2 h = vec2(position.x, position.z - 0.01), R = torsoR(position.y);
+    float r = length(h);
+    if (r > 1e-4) {
+      vec2 d = h / r;
+      float Re = 1.0 / sqrt(d.x * d.x / (R.x * R.x) + d.y * d.y / (R.y * R.y));
+      float nr = mix(r, max(r, Re), tm);
+      transformed.x = d.x * nr; transformed.z = 0.01 + d.y * nr;
+    }
+  }
+}
 {
   float ax = abs(position.x), y = position.y;
   float armM = smoothstep(0.15, 0.21, ax) * smoothstep(1.27, 1.33, y);
   float bodyM = 1.0 - armM;
   float inf = 0.0;
   float back = smoothstep(0.02, -0.06, position.z);
-  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.98, 1.04, y)) * (0.044 - 0.016 * back * smoothstep(0.8, 0.95, y)); // kalhoty
-  inf += bodyM * smoothstep(0.98, 1.04, y) * (1.0 - smoothstep(1.46, 1.5, y)) * (0.04 + 0.045 * smoothstep(1.2, 1.42, y)); // dres přes chrániče
+  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.9, 0.97, y)) * (0.028 - 0.014 * back * smoothstep(0.72, 0.9, y)); // kalhoty
+  inf += bodyM * smoothstep(0.97, 1.04, y) * (1.0 - smoothstep(1.46, 1.5, y)) * (0.012 + 0.02 * smoothstep(1.25, 1.42, y)); // dres
   inf += bodyM * smoothstep(0.12, 0.17, y) * (1.0 - smoothstep(0.56, 0.62, y)) * 0.032;           // chrániče holení
   inf += armM * (1.0 - smoothstep(0.64, 0.68, ax)) * (0.03 + 0.03 * (1.0 - smoothstep(0.2, 0.34, ax)));   // rukávy, ramenní chrániče
   inf += armM * exp(-pow((ax - 0.45) / 0.035, 2.0)) * 0.018;                                         // loketní chránič
@@ -141,9 +174,8 @@ const BODY_FRAG = `
     // kalhoty: pas, boční pruh s linkami
     c = uPants;
     if (y > 0.955) c = uPants * 0.55;
-    float sz = abs(vPos.z + 0.01);
-    if (ax > 0.08 && y < 0.95 && y > 0.64 && sz < 0.018) c = uStripe;
-    if (ax > 0.08 && y < 0.95 && y > 0.64 && sz > 0.018 && sz < 0.025) c = uTrim;
+    if (y < 0.66 && y > 0.625) c = uStripe;                                  // lem nohavic
+    if ((y < 0.672 && y > 0.66) || (y < 0.625 && y > 0.613)) c = uTrim;
     fab = 0.93 + 0.07 * smoothstep(0.62, 0.7, y) * (1.0 - smoothstep(0.88, 0.95, y)) * sin(y * 70.0);
   } else if (y > 0.115) {
     // štulpny: stejné pruhy jako dres
@@ -192,10 +224,10 @@ function bodyMaterialFinish(T, p, c, ref) {
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.uniforms);
-    sh.vertexShader = BODY_VERT_HEAD + sh.vertexShader.replace('#include <begin_vertex>', BODY_VERT);
+    sh.vertexShader = BODY_VERT_HEAD + sh.vertexShader.replace('#include <beginnormal_vertex>', BODY_NORMAL).replace('#include <begin_vertex>', BODY_VERT);
     sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + BODY_FRAG);
   };
-  m.customProgramCacheKey = () => 'hokej-body2';
+  m.customProgramCacheKey = () => 'hokej-body3';
   m.userData.tex = tex;
   return m;
 }
@@ -204,12 +236,16 @@ function bodyMaterialFinish(T, p, c, ref) {
 function helmetMaterial(T, p) {
   const [c, g] = mkCanvas(512, 128);
   g.fillStyle = T.helmet; g.fillRect(0, 0, 512, 128);
+  // větrací otvory na temeni a hrana skořepiny
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  for (const [u, w] of [[128, 14], [104, 10], [152, 10], [384, 16], [356, 10], [412, 10]]) g.fillRect(u - w / 2, 34, w, 22);
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 120, 512, 8);
   if (!p.isRef) {
     const nc = lightness(T.helmet) > 0.55 ? '#111111' : '#ffffff';
     g.fillStyle = nc; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 54px "DejaVu Sans", Arial, sans-serif';
-    g.fillText(String(p.num), 384, 70);
+    g.fillText(String(p.num), 384, 88);
     // znak na bocích helmy
-    for (const x of [0, 256, 512]) { g.save(); g.translate(x, 66); g.scale(0.5, 1); drawEmblem(g, T.def, 84); g.restore(); }
+    for (const x of [0, 256, 512]) { g.save(); g.translate(x, 74); g.scale(1.25, 1); drawEmblem(g, T.def, 56); g.restore(); }
   }
   const m = new THREE.MeshPhysicalMaterial({ map: canvasTex(c, true, 4), roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.08 });
   return m;
