@@ -46,6 +46,7 @@ class Player {
     // hmotnost: těžší hráč vyhrává souboje a hůř se mu bere puk, ale pomaleji zrychluje
     if (!info.kg) { let h = 7; for (const ch of String(info.name) + info.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0; Object.assign(info, playerBody(this.role, A.SIL, mulberry32(h))); }
     this.kg = info.kg; this.cm = info.cm; this.mass = this.kg / 88;
+    this.reach = 1 + (this.cm - 185) / 185 * 0.9; // vyšší hráč = delší hůl a paže (zhruba ±8 %)
     this.pMass = this.isGoalie ? this.mass * 2.5 : this.mass;   // brankář v postoji s betony se nedá odstrčit
     this.onIce = false; this.goBench = false;
     this.x = 0; this.y = 0; this.vx = 0; this.vy = 0; this.dir = 0;
@@ -685,11 +686,11 @@ class Game {
   poke(p) {
     if (p.pokeCD > 0 || p.downT > 0) return;
     p.pokeCD = 0.55; p.pokeA = 1;
-    const pk = this.puck, bx = p.x + Math.cos(p.dir) * 4.2, by = p.y + Math.sin(p.dir) * 4.2;
+    const pk = this.puck, R = p.reach, bx = p.x + Math.cos(p.dir) * 4.2 * R, by = p.y + Math.sin(p.dir) * 4.2 * R;
     const o = pk.owner;
     if (o && o.team !== p.team) {
       const d = Math.hypot(pk.x - bx, pk.y - by), dd = Math.hypot(pk.x - p.x, pk.y - p.y);
-      if (d < 3.2 || dd < 4.2) {
+      if (d < 3.2 * R || dd < 4.2 * R) {
         let ch = 0.4 + 0.35 * (p.chk * this.fat(p) - 1) - 0.25 * (o.chk - 1) - 0.15 * (o.mass - p.mass);
         if (p.team.cpu && this.vsHuman) ch += (this.diff.aggr - 1) * 0.15;
         if (o.dekeT > 0) ch *= 0.3;
@@ -710,7 +711,7 @@ class Game {
       }
     } else if (o && o.team === p.team) {
       // nic
-    } else if (!o && !pk.held && pk.z < 1.5 && Math.hypot(pk.x - bx, pk.y - by) < 3) {
+    } else if (!o && !pk.held && pk.z < 1.5 && Math.hypot(pk.x - bx, pk.y - by) < 3 * R) {
       pk.vx = Math.cos(p.dir) * 14 + p.vx * 0.5; pk.vy = Math.sin(p.dir) * 14 + p.vy * 0.5; pk.lastTouch = p;
       this.sfx('stick', 0.5);
     }
@@ -992,7 +993,7 @@ class Game {
       return;
     }
     if (pk.owner) {
-      const o = pk.owner, off = bladeOffset(o.dir, o.hand, true, this.time, 0, 0);
+      const o = pk.owner, off = bladeOffset(o.dir, o.hand, true, this.time, 0, 0, o.reach);
       pk.x = o.x + off[0]; pk.y = o.y + off[1]; pk.z = 0; pk.vx = o.vx; pk.vy = o.vy; pk.vz = 0;
       const c = rinkContact(pk.x, pk.y, PH.PR);
       if (c) { pk.x -= c.nx * c.pen; pk.y -= c.ny * c.pen; }
@@ -1082,8 +1083,8 @@ class Game {
     let best = null, bd = 2.0;
     for (const p of this.all) {
       if (p.isGoalie || p.downT > 0 || p.pickCD > 0) continue;
-      const off = bladeOffset(p.dir, p.hand, false, this.time, p.winding ? p.windT : 0, p.pokeA);
-      let d = Math.hypot(p.x + off[0] - pk.x, p.y + off[1] - pk.y);
+      const off = bladeOffset(p.dir, p.hand, false, this.time, p.winding ? p.windT : 0, p.pokeA, p.reach);
+      let d = Math.hypot(p.x + off[0] - pk.x, p.y + off[1] - pk.y) - (p.reach - 1) * 2.5;
       const db = Math.hypot(p.x - pk.x, p.y - pk.y) - 0.4;
       if (db < d) d = db;
       if (d < bd) { bd = d; best = p; }
@@ -1358,7 +1359,7 @@ class Game {
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
         windT: p.winding ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, pokeA: p.pokeA, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
-        num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role })),
+        num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();
   }

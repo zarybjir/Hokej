@@ -39,7 +39,8 @@ vyhrává tým o 10 bodů silnější zhruba ve 2 zápasech ze 3, s rozdílem ne
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
 rozjetý těžký hráč lehčího srazí, lehčí do těžkého často jen narazí (*ustál to*) nebo se sám odrazí,
-a těžšímu se hůř bere puk. **Stav ledu** se během třetiny zhoršuje tam, kde se jezdí (nejvíc při
+a těžšímu se hůř bere puk. Vyšší hráč má delší dosah hokejkou (asi ±8 %): dál dosáhne při šťouchnutí holí, dřív
+sebere volný puk a vede ho dál od těla; ve hře je i o kousek větší. **Stav ledu** se během třetiny zhoršuje tam, kde se jezdí (nejvíc při
 prudkém brzdění): rozbrušený led se sněhem brzdí puk i bruslaře, puk na něm poskakuje a mění
 směr a při kličkování může odskočit z hokejky. Stav ledu je vidět na stopách bruslí a v procentech
 v přestávce; rolba led obnoví (ruční rolba jen tam, kudy projedeš).

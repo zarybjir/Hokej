@@ -308,7 +308,8 @@ class HModel {
       add(B.RightHand, G.hgeo.blocker, tm.pad, -0.78, 1.44, -0.12);
       add(B.RightHand, G.hgeo.cuff, G.mat.goalieGear, -0.695, 1.438, -0.05);
     }
-    this.root.scale.setScalar(FT);
+    // výška hráče (mírně): vyšší hráč je větší model
+    this.root.scale.setScalar(FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 0.8 : 1));
     this.root.updateMatrixWorld(true);
     const len = (a, b) => wpos(a).distanceTo(wpos(b));
     this.L = {
@@ -407,7 +408,7 @@ class HModel {
     const poleL = F.clone().addScaledVector(Lv, 0.25), poleR = F.clone().addScaledVector(Lv, -0.25);
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce
-    const bo = bladeOffset(p.dir, p.hand, p.carry, t, wind, poke);
+    const bo = bladeOffset(p.dir, p.hand, p.carry, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1);
     // dokončení střely: hůl jde vysoko dopředu přes tělo
     const ftk = p.shotFT > 0 ? clamp(p.shotFT / (p.shotSlap ? 0.5 : 0.32), 0, 1) : 0;
     if (ftk > 0) {

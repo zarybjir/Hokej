@@ -64,7 +64,7 @@ function rinkOutline(n) {
 }
 
 // Poloha čepele hole vůči hráči (svět. souřadnice) — sdílí hra i vykreslování
-function bladeOffset(dir, hand, carry, t, wind, poke) {
+function bladeOffset(dir, hand, carry, t, wind, poke, reach = 1) {
   const fx = Math.cos(dir), fy = Math.sin(dir);
   const lx = -fy, ly = fx; // levá strana hráče
   let f = 3.3, s = hand * 0.9, z = 0;
@@ -76,6 +76,7 @@ function bladeOffset(dir, hand, carry, t, wind, poke) {
     s = s + hand * 1.6 * w;
     z = 4.2 * w * w;
   }
+  f *= reach;
   return [fx * f + lx * s, fy * f + ly * s, z];
 }
 
