@@ -32,6 +32,10 @@ proti počítači nebo proti sobě, i ve spolupráci.
 
 Běží v prohlížeči (WebGL + Gamepad API), bez instalace čehokoli dalšího — Three.js je přibalené
 ve složce `lib/`, takže hra funguje i offline.
+**Vyváženost:** atributy hráčů, hmotnost, stav ledu i únava mají jen mírný vliv — rozhoduje
+šikovnost. Se slabší sestavou to má hráč těžší, ale šikovnější hráč vyhraje (počítač proti počítači
+vyhrává tým o 10 bodů silnější zhruba ve 2 zápasech ze 3, s rozdílem necelého gólu).
+
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
 rozjetý těžký hráč lehčího srazí, lehčí do těžkého často jen narazí (*ustál to*) nebo se sám odrazí,

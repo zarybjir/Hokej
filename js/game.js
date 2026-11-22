@@ -39,9 +39,10 @@ class Player {
     this.isGoalie = info.role === 'G';
     // atributy (40–99) → herní parametry
     const A = this.at = info.at || {}, n = (v, lo, hi) => lo + ((v || 75) - 55) / 44 * (hi - lo);
-    if (this.isGoalie) { this.gk = 0.9 + ((A.REF || 80) - 75) * 0.011; this.gkMove = n(A.RYC, 0.88, 1.12); this.spd = 1; this.pow = 1; this.acc = 1; this.pas = 0.95; this.chk = 0.9; }
-    else { this.spd = n(A.RYC, 0.84, 1.12); this.pow = n(A.SIL, 0.86, 1.14); this.chk = n(A.SIL, 0.85, 1.2); this.acc = n(A.PRE, 0.82, 1.14); this.pas = this.acc; }
-    this.staMul = 1.55 - (A.STA || 75) / 100;
+    // atributy mají jen mírný vliv: o výsledku má rozhodovat šikovnost hráče, slabší sestava jen ztěžuje
+    if (this.isGoalie) { this.gk = 0.937 + ((A.REF || 78) - 78) * 0.007; this.gkMove = n(A.RYC, 0.94, 1.06); this.spd = 1; this.pow = 1; this.acc = 1; this.pas = 0.95; this.chk = 0.9; }
+    else { this.spd = n(A.RYC, 0.92, 1.07); this.pow = n(A.SIL, 0.92, 1.08); this.chk = n(A.SIL, 0.92, 1.1); this.acc = n(A.PRE, 0.9, 1.08); this.pas = this.acc; }
+    this.staMul = 0.8 - ((A.STA || 75) - 75) * 0.008;
     // hmotnost: těžší hráč vyhrává souboje a hůř se mu bere puk, ale pomaleji zrychluje
     if (!info.kg) { let h = 7; for (const ch of String(info.name) + info.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0; Object.assign(info, playerBody(this.role, A.SIL, mulberry32(h))); }
     this.kg = info.kg; this.cm = info.cm; this.mass = this.kg / 88;
@@ -689,7 +690,7 @@ class Game {
     if (o && o.team !== p.team) {
       const d = Math.hypot(pk.x - bx, pk.y - by), dd = Math.hypot(pk.x - p.x, pk.y - p.y);
       if (d < 3.2 || dd < 4.2) {
-        let ch = 0.4 + 0.35 * (p.chk * this.fat(p) - 1) - 0.25 * (o.chk - 1) - 0.4 * (o.mass - p.mass);
+        let ch = 0.4 + 0.35 * (p.chk * this.fat(p) - 1) - 0.25 * (o.chk - 1) - 0.15 * (o.mass - p.mass);
         if (p.team.cpu && this.vsHuman) ch += (this.diff.aggr - 1) * 0.15;
         if (o.dekeT > 0) ch *= 0.3;
         if (o.winding) ch += 0.2;
@@ -738,11 +739,11 @@ class Game {
     const sp = Math.hypot(a.vx, a.vy);
     // hybnost: těžší a rychlejší útočník srazí lehčího soupeře, do těžkého se odrazí sám
     const mr = a.mass / b.mass;
-    const force = (Math.max(rel, 0) + sp * 0.35) * mr + 6 * a.chk * this.fat(a) - 6 * (b.chk * this.fat(b) - 0.9) + (a.turbo ? 3 : 0) + (mr - 1) * 18;
+    const force = (Math.max(rel, 0) + sp * 0.35) * Math.pow(mr, 0.5) + 6 * a.chk * this.fat(a) - 6 * (b.chk * this.fat(b) - 0.9) + (a.turbo ? 3 : 0) + (mr - 1) * 8;
     a.checkT = 0; a.checkHit = true;
-    if (force < 16 * b.mass) {
+    if (force < 13 * Math.sqrt(b.mass)) {
       this.sfx('board', 0.3);
-      if (mr < 0.9) { const k = (1 - mr) * 14; a.vx -= nx * k; a.vy -= ny * k; if (mr < 0.82 && sp > 16) { a.downT = 0.7; a.lie = Math.atan2(-ny, -nx); this.pop('ODRAZIL SE', a.x, a.y, '#cfd8ea'); } }
+      if (mr < 0.88) { const k = (1 - mr) * 10; a.vx -= nx * k; a.vy -= ny * k; if (mr < 0.8 && sp > 18) this.pop('ODRAZIL SE', a.x, a.y, '#cfd8ea'); }
       return;
     }
     // posouzení bodyčeku rozhodčím
@@ -754,7 +755,7 @@ class Game {
     else if (late && Math.random() < 0.55) this.foul(a, b, 'interf');
     else if (force > 36 && Math.random() < 0.25) this.foul(a, b, 'rough');
     // těžší hráč náraz lehčího často ustojí (jen ho to odsune)
-    const stay = clamp((1 / mr - 1.02) * 2.2 + (force < 24 ? 0.1 : -0.15), 0, 0.75);
+    const stay = clamp((1 / mr - 1.04) * 1.4 + (force < 24 ? 0.05 : -0.15), 0, 0.4);
     if (Math.random() < stay) {
       b.vx += nx * force * 0.25 / b.mass; b.vy += ny * force * 0.25 / b.mass; a.vx -= nx * 6; a.vy -= ny * 6;
       this.sfx('hit', 0.4); this.pop('USTÁL TO', b.x, b.y, '#cfd8ea');
@@ -791,9 +792,9 @@ class Game {
       let ix = p.inX, iy = p.inY, m = Math.hypot(ix, iy);
       if (m > 1) { ix /= m; iy /= m; m = 1; }
       const ft = this.fat(p);
-      const snow = this.iceAt(p.x, p.y), mf = Math.pow(1 / p.mass, 0.35);
-      let maxV = PH.MAXV * p.spd * p.team.spdMod * ft * Math.pow(1 / p.mass, 0.08) * (1 - 0.1 * snow),
-        acc = PH.ACC * (0.8 + 0.2 * p.spd) * (0.8 + 0.2 * ft) * mf * (1 - 0.15 * snow);
+      const snow = this.iceAt(p.x, p.y), mf = Math.pow(1 / p.mass, 0.15);
+      let maxV = PH.MAXV * p.spd * p.team.spdMod * ft * Math.pow(1 / p.mass, 0.04) * (1 - 0.04 * snow),
+        acc = PH.ACC * (0.8 + 0.2 * p.spd) * (0.8 + 0.2 * ft) * mf * (1 - 0.06 * snow);
       if (p.carry) maxV *= 0.94;
       if (p.turbo && m > 0.3 && p.stamina > 0.08 && !p.winding) { maxV *= PH.TURBO; acc *= 1.3; p.stamina = Math.max(0, p.stamina - h * 0.024 * p.staMul); }
       if (p.recoverT > 0) acc *= 0.35;
@@ -803,7 +804,7 @@ class Game {
         const dl = Math.hypot(dvx, dvy), lim = acc * h;
         if (dl > lim) { dvx *= lim / dl; dvy *= lim / dl; }
         p.vx += dvx; p.vy += dvy;
-      } else { const f = 1 - PH.GLIDE * (1 + 0.8 * snow) * h; p.vx *= f; p.vy *= f; }
+      } else { const f = 1 - PH.GLIDE * (1 + 0.3 * snow) * h; p.vx *= f; p.vy *= f; }
       // natočení
       const sp = Math.hypot(p.vx, p.vy);
       let fd = null;
@@ -816,7 +817,7 @@ class Game {
       // brusle rozrývají led: víc při rychlé jízdě a prudkém brzdění
       if (this.state === 'play') { const dec = Math.max(0, (p.spdN || 0) - sp) / h; this.scuff(p.x, p.y, h * this.iceWear * (0.06 + sp * 0.036 + (dec > 45 ? 1.8 : 0))); }
       // kličkování s pukem na rozbitém ledu: puk může odskočit z hokejky
-      if (p.carry && snow > 0.25 && Math.random() < snow * sp / 25 * h * 0.35) { this.loosePuck(p, p.vx + rand(-5, 5), p.vy + rand(-5, 5)); this.pop('PUK ODSKOČIL', p.x, p.y, '#cfd8ea'); }
+      if (p.carry && snow > 0.3 && Math.random() < snow * sp / 25 * h * 0.05) { this.loosePuck(p, p.vx + rand(-5, 5), p.vy + rand(-5, 5)); this.pop('PUK ODSKOČIL', p.x, p.y, '#cfd8ea'); }
       p.spdN = sp;
       this.integrate(p, h);
     }
@@ -1013,10 +1014,10 @@ class Game {
     if (pk.z <= 0.01) {
       // tření a poskakování puku podle stavu ledu (sníh brzdí, nerovnosti puk odrážejí)
       const snow = this.iceAt(pk.x, pk.y), v = Math.hypot(pk.vx, pk.vy);
-      const f = 1 - PH.PF * (0.85 + 2.4 * snow) * h; pk.vx *= f; pk.vy *= f;
-      if (v < 4) { const f2 = Math.max(0, 1 - (1.2 + 2 * snow) * h); pk.vx *= f2; pk.vy *= f2; }
-      if (v > 8 && snow > 0.15 && Math.random() < snow * h * 4) {
-        const a = gauss() * 0.12 * snow, c = Math.cos(a), s = Math.sin(a), vx = pk.vx;
+      const f = 1 - PH.PF * (1 + 0.4 * snow) * h; pk.vx *= f; pk.vy *= f;
+      if (v < 4) { const f2 = Math.max(0, 1 - (1.2 + 0.5 * snow) * h); pk.vx *= f2; pk.vy *= f2; }
+      if (v > 8 && snow > 0.2 && Math.random() < snow * h * 2) {
+        const a = gauss() * 0.06 * snow, c = Math.cos(a), s = Math.sin(a), vx = pk.vx;
         pk.vx = vx * c - pk.vy * s; pk.vy = vx * s + pk.vy * c;
         if (Math.random() < 0.4) pk.vz = Math.max(pk.vz, rand(1.5, 4) * snow);
       }

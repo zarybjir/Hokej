@@ -175,8 +175,9 @@ const Career = {
   userMatch(ev = this.event()) { const u = this.c.user; return this.fixtures(ev).find((m) => m.h === u || m.a === u) || null; },
   sim(m) {
     const H = this.strength(m.h), A = this.strength(m.a);
-    const lh = clamp(2.9 + (H.att - (A.def * 0.45 + A.gk * 0.55)) * 0.09 + 0.2, 0.8, 6);
-    const la = clamp(2.9 + (A.att - (H.def * 0.45 + H.gk * 0.55)) * 0.09, 0.8, 6);
+    // stejně mírný vliv síly jako v hraném zápase (silnější vyhraje zhruba 60 %)
+    const lh = clamp(2.9 + (H.att - (A.def * 0.45 + A.gk * 0.55)) * 0.05 + 0.15, 1, 5.5);
+    const la = clamp(2.9 + (A.att - (H.def * 0.45 + H.gk * 0.55)) * 0.05, 1, 5.5);
     let hg = poisson(lh), ag = poisson(la), ot = false, so = false;
     this.simStats(m.h, hg, ag); this.simStats(m.a, ag, hg);
     if (hg === ag) {
