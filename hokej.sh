@@ -36,6 +36,8 @@ run_flatpak() { # $1 = flatpak id
 
 if command -v flatpak >/dev/null && flatpak info org.chromium.Chromium >/dev/null 2>&1; then
   run_flatpak org.chromium.Chromium
+elif command -v flatpak >/dev/null && flatpak info io.github.ungoogled_software.ungoogled_chromium >/dev/null 2>&1; then
+  run_flatpak io.github.ungoogled_software.ungoogled_chromium
 elif command -v flatpak >/dev/null && flatpak info com.google.Chrome >/dev/null 2>&1; then
   run_flatpak com.google.Chrome
 elif command -v flatpak >/dev/null && flatpak info com.brave.Browser >/dev/null 2>&1; then
