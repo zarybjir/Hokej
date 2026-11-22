@@ -80,7 +80,8 @@ const R = {
       refs = fr.refs || [];
     }
     const lead = g.state === 'play' ? clamp(pk.vx || 0, -30, 30) * 0.3 : 0;
-    this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
+    if (g.state === 'zamboni' && g.zam) { players = []; refs = []; this.updateCam(g.zam.x + Math.cos(g.zam.dir) * 6, dt, false, 0, g.zam.y); }
+    else this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
     g.camSnap = false;
     this.drawWorld(g, players, pk, g.time, dt, { rings: g.state !== 'replay', refs });
     this.drawHUD(g, t);
@@ -202,6 +203,7 @@ const R = {
       LED.text(ctx, L.sub, lx + 36, ly + 58, 2.5, { color: '#cfd6e6' });
     }
     if (g.state === 'periodEnd') this.drawPeriodEnd(g, t);
+    if (g.state === 'zamboni') this.drawZamboniHUD(g, t);
     if (g.state === 'final') this.drawFinal(g, t);
     if (Settings.data.fps) LED.text(ctx, Math.round(App.fps) + ' FPS', this.W - 12, 18, 2, { align: 'right', color: '#7dff8a' });
   },
@@ -232,6 +234,18 @@ const R = {
     LED.text(ctx, 'KONEC ' + (g.period > 3 ? 'PRODLOUŽENÍ' : g.period + '. TŘETINY'), this.W / 2, y + 44, 4, { align: 'center' });
     this.statsTable(g, this.W / 2, y + 110);
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - POKRAČOVAT', this.W / 2, y + h - 28, 2.5, { align: 'center', color: '#ffd21f' });
+    if (g.humans.length && g.cfg.zamboni !== 'off') LED.panel(ctx, this.W / 2 - 190, y + h + 8, 380, 36, 3, 0.9);
+    if (g.humans.length && g.cfg.zamboni !== 'off') LED.text(ctx, g.cfg.zamboni === 'manual' ? 'ROLBA VYJÍŽDÍ...' : 'Y - ŘÍDIT ROLBU', this.W / 2, y + h + 26, 2.5, { align: 'center', color: '#9fe3ff' });
+  },
+  drawZamboniHUD(g, t) {
+    const ctx = this.ctx, w = 430, x = this.W / 2 - w / 2, y = this.H - 104;
+    LED.panel(ctx, x, y, w, 86, 4, 0.92);
+    const pc = Math.round(G3.cleanPct ? G3.cleanPct() : 0);
+    LED.text(ctx, 'ROLBA', x + 20, y + 24, 3, { color: '#9fe3ff' });
+    LED.text(ctx, 'UKLIZENO ' + pc + ' %', x + w - 20, y + 24, 3, { align: 'right', color: pc >= 90 ? '#7dff8a' : '#ffd21f' });
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 20, y + 44, w - 40, 8);
+    ctx.fillStyle = pc >= 90 ? '#7dff8a' : '#ffd21f'; ctx.fillRect(x + 20, y + 44, (w - 40) * pc / 100, 8);
+    LED.text(ctx, 'PÁČKA = ŘÍZENÍ   B = HOTOVO', this.W / 2, y + 70, 2, { align: 'center', color: '#bfc6d6' });
   },
   drawFinal(g, t) {
     const ctx = this.ctx, w = 680, h = 520, x = this.W / 2 - w / 2, y = 96;

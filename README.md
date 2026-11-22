@@ -43,7 +43,7 @@ na zádech, čísla na ramenou a helmě, znak na helmě a boční pruh na kalhot
 
 **Grafika (kvalita VYSOKÁ):** bloom (záře světel a branková světla), barevné ladění jako v TV
 přenosu, rampy světel nad ledem, které se v ledu odrážejí, stopy bruslí, které se během třetiny
-hromadí (rolba je smaže o přestávce), sníh od bruslí při prudkém brzdění a v ostrých obratech.
+hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzdění a v ostrých obratech.
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
@@ -112,6 +112,15 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 - **Míření:** páčka do strany při vystřelení = levá/pravá tyč (bez míření střílí hráč sám k volnější tyči).
 - Páčka vždy odpovídá obrazovce: nahoru = nahoru po ledě. Domácí útočí v 1. a 3. třetině nahoru, ve 2. dolů (hosté naopak).
 - **Buly:** zmáčkni A nebo X přesně ve chvíli, kdy puk dopadne na led.
+
+## Rolba
+
+O přestávce mezi třetinami vyjíždí rolba. V Nastavení → *Rolba o přestávce* zvolíš:
+- **AUTOMATICKY** – led se uklidí sám (na obrazovce přestávky můžeš i tak stisknout **Y** a řídit ji),
+- **ŘÍDÍM SÁM** – rolba vyjede a řídíš ji ty: páčka/D-pad = směr jízdy, **B** (nebo START) = hotovo.
+  Kondicionér vzadu smaže stopy bruslí pod sebou, ukazatel ukazuje, kolik procent ušlapaného ledu
+  je uklizeno. Co neuklidíš, zůstane na ledě i v další třetině,
+- **VYPNUTÁ** – led se celý zápas neuklízí.
 
 ## Nastavení
 

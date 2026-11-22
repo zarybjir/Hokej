@@ -94,7 +94,7 @@ const App = {
         break;
       }
       case 'settings': {
-        const n = 15;
+        const n = 16;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
         if (this.sel === 0 && d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); }
@@ -110,8 +110,9 @@ const App = {
         if (this.sel === 10 && (d || a)) S.tags = !S.tags;
         if (this.sel === 11 && (d || a)) S.penalties = S.penalties === false;
         if (this.sel === 12 && (d || a)) S.injuries = S.injuries === false;
-        if (this.sel === 13 && a) { Settings.save(); this.openTeamEditor(); break; }
-        if ((this.sel === 14 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
+        if (this.sel === 13 && (d || a)) { const o = ['auto', 'manual', 'off'], i = o.indexOf(S.zamboni || 'auto'); S.zamboni = o[(i + (d || 1) + 3) % 3]; }
+        if (this.sel === 14 && a) { Settings.save(); this.openTeamEditor(); break; }
+        if ((this.sel === 15 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
         if (d || a) Settings.save();
         break;
       }
@@ -136,8 +137,15 @@ const App = {
           }
           break;
         }
-        if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; Sfx.whistle(); break; }
-        if (M.pressed('a') || M.pressed('start')) g.confirm();
+        if (g.state === 'zamboni') {
+          // řízení rolby: páčka / D-pad, B nebo START = hotovo
+          const st = M.st, lx = st.lx + (st.right ? 1 : 0) - (st.left ? 1 : 0), ly = st.ly + (st.down ? 1 : 0) - (st.up ? 1 : 0);
+          const ax = clamp(lx, -1, 1), ay = -clamp(ly, -1, 1);
+          g.zam.ix = ax * VIEW.rx + ay * VIEW.fx; g.zam.iy = ax * VIEW.ry + ay * VIEW.fy;
+          if (M.pressed('b') || M.pressed('start')) g.endZamboni();
+        } else if (g.state === 'periodEnd' && M.pressed('y') && g.humans.length && g.cfg.zamboni !== 'off') { g.startZamboni(); }
+        else if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; Sfx.whistle(); break; }
+        else if (M.pressed('a') || M.pressed('start')) g.confirm();
         if (M.pressed('back')) G3.zoomStep(Settings.data.zoom >= ZOOMS.length - 1 ? -(ZOOMS.length - 1) : 1);
         for (let i = 0; i < this.speed; i++) g.update(dt);
         if (g.over) {
@@ -164,7 +172,7 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1 });
     }
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false });
+    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto' });
     this.screen = 'game'; this.sel = 0;
   },
   toggleFull() {
@@ -371,7 +379,7 @@ const App = {
         <button data-a="reset" style="${btn};background:#8a93a6">VÝCHOZÍ NÁZVY</button>
         <button data-a="close" style="${btn};background:#cfd8ea">ZAVŘÍT</button>
       </div></div>`;
-    const close = () => { el.remove(); this.go('settings', 13); };
+    const close = () => { el.remove(); this.go('settings', 14); };
     el.addEventListener('click', (e) => {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
       if (a === 'save') {
@@ -394,11 +402,11 @@ const App = {
       ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'],
       ['ZOOM', '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►'], ['GRAFIKA', '◄ ' + GFX[S.gfx || 'high'].name + ' ►'],
       ['OBTÍŽNOST', '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►'], ['STŘÍDÁNÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'],
-      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZRANĚNÍ', S.injuries !== false ? 'ZAP' : 'VYP'], ['VLASTNÍ NÁZVY TÝMŮ', 'UPRAVIT ►'], ['ZPĚT', '']];
+      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZRANĚNÍ', S.injuries !== false ? 'ZAP' : 'VYP'], ['ROLBA O PŘESTÁVCE', '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►'], ['VLASTNÍ NÁZVY TÝMŮ', 'UPRAVIT ►'], ['ZPĚT', '']];
     rows.forEach(([n, v], i) => {
-      const y = 118 + i * 39, on = this.sel === i;
-      R.panel(R.W / 2 - 330, y - 18, 660, 36, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 17, 658, 34); }
+      const y = 116 + i * 37, on = this.sel === i;
+      R.panel(R.W / 2 - 330, y - 17, 660, 34, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 16, 658, 32); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(n, R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(v, R.W / 2 + 305, y);
     });

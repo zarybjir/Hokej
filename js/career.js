@@ -375,7 +375,7 @@ const Career = {
     const humans = devs.slice(0, 4).map((d) => ({ dev: d, team: side }));
     Sfx.init(); Sfx.resume();
     App.game = new Game({ home: m.h, away: m.a, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans,
-      autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
+      autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
     App.careerMatch = m; App.screen = 'game'; App.sel = 0;
   },
   finishPlayed(g) {

@@ -511,7 +511,12 @@ class Game {
         break;
       }
       case 'periodEnd':
-        if (this.stateT > 14) this.nextPeriod();
+        // rolba: ručně (lidský hráč ji může řídit), automaticky, nebo vůbec
+        if (this.cfg.zamboni === 'manual' && this.humans.length && !this.zamUsed && this.stateT > 3) this.startZamboni();
+        else if (this.stateT > 14) this.nextPeriod();
+        break;
+      case 'zamboni':
+        this.updateZamboni(h);
         break;
       case 'final':
         if (this.demo && this.stateT > 6) this.over = true;
@@ -1331,7 +1336,31 @@ class Game {
     this.state = 'periodEnd'; this.stateT = 0;
     this.say('Konec ' + ['', 'první', 'druhé', 'třetí'][this.period] + ' třetiny.', true);
   }
+  // ---------- rolba o přestávce ----------
+  startZamboni() {
+    if (this.state !== 'periodEnd') return;
+    this.state = 'zamboni'; this.stateT = 0; this.zamUsed = true; this.iceManual = true;
+    this.zam = { x: -24, y: RINK.HW - 6, dir: -Math.PI / 2, v: 0, ix: 0, iy: 0 };
+    this.banner = null;
+    this.say('Rolba vyjíždí na led.', true);
+  }
+  updateZamboni(h) {
+    const z = this.zam, m = Math.min(1, Math.hypot(z.ix, z.iy));
+    if (m > 0.2) {
+      const want = Math.atan2(z.iy, z.ix), rate = 1.1 * clamp(0.35 + Math.abs(z.v) / 10, 0, 1);
+      z.dir += clamp(angDiff(z.dir, want), -rate * h, rate * h);
+      z.v += (m * 13 - z.v) * Math.min(1, h * 1.1);
+    } else z.v *= 1 - Math.min(1, h * 1.6);
+    z.x += Math.cos(z.dir) * z.v * h; z.y += Math.sin(z.dir) * z.v * h;
+    // náraz do mantinelu (rolba je dlouhá: kontrolujeme předek, střed i zadek)
+    for (const k of [6.5, 0, -6.5]) {
+      const px = z.x + Math.cos(z.dir) * k, py = z.y + Math.sin(z.dir) * k, c = rinkContact(px, py, 3.8);
+      if (c) { z.x -= c.nx * c.pen; z.y -= c.ny * c.pen; if (c.pen > 0.3 && Math.abs(z.v) > 4) this.sfx('board', 0.5); z.v *= 0.6; }
+    }
+  }
+  endZamboni() { if (this.state === 'zamboni') { this.zam = null; this.nextPeriod(); } }
   nextPeriod() {
+    this.zamUsed = false;
     this.period++; this.clock = this.periodLen; this.setDirs();
     for (const t of this.teams) { for (const p of t.roster) p.stamina = 1; t.change = null; this.instantChange(t, 0); }
     this.setupFaceoff(0, 0);

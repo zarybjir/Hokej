@@ -274,7 +274,7 @@ const G3 = {
     this.clipNear = new THREE.Plane(new THREE.Vector3(0, 0, -1), RINK.HW + 5);
     this.modelMap = new Map(); this.modelGame = null; this.teamCache = new Map();
     this.buildShared(); this.buildEnv(); this.buildLights(); this.buildIce(); this.buildBoards(); this.buildStands();
-    this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights(); this.buildWear();
+    this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights(); this.buildWear(); this.buildZamboni();
     this.quality = null;
     this.loadBase();
     this.setView();
@@ -440,7 +440,7 @@ const G3 = {
   buildWear() {
     const W = 2048, H = Math.round(W * 85 / 200);
     const [c, g] = mkCanvas(W, H);
-    this.wear = { c, g, ppf: W / 200, dirty: 0, last: new Map(), tex: null };
+    this.wear = { c, g, ppf: W / 200, dirty: 0, last: new Map(), tex: null, grid: new Uint8Array(100 * 43), dirt0: 0 };
     this.wear.tex = canvasTex(c, true, 4);
     const m = new THREE.MeshStandardMaterial({ map: this.wear.tex, transparent: true, depthWrite: false, roughness: 0.95, color: 0xffffff,
       polygonOffset: true, polygonOffsetFactor: -2 });
@@ -461,7 +461,67 @@ const G3 = {
     this.snow = new THREE.Points(geo, sm); this.snow.frustumCulled = false; this.snow.renderOrder = 5;
     this.scene.add(this.snow);
   },
-  clearWear() { if (!this.wear) return; this.wear.g.clearRect(0, 0, this.wear.c.width, this.wear.c.height); this.wear.tex.needsUpdate = true; this.wear.last.clear(); },
+  clearWear() { if (!this.wear) return; this.wear.g.clearRect(0, 0, this.wear.c.width, this.wear.c.height); this.wear.tex.needsUpdate = true; this.wear.last.clear(); this.wear.grid.fill(0); },
+  // mřížka 2×2 stopy: kde je led ušlapaný (pro procenta úklidu)
+  markDirty(x, y) { const i = Math.floor(clamp(x + 100, 0, 199.9) / 2), j = Math.floor(clamp(y + 42.5, 0, 84.9) / 2); this.wear.grid[j * 100 + i] = 1; },
+  dirtyCount() { let n = 0; for (const v of this.wear.grid) n += v; return n; },
+  cleanPct() { const W = this.wear; if (!W || !W.dirt0) return 100; return clamp(100 * (1 - this.dirtyCount() / W.dirt0), 0, 100); },
+  // ---------- rolba ----------
+  buildZamboni() {
+    const grp = new THREE.Group(), std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.1, ...o });
+    const white = std(0xf2f4f7), blue = std(0x1d4fa0), dark = std(0x1b1d22, { roughness: 0.8 }), steel = std(0x9aa3ad, { metalness: 0.8, roughness: 0.3 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0x9fb8d0, transparent: true, opacity: 0.35, roughness: 0.05 });
+    const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; grp.add(o); return o; };
+    // podvozek, zásobník sněhu, pruh, kabina, kondicionér vzadu
+    box(15, 2.2, 7, white, 0, 2.2, 0);
+    box(15.1, 0.7, 7.1, blue, 0, 2.6, 0);
+    box(8.5, 3.6, 6.8, white, -2.6, 5.1, 0);
+    box(8.6, 0.5, 6.9, blue, -2.6, 6.9, 0);
+    box(2.2, 1.6, 7.6, steel, -8.4, 1.3, 0);
+    box(0.6, 0.5, 7.4, dark, -9.6, 0.4, 0);
+    box(3.2, 0.4, 3.4, dark, 4.6, 3.5, 1.4);                     // podlaha kabiny
+    box(1.2, 1.4, 1.2, dark, 3.8, 4.3, 1.6);                     // sedadlo
+    const pillar = (x, z) => box(0.18, 4, 0.18, dark, x, 5.4, z);
+    pillar(6.8, 3.3); pillar(6.8, -0.1); pillar(2.0, 3.3); pillar(2.0, -0.1);
+    box(5.2, 0.25, 3.8, white, 4.4, 7.45, 1.6);                  // střecha
+    const ws = box(0.08, 2.4, 3.3, glass, 6.85, 5.6, 1.6); ws.castShadow = false;
+    // řidič
+    const drv = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.1, 4, 10), std(0x2a4f8a)); drv.position.set(4.0, 5.4, 1.6); grp.add(drv);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), std(0xd6a184)); head.position.set(4.1, 6.65, 1.6); grp.add(head);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 8, 0, TAU, 0, Math.PI / 2), blue); cap.position.set(4.1, 6.75, 1.6); grp.add(cap);
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 8, 20), dark); wheel.position.set(5.2, 5.0, 1.6); wheel.rotation.y = Math.PI / 2; wheel.rotation.x = 0.6; grp.add(wheel);
+    // kola
+    for (const [x, z] of [[5, 3.4], [5, -3.4], [-5, 3.4], [-5, -3.4]]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.9, 18).rotateX(Math.PI / 2), dark); w.position.set(x, 1.1, z); grp.add(w);
+    }
+    // majáček
+    this.zamBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 2, 0.2) }));
+    this.zamBeacon.position.set(4.4, 7.8, 1.6); grp.add(this.zamBeacon);
+    grp.visible = false; this.scene.add(grp);
+    this.zamGrp = grp;
+  },
+  // kondicionér rolby smaže stopy pod sebou (pás 7,5 stopy za zadní nápravou)
+  zamClean(z, dt) {
+    const W = this.wear; if (!W) return;
+    const rx = z.x - Math.cos(z.dir) * 8.6, ry = z.y - Math.sin(z.dir) * 8.6;
+    const prev = this.zamPrev || [rx, ry]; this.zamPrev = [rx, ry];
+    const ppf = W.ppf, X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf;
+    const steps = Math.max(1, Math.ceil(Math.hypot(rx - prev[0], ry - prev[1]) / 0.5));
+    const g = W.g;
+    for (let s = 1; s <= steps; s++) {
+      const px = prev[0] + (rx - prev[0]) * s / steps, py = prev[1] + (ry - prev[1]) * s / steps;
+      g.save(); g.translate(X(px), Y(py)); g.rotate(-z.dir);
+      g.clearRect(-0.6 * ppf, -3.8 * ppf, 1.2 * ppf, 7.6 * ppf);
+      g.restore();
+      // mřížka: buňky pod pásem jsou čisté
+      const lx = -Math.sin(z.dir), ly = Math.cos(z.dir);
+      for (let k = -3.6; k <= 3.6; k += 0.9) {
+        const qx = px + lx * k, qy = py + ly * k, i = Math.floor(clamp(qx + 100, 0, 199.9) / 2), j = Math.floor(clamp(qy + 42.5, 0, 84.9) / 2);
+        W.grid[j * 100 + i] = 0;
+      }
+    }
+    this.zamT = (this.zamT || 0) + dt; if (this.zamT > 0.1) { this.zamT = 0; W.tex.needsUpdate = true; }
+  },
   spray(x, y, dir, power) {
     for (let i = 0; i < 4 + power * 10; i++) {
       const s = this.snowP[this.snowI]; this.snowI = (this.snowI + 1) % this.snowN;
@@ -482,7 +542,8 @@ const G3 = {
       const jump = Math.hypot(p.x - prev.x, p.y - prev.y); if (jump > 6 || jump < 0.05) continue;
       // dvě stopy bruslí, šířka podle rychlosti a fáze kroku
       const lx = -Math.sin(p.dir), ly = Math.cos(p.dir), off = 0.55 + 0.35 * Math.abs(Math.sin(p.stride || 0)) * clamp(sp / 20, 0, 1);
-      g.strokeStyle = 'rgba(236,242,248,0.16)'; g.lineWidth = Math.max(1, 0.22 * ppf); g.lineCap = 'round';
+      g.strokeStyle = 'rgba(196,207,220,0.2)'; g.lineWidth = Math.max(1, 0.22 * ppf); g.lineCap = 'round';
+      this.markDirty(p.x, p.y);
       for (const sd of [1, -1]) {
         g.beginPath(); g.moveTo(X(prev.x + lx * off * sd), Y(prev.y + ly * off * sd)); g.lineTo(X(p.x + lx * off * sd), Y(p.y + ly * off * sd)); g.stroke();
       }
@@ -979,7 +1040,16 @@ const G3 = {
     k.target.position.set(this.camT.x, 0, -this.camT.y);
     k.position.set(this.camT.x + 25, 120, -this.camT.y + 30);
     if (g && g !== this.wearGame) { this.wearGame = g; this.clearWear(); }
-    if (g && this.wearPeriod !== g.period) { this.wearPeriod = g.period; this.clearWear(); } // rolba mezi třetinami
+    // rolba mezi třetinami: automaticky smaže vše, při ručním řízení zůstane, co se neuklidilo, vypnutá nic
+    if (g && this.wearPeriod !== g.period) { this.wearPeriod = g.period; if (g.iceManual) g.iceManual = false; else if (g.cfg.zamboni !== 'off') this.clearWear(); }
+    const zam = g && g.state === 'zamboni' && g.zam;
+    this.zamGrp.visible = !!zam;
+    if (zam) {
+      if (!this.zamOn) { this.zamOn = true; this.zamPrev = null; this.wear.dirt0 = Math.max(1, this.dirtyCount()); }
+      this.zamGrp.position.set(zam.x, 0, -zam.y); this.zamGrp.rotation.y = zam.dir;
+      this.zamBeacon.visible = Math.floor(t * 3) % 2 === 0;
+      this.zamClean(zam, dt);
+    } else this.zamOn = false;
     this.updateWear(players, dt, !!g && (g.state === 'play' || g.state === 'stop' || g.state === 'goal'));
     this.updateSnow(dt);
     if (this.comp) this.comp.render(dt); else this.r.render(this.scene, this.cam);
