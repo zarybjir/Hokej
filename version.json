@@ -1,12 +1,12 @@
 {
-  "build": 21,
-  "version": "1.21",
+  "build": 22,
+  "version": "1.22",
   "date": "2026-11-22",
   "notes": [
+    "Fyzika: hmotnost hráčů rozhoduje v soubojích, stav ledu ovlivňuje puk i bruslení",
     "Nastavení: karty nahoře, přepínání LB / RB",
     "Aktualizace přímo ze hry (Nastavení → Aktualizace)",
     "Nastavení rozdělené do kategorií",
-    "Rolba o přestávce: automaticky / řídím sám / vypnutá",
-    "Hráči: souvislý trup, užší kalhoty, tvar hokejové přilby"
+    "Rolba o přestávce: automaticky / řídím sám / vypnutá"
   ]
 }

@@ -35,7 +35,7 @@ const Career = {
     const c = this.c, j = (a) => Math.round(clamp(base + (rnd() - 0.5) * a, 42, 95));
     const at = role === 'G' ? { REF: j(14), RYC: j(18), STA: j(18) } : { SIL: j(18), RYC: j(18), PRE: j(18), STA: j(22) };
     return { id: c.nextId++, role, line: 2, num: 2 + Math.floor(rnd() * 96), name: SURNAMES[Math.floor(rnd() * SURNAMES.length)],
-      first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.', hand: rnd() < 0.6 ? 1 : -1, age, at, st: blankSt() };
+      first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.', hand: rnd() < 0.6 ? 1 : -1, age, at, st: blankSt(), ...playerBody(role, at.SIL, rnd) };
   },
   newCareer(user) {
     const c = this.c = { v: 2, season: 1, year: 1998, user, nextId: 1, teams: [], budget: [], fa: [], news: [], history: [], results: [], lastDay: null };
@@ -107,7 +107,7 @@ const Career = {
     const at = role === 'G' ? { REF: j(10), RYC: j(12), STA: j(12) } : { SIL: j(12), RYC: j(12), PRE: j(12), STA: j(14) };
     let num = 50 + Math.floor(rnd() * 48); while (used.has(num)) num = 2 + ((num + 7) % 96); used.add(num);
     return { id: null, junior: true, role, line: 2, num, name: SURNAMES[Math.floor(rnd() * SURNAMES.length)], first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.',
-      hand: rnd() < 0.6 ? 1 : -1, age: 18, at, st: blankSt() };
+      hand: rnd() < 0.6 ? 1 : -1, age: 18, at, st: blankSt(), ...playerBody(role, at.SIL, rnd) };
   },
   injured(ti) { return this.c.teams[ti].players.filter((p) => p.inj > 0); },
   // po zápase: zranění se o zápas zlepší, pak se zapíšou nová

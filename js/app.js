@@ -306,7 +306,7 @@ const App = {
     const row = (p, vals) => {
       ctx.font = font(14, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(p.role === 'G' ? 'G' : p.role, x0 + cols[0], y);
       ctx.fillStyle = '#ffd21f'; ctx.fillText(String(p.num), x0 + cols[1], y);
-      ctx.fillStyle = '#fff'; ctx.fillText(p.first + ' ' + p.name, x0 + cols[2], y);
+      ctx.fillStyle = '#fff'; ctx.fillText(p.first + ' ' + p.name, x0 + cols[2], y); if (p.kg) { const w = ctx.measureText(p.first + ' ' + p.name).width; ctx.save(); ctx.font = font(12, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText(p.cm + ' cm · ' + p.kg + ' kg', x0 + cols[2] + w + 12, y); ctx.restore(); }
       vals.forEach((v, i) => {
         if (v == null) return;
         ctx.textAlign = 'center'; ctx.fillStyle = col(v); ctx.font = font(15, 'bold'); ctx.fillText(String(v), x0 + cols[3 + i] + 30, y);

@@ -137,8 +137,15 @@ const ROLE_NAMES = { C: 'Centr', LW: 'Levé křídlo', RW: 'Pravé křídlo', LD
 // Soupiska: 3 formace (C, LW, RW, LD, RD) + 2 brankáři. Atributy 40–99:
 // SIL = síla (bodyčeky, krytí puku, tvrdost střely), RYC = rychlost, PRE = přesnost (střely, přihrávky),
 // STA = stamina (jak rychle se unaví), REF = reflexy brankáře.
+// postava hráče: hmotnost podle síly (obránci a brankáři těžší), výška podle hmotnosti
+function playerBody(role, SIL, rnd = Math.random) {
+  const D = role[1] === 'D', G = role === 'G';
+  const kg = Math.round(clamp((G ? 86 : 83) + ((SIL || 75) - 75) * 0.55 + (D ? 6 : 0) + (rnd() - 0.5) * 14, 72, 116));
+  const cm = Math.round(clamp(176 + (kg - 85) * 0.55 + (G ? 4 : 0) + (rnd() - 0.5) * 10, 170, 203));
+  return { kg, cm };
+}
 function buildRoster(teamIdx) {
-  const t = TEAMS[teamIdx], rnd = mulberry32(teamIdx * 7919 + 13);
+  const t = TEAMS[teamIdx], rnd = mulberry32(teamIdx * 7919 + 13), rk = mulberry32(teamIdx * 131 + 5);
   const used = new Set(), nums = new Set();
   const r = (a, b) => a + rnd() * (b - a);
   const att = (v) => Math.round(clamp(v, 42, 99));
@@ -161,6 +168,7 @@ function buildRoster(teamIdx) {
         PRE: att(72 + dev(t.off) - (D ? 8 : 0) + mod + r(-8, 8)),
         STA: att(72 + r(-16, 18) + mod * 0.4),
       };
+      Object.assign(p, playerBody(role, p.at.SIL, rk));
       return p;
     }));
   }
@@ -168,6 +176,7 @@ function buildRoster(teamIdx) {
     const p = person('G', [1, 29, 30, 31, 33, 35, 39, 40, 50, 60]);
     p.line = k;
     p.at = { REF: att(74 + dev(t.gk) + (k ? -8 : 3) + r(-3, 3)), RYC: att(70 + dev(t.gk) * 0.6 + r(-8, 8)), STA: att(78 + r(-10, 10)) };
+    Object.assign(p, playerBody('G', 75, rk));
     return p;
   });
   return { lines, goalies };

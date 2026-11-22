@@ -228,11 +228,12 @@ const R = {
     });
   },
   drawPeriodEnd(g, t) {
-    const ctx = this.ctx, w = 600, h = 360, x = this.W / 2 - w / 2, y = 170;
+    const ctx = this.ctx, w = 600, h = 390, x = this.W / 2 - w / 2, y = 160;
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, this.W, this.H);
     LED.panel(ctx, x, y, w, h, 4, 0.94);
     LED.text(ctx, 'KONEC ' + (g.period > 3 ? 'PRODLOUŽENÍ' : g.period + '. TŘETINY'), this.W / 2, y + 44, 4, { align: 'center' });
     this.statsTable(g, this.W / 2, y + 110);
+    { const q = Math.round(g.iceQuality()); LED.text(ctx, 'STAV LEDU ' + q + ' %', this.W / 2, y + h - 62, 2.5, { align: 'center', color: q > 70 ? '#7dff8a' : q > 45 ? '#ffd21f' : '#ff8a6a' }); }
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - POKRAČOVAT', this.W / 2, y + h - 28, 2.5, { align: 'center', color: '#ffd21f' });
     if (g.humans.length && g.cfg.zamboni !== 'off') LED.panel(ctx, this.W / 2 - 190, y + h + 8, 380, 36, 3, 0.9);
     if (g.humans.length && g.cfg.zamboni !== 'off') LED.text(ctx, g.cfg.zamboni === 'manual' ? 'ROLBA VYJÍŽDÍ...' : 'Y - ŘÍDIT ROLBU', this.W / 2, y + h + 26, 2.5, { align: 'center', color: '#9fe3ff' });
@@ -240,7 +241,7 @@ const R = {
   drawZamboniHUD(g, t) {
     const ctx = this.ctx, w = 430, x = this.W / 2 - w / 2, y = this.H - 104;
     LED.panel(ctx, x, y, w, 86, 4, 0.92);
-    const pc = Math.round(G3.cleanPct ? G3.cleanPct() : 0);
+    const pc = Math.round(g.zamPct());
     LED.text(ctx, 'ROLBA', x + 20, y + 24, 3, { color: '#9fe3ff' });
     LED.text(ctx, 'UKLIZENO ' + pc + ' %', x + w - 20, y + 24, 3, { align: 'right', color: pc >= 90 ? '#7dff8a' : '#ffd21f' });
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 20, y + 44, w - 40, 8);
