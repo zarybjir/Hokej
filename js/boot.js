@@ -15,7 +15,7 @@ window.SkeletonUtils = SkeletonUtils;
 window.PP = { EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass };
 
 const msg = document.getElementById('msg');
-const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'touch', 'render3d', 'players3d', 'career', 'app'];
+const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'touch', 'render3d', 'players3d', 'career', 'update', 'app'];
 try {
   for (const f of files) {
     await new Promise((res, rej) => {

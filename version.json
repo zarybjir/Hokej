@@ -1,0 +1,12 @@
+{
+  "build": 19,
+  "version": "1.19",
+  "date": "2026-11-22",
+  "notes": [
+    "Aktualizace přímo ze hry (Nastavení → Aktualizace)",
+    "Nastavení rozdělené do kategorií",
+    "Rolba o přestávce: automaticky / řídím sám / vypnutá",
+    "Hráči: souvislý trup, užší kalhoty, tvar hokejové přilby",
+    "32 týmů z měst NHL, propracované dresy, nová grafika"
+  ]
+}

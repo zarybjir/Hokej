@@ -14,7 +14,10 @@ echo "Hokej '98 start: $(date)  dir=$DIR"
 # --- lokální server (python3 je ve SteamOS) ---
 SRV=""
 if ! (exec 3<>/dev/tcp/127.0.0.1/$PORT) 2>/dev/null; then
-  python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$DIR" &
+  # server.py umí i aktualizace hry z GitHubu (Nastavení → Aktualizace)
+  if [ -f "$DIR/server.py" ]; then python3 "$DIR/server.py" "$PORT" &
+  else python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$DIR" &
+  fi
   SRV=$!
   for _ in $(seq 1 40); do (exec 3<>/dev/tcp/127.0.0.1/$PORT) 2>/dev/null && break; sleep 0.1; done
 fi

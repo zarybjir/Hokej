@@ -46,7 +46,7 @@ const App = {
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 0) this.go('setup');
           else if (this.sel === 1) { this.go('career'); Career.enter(); }
-          else if (this.sel === 2) this.go('settings');
+          else if (this.sel === 2) { this.setCat = null; this.go('settings'); }
           else if (this.sel === 3) { this.helpFrom = 'title'; this.go('help'); }
           else if (this.sel === 4) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
@@ -94,26 +94,20 @@ const App = {
         break;
       }
       case 'settings': {
-        const n = 16;
+        const cats = this.settingsCats();
+        if (this.setCat == null) {
+          // seznam kategorií
+          this.menuMove(0, cats.length + 1, dt);
+          if (M.pressed('a')) { if (this.sel === cats.length) { Settings.save(); this.go('title', 2); } else { this.setCat = this.sel; this.sel = 0; Sfx.stick(0.6); } }
+          else if (M.pressed('b')) { Settings.save(); this.go('title', 2); }
+          break;
+        }
+        const cat = cats[this.setCat], n = cat.items.length + 1;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
-        if (this.sel === 0 && d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); }
-        if (this.sel === 1 && (d || a)) { S.comm = !S.comm; if (S.comm) Voice.say('Komentář zapnut.', true); }
-        if (this.sel === 2 && (d || a)) S.replay = !S.replay;
-        if (this.sel === 3 && (d || a)) S.fps = !S.fps;
-        if (this.sel === 4 && a) this.toggleFull();
-        if (this.sel === 5 && (d || a)) { S.cam = S.cam === 'side' ? 'top' : 'side'; R.setPreset(S.cam); }
-        if (this.sel === 6 && (d || a)) { G3.zoomStep(d || 1); G3.toast = null; }
-        if (this.sel === 7 && (d || a)) { const i = GFX_ORDER.indexOf(S.gfx || 'high'); S.gfx = GFX_ORDER[(i + (d || 1) + 3) % 3]; G3.applyQuality(S.gfx); }
-        if (this.sel === 8 && (d || a)) S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length;
-        if (this.sel === 9 && (d || a)) S.autoChange = !S.autoChange;
-        if (this.sel === 10 && (d || a)) S.tags = !S.tags;
-        if (this.sel === 11 && (d || a)) S.penalties = S.penalties === false;
-        if (this.sel === 12 && (d || a)) S.injuries = S.injuries === false;
-        if (this.sel === 13 && (d || a)) { const o = ['auto', 'manual', 'off'], i = o.indexOf(S.zamboni || 'auto'); S.zamboni = o[(i + (d || 1) + 3) % 3]; }
-        if (this.sel === 14 && a) { Settings.save(); this.openTeamEditor(); break; }
-        if ((this.sel === 15 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
-        if (d || a) Settings.save();
+        if (this.sel === cat.items.length) { if (a) { this.sel = this.setCat; this.setCat = null; Settings.save(); } }
+        else if (d || a) { const it = cat.items[this.sel]; if (it.set) { it.set(d, a); Settings.save(); } }
+        if (M.pressed('b')) { Settings.save(); this.sel = this.setCat; this.setCat = null; }
         break;
       }
       case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
@@ -203,6 +197,11 @@ const App = {
       ctx.fillText('1–2 hráči  •  gamepad nebo klávesnice', R.W / 2, 620);
     }
     if (this.screen === 'title') this.drawList(['EXHIBICE', 'KARIÉRA', 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 450);
+    if ((this.screen === 'title' || this.screen === 'press') && (Upd.newer() || Upd.flash > 0 || Upd.busy && Upd.server && Upd.newer())) {
+      const ctx = R.ctx, txt = Upd.flash > 0 || Upd.busy ? Upd.msg : 'K dispozici je nová verze ' + Upd.remote.version + ' – Nastavení → Aktualizace';
+      ctx.font = font(15, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#7dff8a'; ctx.fillText(txt, R.W / 2, 742);
+      if (Upd.flash > 0) Upd.flash -= 1 / 60;
+    }
     if (this.screen === 'title' && this.quitMsg) {
       ctx.font = font(15, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.textAlign = 'center';
       ctx.fillText('Ukonči přes tlačítko Steam → Ukončit hru (nebo Alt+F4)', R.W / 2, 740);
@@ -379,7 +378,7 @@ const App = {
         <button data-a="reset" style="${btn};background:#8a93a6">VÝCHOZÍ NÁZVY</button>
         <button data-a="close" style="${btn};background:#cfd8ea">ZAVŘÍT</button>
       </div></div>`;
-    const close = () => { el.remove(); this.go('settings', 14); };
+    const close = () => { el.remove(); this.go('settings', 0); this.setCat = 3; };
     el.addEventListener('click', (e) => {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
       if (a === 'save') {
@@ -395,24 +394,81 @@ const App = {
     el.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     document.body.appendChild(el);
   },
+  // ---------- nastavení po kategoriích ----------
+  settingsCats() {
+    const S = Settings.data, onoff = (v) => (v ? 'ZAP' : 'VYP'), cyc = (arr, cur, d) => arr[(arr.indexOf(cur) + (d || 1) + arr.length) % arr.length];
+    return [
+      { name: 'OBRAZ', desc: 'Kamera, zoom, kvalita grafiky, celá obrazovka', items: [
+        { label: 'KAMERA', val: () => (S.cam === 'side' ? 'Z BOKU' : 'SESHORA'), set: () => { S.cam = S.cam === 'side' ? 'top' : 'side'; R.setPreset(S.cam); } },
+        { label: 'ZOOM', val: () => '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►', set: (d) => { G3.zoomStep(d || 1); G3.toast = null; } },
+        { label: 'GRAFIKA', val: () => '◄ ' + GFX[S.gfx || 'high'].name + ' ►', set: (d) => { S.gfx = cyc(GFX_ORDER, S.gfx || 'high', d); G3.applyQuality(S.gfx); },
+          hint: 'VYSOKÁ = bloom, zrcadlení ledu, ostré stíny. Při trhání zkus STŘEDNÍ.' },
+        { label: 'CELÁ OBRAZOVKA', val: () => onoff(document.fullscreenElement), set: (d, a) => { if (a) this.toggleFull(); } },
+        { label: 'JMENOVKA NAD HRÁČEM S PUKEM', val: () => onoff(S.tags !== false), set: () => { S.tags = S.tags === false; } },
+        { label: 'ZÁZNAM PO GÓLU', val: () => onoff(S.replay), set: () => { S.replay = !S.replay; } },
+        { label: 'ZOBRAZIT FPS', val: () => onoff(S.fps), set: () => { S.fps = !S.fps; } },
+      ] },
+      { name: 'ZVUK', desc: 'Hlasitost a komentář', items: [
+        { label: 'HLASITOST', val: () => '▮'.repeat(S.vol) + '▯'.repeat(10 - S.vol), set: (d) => { if (d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); } } },
+        { label: 'KOMENTÁŘ (HLAS)', val: () => onoff(S.comm), set: () => { S.comm = !S.comm; if (S.comm) Voice.say('Komentář zapnut.', true); },
+          hint: 'Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.' },
+      ] },
+      { name: 'HRA', desc: 'Obtížnost, střídání, fauly, zranění, rolba', items: [
+        { label: 'OBTÍŽNOST', val: () => '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►', set: (d) => { S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length; } },
+        { label: 'STŘÍDÁNÍ FORMACÍ', val: () => (S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'), set: () => { S.autoChange = S.autoChange === false; } },
+        { label: 'FAULY A VYLOUČENÍ', val: () => onoff(S.penalties !== false), set: () => { S.penalties = S.penalties === false; } },
+        { label: 'ZRANĚNÍ', val: () => onoff(S.injuries !== false), set: () => { S.injuries = S.injuries === false; } },
+        { label: 'ROLBA O PŘESTÁVCE', val: () => '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►', set: (d) => { S.zamboni = cyc(['auto', 'manual', 'off'], S.zamboni || 'auto', d); },
+          hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },
+      ] },
+      { name: 'TÝMY', desc: 'Vlastní názvy měst, přezdívek a zkratek', items: [
+        { label: 'VLASTNÍ NÁZVY TÝMŮ', val: () => 'UPRAVIT ►', set: (d, a) => { if (a) { Settings.save(); this.openTeamEditor(); } }, hint: 'Názvy se ukládají jen v tomto zařízení.' },
+      ] },
+      { name: 'AKTUALIZACE', desc: 'Verze hry a stažení nové verze z GitHubu', items: [
+        { label: 'NAINSTALOVANÁ VERZE', val: () => (Upd.local ? Upd.local.version : '?') },
+        { label: 'NEJNOVĚJŠÍ VERZE', val: () => (Upd.busy && !Upd.remote ? '…' : Upd.remote ? Upd.remote.version + (Upd.newer() ? '  (NOVÁ!)' : '') : 'NEZJIŠTĚNO') },
+        { label: 'ZKONTROLOVAT AKTUALIZACE', val: () => '►', set: (d, a) => { if (a) Upd.check(); } },
+        { label: 'AKTUALIZOVAT TEĎ', val: () => (Upd.newer() ? 'NAINSTALOVAT ►' : '–'), set: (d, a) => { if (a) { if (Upd.newer()) Upd.update(); else Upd.msg = Upd.checked ? 'Máš nejnovější verzi.' : 'Nejdřív zkontroluj aktualizace.'; } } },
+        { label: 'AUTOMATICKY PŘI SPUŠTĚNÍ', val: () => onoff(S.autoUpdate !== false), set: () => { S.autoUpdate = S.autoUpdate === false; },
+          hint: 'Nová verze se stáhne z GitHubu při spuštění hry přes hokej.sh (potřebuje internet).' },
+      ] },
+    ];
+  },
   drawSettings() {
-    const ctx = R.ctx, S = Settings.data;
-    R.chromeText('NASTAVENÍ', R.W / 2, 64, 44);
-    const rows = [['HLASITOST', '▮'.repeat(S.vol) + '▯'.repeat(10 - S.vol)], ['KOMENTÁŘ (HLAS)', S.comm ? 'ZAP' : 'VYP'],
-      ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'],
-      ['ZOOM', '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►'], ['GRAFIKA', '◄ ' + GFX[S.gfx || 'high'].name + ' ►'],
-      ['OBTÍŽNOST', '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►'], ['STŘÍDÁNÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'],
-      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZRANĚNÍ', S.injuries !== false ? 'ZAP' : 'VYP'], ['ROLBA O PŘESTÁVCE', '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►'], ['VLASTNÍ NÁZVY TÝMŮ', 'UPRAVIT ►'], ['ZPĚT', '']];
-    rows.forEach(([n, v], i) => {
-      const y = 116 + i * 37, on = this.sel === i;
-      R.panel(R.W / 2 - 330, y - 17, 660, 34, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 16, 658, 32); }
-      ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(n, R.W / 2 - 305, y);
-      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(v, R.W / 2 + 305, y);
-    });
-    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
-    ctx.fillText('Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.', R.W / 2, 704);
-    ctx.fillText('Ve hře: LB = střídání formace, VIEW (Back) = zoom. Při trhání zkus grafiku STŘEDNÍ.', R.W / 2, 728);
+    const ctx = R.ctx, cats = this.settingsCats();
+    const row = (y, label, val, on, big) => {
+      R.panel(R.W / 2 - 330, y - 21, 660, 42, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 20, 658, 40); }
+      ctx.font = font(big ? 22 : 18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.font = font(big ? 14 : 18, big ? 'bold' : 'italic 900'); ctx.fillText(val, R.W / 2 + 305, y);
+    };
+    const foot = (t, y = 728) => { ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText(t, R.W / 2, y); };
+    if (this.setCat == null) {
+      R.chromeText('NASTAVENÍ', R.W / 2, 70, 46);
+      cats.forEach((c, i) => row(170 + i * 62, c.name, c.desc.toUpperCase(), this.sel === i, true));
+      row(170 + cats.length * 62, 'ZPĚT', '', this.sel === cats.length, true);
+      if (Upd.newer()) { ctx.font = font(15, 'bold'); ctx.fillStyle = '#7dff8a'; ctx.textAlign = 'center'; ctx.fillText('K dispozici je nová verze ' + Upd.remote.version + ' – AKTUALIZACE', R.W / 2, 600); }
+      foot('↑↓ výběr   A otevřít   B zpět');
+      return;
+    }
+    const cat = cats[this.setCat];
+    R.chromeText('NASTAVENÍ – ' + cat.name, R.W / 2, 64, 40);
+    cat.items.forEach((it, i) => row(140 + i * 50, it.label, it.val(), this.sel === i));
+    const yb = 140 + cat.items.length * 50;
+    row(yb, 'ZPĚT', '', this.sel === cat.items.length);
+    const it = cat.items[this.sel];
+    if (it && it.hint) foot(it.hint, yb + 56);
+    if (cat.name === 'AKTUALIZACE') {
+      if (Upd.msg) { ctx.font = font(16, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center'; ctx.fillText(Upd.msg, R.W / 2, yb + 90); }
+      const notes = (Upd.newer() ? Upd.remote : Upd.local || {}).notes || [];
+      if (notes.length) {
+        ctx.font = font(14, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.fillText(Upd.newer() ? 'CO PŘINÁŠÍ NOVÁ VERZE:' : 'CO JE NOVÉHO:', R.W / 2, yb + 126);
+        ctx.font = font(13, 'bold'); ctx.fillStyle = '#cfd8ea';
+        notes.slice(0, 5).forEach((n, i) => ctx.fillText('• ' + n, R.W / 2, yb + 150 + i * 20));
+      }
+      if (!Upd.server) foot('Instalace aktualizací funguje ve hře spuštěné přes hokej.sh. Webová verze se aktualizuje sama.', 760);
+    }
+    foot('↑↓ výběr   ◄► / A změna   B zpět', 784);
   },
   drawHelp() {
     const ctx = R.ctx;
@@ -458,6 +514,7 @@ const App = {
   }
   Input.init();
   App.init();
+  Upd.init();
   try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => Voice.pickVoice(); } catch (e) {}
   // zvuk: s --autoplay-policy=no-user-gesture-required běží hned, jinak po první klávese
   Sfx.init();

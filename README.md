@@ -71,7 +71,14 @@ spolupráce proti počítači.
 
 **Ukončení:** tlačítko Steam → *Ukončit hru*.
 
-Spouštěč `hokej.sh` spustí lokální server (`python3`, je součástí SteamOS) na portu 47098 a
+**Aktualizace:** hra si při spuštění sama zjistí, jestli je na GitHubu nová verze, a nainstaluje ji
+(potřebuje internet). Ručně: *Nastavení → Aktualizace → Zkontrolovat / Aktualizovat teď*, tam jde
+automatika i vypnout. Pokud máš hru nainstalovanou přes `git clone`, aktualizuje se přes `git pull`,
+jinak se stáhne ZIP z GitHubu a přepíše soubory hry (uložené kariéry a nastavení zůstanou — jsou
+v prohlížeči). **Pokud máš starší verzi hry než 1.19, aktualizuj ji jednou ručně** (znovu stáhni ZIP
+nebo `git pull` v Konsoli) — teprve nová verze `hokej.sh` spouští server, který umí aktualizace.
+
+Spouštěč `hokej.sh` spustí lokální server `server.py` (`python3`, je součástí SteamOS) na portu 47098 a
 Chromium v režimu kiosku s povoleným zvukem bez kliknutí. Log je v `~/.cache/hokej98.log`.
 Najde i Google Chrome, Brave nebo Edge (flatpak), případně Firefox (tam ale zvuk může začít až
 po stisku klávesy).
@@ -123,6 +130,10 @@ O přestávce mezi třetinami vyjíždí rolba. V Nastavení → *Rolba o přest
 - **VYPNUTÁ** – led se celý zápas neuklízí.
 
 ## Nastavení
+
+Nastavení je rozdělené do kategorií: **Obraz** (kamera, zoom, grafika, celá obrazovka, jmenovka,
+záznam po gólu, FPS), **Zvuk** (hlasitost, komentář), **Hra** (obtížnost, střídání, fauly, zranění,
+rolba), **Týmy** (vlastní názvy) a **Aktualizace** (verze, kontrola, instalace, automatika).
 
 V menu *Exhibice*: domácí a hosté (karty s hodnocením týmu, **Y = soupiska** se statistikami všech
 hráčů), délka třetiny, obtížnost (lehká / normální / těžká / legenda), střídání (automaticky / ručně).
