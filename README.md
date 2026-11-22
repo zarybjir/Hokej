@@ -131,7 +131,7 @@ O přestávce mezi třetinami vyjíždí rolba. V Nastavení → *Rolba o přest
 
 ## Nastavení
 
-Nastavení je rozdělené do kategorií: **Obraz** (kamera, zoom, grafika, celá obrazovka, jmenovka,
+Nastavení je rozdělené do karet (přepínání **LB / RB**, na klávesnici Q / E): **Obraz** (kamera, zoom, grafika, celá obrazovka, jmenovka,
 záznam po gólu, FPS), **Zvuk** (hlasitost, komentář), **Hra** (obtížnost, střídání, fauly, zranění,
 rolba), **Týmy** (vlastní názvy) a **Aktualizace** (verze, kontrola, instalace, automatika).
 

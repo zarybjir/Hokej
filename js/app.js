@@ -46,7 +46,7 @@ const App = {
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 0) this.go('setup');
           else if (this.sel === 1) { this.go('career'); Career.enter(); }
-          else if (this.sel === 2) { this.setCat = null; this.go('settings'); }
+          else if (this.sel === 2) { this.setCat = 0; this.go('settings'); }
           else if (this.sel === 3) { this.helpFrom = 'title'; this.go('help'); }
           else if (this.sel === 4) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
@@ -94,20 +94,17 @@ const App = {
         break;
       }
       case 'settings': {
+        // karty nahoře (LB / RB), položky karty pod nimi
         const cats = this.settingsCats();
-        if (this.setCat == null) {
-          // seznam kategorií
-          this.menuMove(0, cats.length + 1, dt);
-          if (M.pressed('a')) { if (this.sel === cats.length) { Settings.save(); this.go('title', 2); } else { this.setCat = this.sel; this.sel = 0; Sfx.stick(0.6); } }
-          else if (M.pressed('b')) { Settings.save(); this.go('title', 2); }
-          break;
-        }
+        if (this.setCat == null) this.setCat = 0;
+        const tab = (M.pressed('rb') ? 1 : 0) - (M.pressed('lb') ? 1 : 0);
+        if (tab) { this.setCat = (this.setCat + tab + cats.length) % cats.length; this.sel = 0; Sfx.stick(0.6); Settings.save(); break; }
         const cat = cats[this.setCat], n = cat.items.length + 1;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
-        if (this.sel === cat.items.length) { if (a) { this.sel = this.setCat; this.setCat = null; Settings.save(); } }
+        if (this.sel === cat.items.length) { if (a) { Settings.save(); this.go('title', 2); break; } }
         else if (d || a) { const it = cat.items[this.sel]; if (it.set) { it.set(d, a); Settings.save(); } }
-        if (M.pressed('b')) { Settings.save(); this.sel = this.setCat; this.setCat = null; }
+        if (M.pressed('b')) { Settings.save(); this.go('title', 2); }
         break;
       }
       case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
@@ -435,40 +432,44 @@ const App = {
     ];
   },
   drawSettings() {
-    const ctx = R.ctx, cats = this.settingsCats();
-    const row = (y, label, val, on, big) => {
-      R.panel(R.W / 2 - 330, y - 21, 660, 42, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 20, 658, 40); }
-      ctx.font = font(big ? 22 : 18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
-      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.font = font(big ? 14 : 18, big ? 'bold' : 'italic 900'); ctx.fillText(val, R.W / 2 + 305, y);
+    const ctx = R.ctx, cats = this.settingsCats(), ci = this.setCat || 0, cat = cats[ci];
+    R.chromeText('NASTAVENÍ', R.W / 2, 46, 40);
+    // karty
+    const tw = 168, gap = 8, total = cats.length * tw + (cats.length - 1) * gap, x0 = R.W / 2 - total / 2, ty = 84;
+    ctx.font = font(13, 'bold'); ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#9fe3ff'; ctx.fillText('LB ◄', x0 - 34, ty + 22); ctx.fillText('► RB', x0 + total + 34, ty + 22);
+    cats.forEach((c, i) => {
+      const x = x0 + i * (tw + gap), on = i === ci;
+      R.panel(x, ty + (on ? 0 : 4), tw, on ? 46 : 40, on ? 0.98 : 0.55);
+      if (on) { ctx.fillStyle = '#ffd21f'; ctx.fillRect(x, ty + 42, tw, 4); }
+      ctx.font = font(on ? 18 : 16); ctx.fillStyle = on ? '#fff' : '#9aa6bd'; ctx.fillText(c.name, x + tw / 2, ty + 22);
+      if (c.name === 'AKTUALIZACE' && Upd.newer()) { ctx.fillStyle = '#7dff8a'; ctx.beginPath(); ctx.arc(x + tw - 12, ty + 12, 5, 0, TAU); ctx.fill(); }
+    });
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText(cat.desc.toUpperCase(), R.W / 2, ty + 66);
+    const row = (y, label, val, on) => {
+      R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 19, 658, 38); }
+      ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(val, R.W / 2 + 305, y);
     };
-    const foot = (t, y = 728) => { ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText(t, R.W / 2, y); };
-    if (this.setCat == null) {
-      R.chromeText('NASTAVENÍ', R.W / 2, 70, 46);
-      cats.forEach((c, i) => row(170 + i * 62, c.name, c.desc.toUpperCase(), this.sel === i, true));
-      row(170 + cats.length * 62, 'ZPĚT', '', this.sel === cats.length, true);
-      if (Upd.newer()) { ctx.font = font(15, 'bold'); ctx.fillStyle = '#7dff8a'; ctx.textAlign = 'center'; ctx.fillText('K dispozici je nová verze ' + Upd.remote.version + ' – AKTUALIZACE', R.W / 2, 600); }
-      foot('↑↓ výběr   A otevřít   B zpět');
-      return;
-    }
-    const cat = cats[this.setCat];
-    R.chromeText('NASTAVENÍ – ' + cat.name, R.W / 2, 64, 40);
-    cat.items.forEach((it, i) => row(140 + i * 50, it.label, it.val(), this.sel === i));
-    const yb = 140 + cat.items.length * 50;
-    row(yb, 'ZPĚT', '', this.sel === cat.items.length);
+    const foot = (t, y) => { ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText(t, R.W / 2, y); };
+    const y0 = 196;
+    cat.items.forEach((it, i) => row(y0 + i * 48, it.label, it.val(), this.sel === i));
+    const yb = y0 + cat.items.length * 48;
+    row(yb, 'ZPĚT DO MENU', '', this.sel === cat.items.length);
     const it = cat.items[this.sel];
-    if (it && it.hint) foot(it.hint, yb + 56);
+    if (it && it.hint) foot(it.hint, yb + 52);
     if (cat.name === 'AKTUALIZACE') {
-      if (Upd.msg) { ctx.font = font(16, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center'; ctx.fillText(Upd.msg, R.W / 2, yb + 90); }
+      if (Upd.msg) { ctx.font = font(16, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center'; ctx.fillText(Upd.msg, R.W / 2, yb + 86); }
       const notes = (Upd.newer() ? Upd.remote : Upd.local || {}).notes || [];
       if (notes.length) {
-        ctx.font = font(14, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.fillText(Upd.newer() ? 'CO PŘINÁŠÍ NOVÁ VERZE:' : 'CO JE NOVÉHO:', R.W / 2, yb + 126);
+        ctx.font = font(14, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.fillText(Upd.newer() ? 'CO PŘINÁŠÍ NOVÁ VERZE:' : 'CO JE NOVÉHO:', R.W / 2, yb + 120);
         ctx.font = font(13, 'bold'); ctx.fillStyle = '#cfd8ea';
-        notes.slice(0, 5).forEach((n, i) => ctx.fillText('• ' + n, R.W / 2, yb + 150 + i * 20));
+        notes.slice(0, 5).forEach((n, i) => ctx.fillText('• ' + n, R.W / 2, yb + 144 + i * 20));
       }
-      if (!Upd.server) foot('Instalace aktualizací funguje ve hře spuštěné přes hokej.sh. Webová verze se aktualizuje sama.', 760);
+      if (!Upd.server) foot('Instalace aktualizací funguje ve hře spuštěné přes hokej.sh. Webová verze se aktualizuje sama.', 756);
     }
-    foot('↑↓ výběr   ◄► / A změna   B zpět', 784);
+    foot('LB / RB karta   ↑↓ výběr   ◄► / A změna   B zpět', 784);
   },
   drawHelp() {
     const ctx = R.ctx;
