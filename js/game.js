@@ -14,6 +14,20 @@ const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
 const FOULS = { hook: 'HÁKOVÁNÍ', trip: 'PODRÁŽENÍ', slash: 'SEKÁNÍ', back: 'NAPADENÍ ZEZADU', board: 'NARÁŽENÍ NA MANTINEL', interf: 'BRÁNĚNÍ VE HŘE', rough: 'HRUBOST' };
 
+// zranění: typ a délka léčení (počet zápasů); příčina 'foul' / 'tired' / 'sim'
+const INJURIES = {
+  foul: [['pohmožděné rameno', 1, 3, 4], ['zranění kotníku', 2, 6, 3], ['otřes mozku', 3, 8, 2], ['zranění kolena', 4, 12, 1.5], ['zlomené zápěstí', 6, 14, 1], ['naražená žebra', 1, 4, 3]],
+  tired: [['natažený sval', 1, 4, 5], ['natržený tříslový sval', 3, 7, 2], ['zranění zad', 2, 5, 1.5]],
+};
+function rollInjury(cause) {
+  const L = INJURIES[cause] || INJURIES[Math.random() < 0.6 ? 'foul' : 'tired'];
+  let r = Math.random() * L.reduce((a, q) => a + q[3], 0), q = L[0];
+  for (const x of L) { r -= x[3]; if (r <= 0) { q = x; break; } }
+  return { name: q[0], games: q[1] + Math.floor(Math.random() * (q[2] - q[1] + 1)) };
+}
+function gamesWord(n) { return n === 1 ? 'zápas' : n < 5 ? 'zápasy' : 'zápasů'; }
+const INJ_FOUL = { hook: 0.02, trip: 0.05, slash: 0.04, back: 0.15, board: 0.11, interf: 0.03, rough: 0.08 };
+
 function lightness(hex) {
   const n = parseInt(hex.slice(1), 16);
   return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
@@ -56,6 +70,7 @@ class Game {
     this.penOn = cfg.penalties !== false;
     this.penLen = clamp(this.periodLen * 0.13, 25, 120); // „2 minuty" úměrně délce třetiny
     this.penalties = []; this.pending = null;
+    this.injOn = cfg.injuries !== false; this.injuries = []; this.injWait = null;
     this.puck = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, owner: null, held: null, passTarget: null, passT: 0, wasPass: false,
       shot: null, lastTouch: null, history: [], oneTimer: false, reboundT: 0, deflT: 0, ignore: new Map(), drop: false, inNet: 0 };
     this.humans = (cfg.humans || []).map((h, i) => ({ idx: i, dev: h.dev, team: this.teams[h.team], player: null, foPress: -9, color: HUMAN_COLORS[i % 4] }));
@@ -100,8 +115,12 @@ class Game {
   benchDoor(t) { return { x: t.side === 0 ? -22 : 22, y: RINK.HW - 2.5 }; }
   // role, které tým kvůli vyloučení nesmí obsadit
   outRoles(t) {
-    const out = [];
-    for (const pn of this.penalties) if (pn.team === t) {
+    const pens = this.penalties.filter((pn) => pn.team === t);
+    if (!pens.length) return [];
+    // post, na který kvůli zranění a vyloučení nezbyl nikdo, se vynechá přednostně
+    const all = t.lines.flat(), out = ROLES.filter((r) => !all.some((q) => q.role === r && !q.inBox && !q.injured)).slice(0, pens.length);
+    for (const pn of pens) {
+      if (out.length >= pens.length) break;
       // v oslabení se vynechává křídlo (centr vhazuje), u obránců obránce
       let r = pn.role === 'C' ? 'LW' : pn.role;
       if (out.includes(r)) r = ['LW', 'RW', 'LD', 'RD', 'C'].find((q) => !out.includes(q));
@@ -113,7 +132,7 @@ class Game {
     const out = this.outRoles(t);
     return ROLES.filter((r) => !out.includes(r)).map((r) => {
       let p = t.lines[L].find((q) => q.role === r);
-      if (p.inBox) p = [0, 1, 2].map((k) => t.lines[k].find((q) => q.role === r)).filter((q) => !q.inBox).sort((a, b) => b.stamina - a.stamina)[0];
+      if (p.inBox || p.injured) p = [0, 1, 2].map((k) => t.lines[k].find((q) => q.role === r)).filter((q) => !q.inBox && !q.injured).sort((a, b) => b.stamina - a.stamina)[0];
       return p;
     }).filter(Boolean);
   }
@@ -137,7 +156,11 @@ class Game {
     for (const t of this.teams) for (const p of t.roster) {
       if (p.isGoalie) continue;
       if (!p.onIce) p.stamina = Math.min(1, p.stamina + h / 30);
-      else if (this.state === 'play') p.stamina = Math.max(0, p.stamina - h * (0.6 + 0.6 * clamp(p.spdN / 25, 0, 1)) / 70 * p.staMul);
+      else if (this.state === 'play') {
+        p.stamina = Math.max(0, p.stamina - h * (0.6 + 0.6 * clamp(p.spdN / 25, 0, 1)) / 70 * p.staMul);
+        // velké vyčerpání: hrozí natažený sval
+        if (p.stamina < 0.1 && Math.random() < h * 0.02 * (1 - p.stamina / 0.1) * p.staMul) this.hurt(p, 'tired');
+      }
       else p.stamina = Math.min(1, p.stamina + h * 0.012);
     }
   }
@@ -160,7 +183,7 @@ class Game {
       // lidský hráč přejde na čerstvého spoluhráče, unavený jede sám na střídačku
       for (const hm of t.humans) {
         if (!hm.player || !hm.player.goBench) continue;
-        const fresh = t.skaters.filter((q) => !q.goBench && q.ctrl < 0);
+        const fresh = t.skaters.filter((q) => !q.goBench && !q.injured && q.ctrl < 0);
         if (fresh.length) {
           const pk = this.puck, best = fresh.reduce((a, b) => (Math.hypot(a.x - pk.x, a.y - pk.y) < Math.hypot(b.x - pk.x, b.y - pk.y) ? a : b));
           this.assign(hm, best);
@@ -183,6 +206,7 @@ class Game {
   }
   // ---------- fauly a vyloučení ----------
   foul(off, victim, type) {
+    if (this.state === 'play' && Math.random() < (INJ_FOUL[type] || 0.05) * (1.6 - victim.stamina * 0.6)) this.hurt(victim, 'foul');
     if (!this.penOn || this.state !== 'play' || this.pending || off.isGoalie || off.inBox) return;
     const t = off.team;
     if (this.outRoles(t).length >= 2) return; // víc než 5 na 3 se nehraje
@@ -214,6 +238,45 @@ class Game {
     t.pim++; this.other(t).ppOpp++;
     this.lower = { title: '#' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ')', sub: FOULS[pd.type] + ' — 2 minuty', team: t, t: 0, dur: 3.4 };
     this.say(pick(['Vyloučení!', 'Dvě minuty!', 'Rozhodčí vylučuje.']) + ' ' + p.name + ', ' + FOULS[pd.type].toLowerCase() + '.', true);
+  }
+  // ---------- zranění ----------
+  hurt(p, cause) {
+    if (!this.injOn || p.injured || p.isGoalie || !p.onIce || this.state !== 'play') return;
+    const t = p.team;
+    // nejvýš 2 zranění na tým a zápas, a nikdy dva hráči na stejném postu (sestava musí jít složit)
+    if (t.roster.filter((q) => q.injured).length >= 2 || t.roster.some((q) => q.injured && q.role === p.role)) return;
+    p.injured = rollInjury(cause); p.injured.cause = cause;
+    this.injuries.push({ team: t, player: p, ...p.injured, period: this.period });
+    p.downT = Math.max(p.downT, 2.5); p.lie = p.lie || p.dir + Math.PI; p.winding = false; p.windT = 0;
+    if (this.puck.owner === p) this.loosePuck(p, p.vx * 0.5, p.vy * 0.5);
+    this.pop('ZRANĚNÍ!', p.x, p.y, '#ff5a3c');
+    if (!this.injWait) this.injWait = { p, t: 0 };
+  }
+  updateInjuries(h) {
+    for (const t of this.teams) for (const p of t.skaters) if (p.injured) p.downT = Math.max(p.downT, 0.4);
+    // lidský hráč nepřebírá zraněného
+    for (const hm of this.humans) if (hm.player && hm.player.injured) { hm.player.ctrl = -1; hm.player = null; this.switchPlayer(hm); }
+    const w = this.injWait; if (!w || this.state !== 'play') return;
+    w.t += h;
+    const own = this.puck.owner || this.puck.held;
+    // rozhodčí přeruší hru, až má puk tým zraněného (nebo nikdo), nejpozději po 5 s
+    if ((w.t > 1.2 && (!own || own.team === w.p.team)) || w.t > 5) {
+      const pk = this.puck;
+      pk.owner = null; pk.held = null;
+      this.whistle('ZRANĚNÍ', this.nearestDot(pk.x, pk.y));
+      this.announceInjury(w.p);
+    }
+  }
+  announceInjury(p) {
+    const t = p.team, I = p.injured;
+    this.toast = { text: 'ZRANĚNÍ: #' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ') NEDOHRAJE ZÁPAS', t: 0, dur: 3.2 };
+    if (!this.pending) this.lower = { title: '#' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ')', sub: 'ZRANĚNÍ — ' + I.name + ', nedohraje zápas', team: t, t: 0, dur: 3.6 };
+    this.say(pick(['Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.']) + ' ' + p.name + ' nedohraje.', true);
+  }
+  nearestDot(x, y) {
+    const xs = [-69, -20, 0, 20, 69], ys = [-22, 22];
+    const fx = xs.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a));
+    return fx === 0 ? [0, 0] : [fx, y >= 0 ? 22 : -22];
   }
   boxPos(t) { return { x: t.side === 0 ? -9 : 9, y: -RINK.HW - 3.2 }; }
   endPenalty(pn, enterNow) {
@@ -314,6 +377,7 @@ class Game {
   // ---------- buly ----------
   setupFaceoff(fx, fy) {
     this.foSpot = [fx, fy];
+    if (this.injWait) { if (this.injWait.p.onIce && !this.toast) this.announceInjury(this.injWait.p); this.injWait = null; }
     for (const t of this.teams) {
       // střídání při přerušení
       const auto = t.cpu || this.autoChange;
@@ -421,11 +485,12 @@ class Game {
         this.updatePuck(h);
         this.updateChanges(h);
         this.updatePenalties(h);
+        this.updateInjuries(h);
         this.record();
         if (this.clock <= 0 && this.state === 'play') { this.clock = 0; this.endPeriod(); }
         break;
       case 'stop':
-        this.glide(); this.movePlayers(h); this.updatePuck(h);
+        this.glide(); this.movePlayers(h); this.updatePuck(h); this.updateInjuries(h);
         if (this.stateT > 1.4) {
           this.setupFaceoff(this.stopSpot[0], this.stopSpot[1]);
           if (Math.random() < 0.5) this.sfx('organ', Math.floor(Math.random() * 4));
@@ -497,7 +562,7 @@ class Game {
   switchPlayer(h) {
     const pk = this.puck; let best = null, bd = 1e9;
     for (const q of h.team.skaters) {
-      if (q === h.player || (q.ctrl >= 0 && q.ctrl !== h.idx) || q.goBench) continue;
+      if (q === h.player || (q.ctrl >= 0 && q.ctrl !== h.idx) || q.goBench || q.injured) continue;
       const d = Math.hypot(q.x - pk.x, q.y - pk.y) + (q.downT > 0 ? 30 : 0);
       if (d < bd) { bd = d; best = q; }
     }

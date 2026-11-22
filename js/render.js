@@ -249,6 +249,7 @@ const R = {
       LED.text(ctx, `#${p.num} ${p.first} ${p.name} (${p.team.def.abbr})`, x + 140, yy, 2.5);
       LED.text(ctx, p.isGoalie ? `${p.stats.sv}/${p.stats.sa} ZÁKR.` : `${p.stats.g} G ${p.stats.a} A`, x + w - 30, yy, 2.5, { align: 'right', color: '#aeb6c8' });
     });
+    if (g.injuries && g.injuries.length) LED.text(ctx, 'ZRANĚNÍ: ' + g.injuries.map((q) => `#${q.player.num} ${q.player.name} (${q.team.def.abbr})`).join(', ').toUpperCase(), this.W / 2, y + 466, 2, { align: 'center', color: '#ff8a6a' });
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - ZPĚT DO MENU', this.W / 2, y + h - 24, 2.5, { align: 'center', color: '#ffd21f' });
   },
 };

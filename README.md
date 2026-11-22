@@ -19,6 +19,10 @@ zvedne ruku a píská, až se puku dotkne faulující tým (gól v té chvíli v
 na trestnou lavici a tým hraje v oslabení (5 na 4, nejvýš 5 na 3); gól v přesilovce trest ukončí.
 Délka trestu „2 minuty“ se přepočítává podle délky třetiny (u 3min třetin 25 s, u 20min třetin 2 min).
 Fauly lze vypnout v menu *Exhibice* nebo v Nastavení.
+**Zranění:** po faulu (nejčastěji po napadení zezadu a narážení na mantinel) nebo při velkém
+vyčerpání (hráč s téměř prázdnou energií si natáhne sval) se hráč může zranit — zůstane ležet,
+rozhodčí přeruší hru, až má puk jeho tým, a hráč zápas nedohraje; za něj nastupuje hráč na stejném
+postu z jiné formace. Zranění lze vypnout v Nastavení.
 HUD je ve stylu bílého bodového LED displeje jako na stadionu; ovládaný hráč má pod sebou
 na ledě rozsegmentovaný kruh ve své barvě (1P žlutá, 2P tyrkysová).
 Pohled seshora (kluziště na výšku, scrolluje se nahoru/dolů; v Nastavení lze přepnout na TV kameru
@@ -121,6 +125,10 @@ do prohlížeče, rozehranou kariéru jde kdykoli načíst).
 - **Přestupy:** přestupní okno je otevřené do 13. kola. Hráče koupíš výměnou za svého hráče
   na stejném postu plus doplatek z rozpočtu; počítačové týmy přestupují mezi sebou, nabízejí
   se i volní hráči. Rozpočet roste z diváků na domácích zápasech a z prémií za umístění.
+- **Zranění:** zraněný hráč vynechá podle typu zranění 1–14 zápasů (natažený sval, otřes mozku,
+  zranění kolena, zlomené zápěstí…). Zranění vznikají v odehraných i simulovaných zápasech, jsou
+  vidět na soupisce, v přehledu klubu a ve zprávách. Místo zraněného se formace posunou a díru
+  zaplní junior z farmy.
 - **Mezi sezónami** hráči stárnou: mladí se zlepšují, starší ztrácejí, nad 35 let končí
   a nahradí je junioři. Zprávy shrnují přestupy, ocenění a historii vítězů.
 

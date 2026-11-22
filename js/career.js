@@ -87,23 +87,63 @@ const Career = {
       g.forEach((p, i) => (p.line = i));
     }
   },
+  // sestava pro zápas: zranění vynechaní, ostatní se posunou o formaci výš a díru zaplní junior z farmy
+  // (kopie hráčů sdílí objekt statistik st s originálem, junioři mají vlastní)
   rosterFor(ti) {
-    const ps = this.c.teams[ti].players, lines = [[], [], []];
-    for (const L of [0, 1, 2]) for (const role of ROLES) { const p = ps.find((q) => q.role === role && q.line === L); if (p) lines[L].push({ ...p }); }
-    const goalies = ps.filter((p) => p.role === 'G').sort((a, b) => a.line - b.line).map((p) => ({ ...p }));
+    const ps = this.c.teams[ti].players, lines = [[], [], []], used = new Set(ps.map((p) => p.num));
+    const fill = (role, n) => {
+      const out = ps.filter((p) => p.role === role && !(p.inj > 0)).sort((a, b) => a.line - b.line).slice(0, n);
+      for (let k = 0; out.length < n; k++) out.push(this.junior(ti, role, k, used));
+      return out;
+    };
+    for (const role of ROLES) fill(role, 3).forEach((p, i) => lines[i].push({ ...p, line: i }));
+    const goalies = fill('G', 2).map((p, i) => ({ ...p, line: i }));
     return { lines, goalies };
+  },
+  junior(ti, role, k, used) {
+    const rnd = mulberry32(ti * 1009 + POS_ORDER.indexOf(role) * 31 + k * 7 + this.c.season * 101), j = (a) => Math.round(clamp(57 + (rnd() - 0.5) * a, 42, 80));
+    const at = role === 'G' ? { REF: j(10), RYC: j(12), STA: j(12) } : { SIL: j(12), RYC: j(12), PRE: j(12), STA: j(14) };
+    let num = 50 + Math.floor(rnd() * 48); while (used.has(num)) num = 2 + ((num + 7) % 96); used.add(num);
+    return { id: null, junior: true, role, line: 2, num, name: SURNAMES[Math.floor(rnd() * SURNAMES.length)], first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.',
+      hand: rnd() < 0.6 ? 1 : -1, age: 18, at, st: blankSt() };
+  },
+  injured(ti) { return this.c.teams[ti].players.filter((p) => p.inj > 0); },
+  // po zápase: zranění se o zápas zlepší, pak se zapíšou nová
+  tickInj(ti) {
+    for (const p of this.c.teams[ti].players) if (p.inj > 0 && --p.inj === 0) {
+      delete p.injName;
+      if (ti === this.c.user) this.news(`${p.first} ${p.name} se uzdravil a je zpět v sestavě.`);
+    }
+  },
+  injure(ti, id, I) {
+    const p = this.byId(ti, id); if (!p) return;
+    p.inj = Math.max(p.inj || 0, I.games); p.injName = I.name;
+    if (ti === this.c.user) {
+      this.news(`ZRANĚNÍ: ${p.first} ${p.name} – ${I.name}, mimo ${I.games} ${gamesWord(I.games)}.`);
+      if (this.day) this.dayInj.push({ name: p.first + ' ' + p.name, num: p.num, injName: I.name, games: I.games });
+    }
+  },
+  // zranění v simulovaném zápase: častěji hráči s víc minutami a nižší staminou
+  simInjuries(ti) {
+    const R = this.rosterFor(ti), out = [];
+    if (Math.random() < 0.15) {
+      const sk = R.lines.flat().filter((p) => !p.junior);
+      const p = wpick(sk, (q) => (LINE_W[q.line] || 0.5) * (1.7 - q.at.STA / 100));
+      if (p) out.push({ ti, id: p.id, ...rollInjury(Math.random() < 0.65 ? 'foul' : 'tired') });
+    }
+    if (Math.random() < 0.012 && !R.goalies[0].junior) out.push({ ti, id: R.goalies[0].id, ...rollInjury('foul') });
+    return out;
   },
   byId(ti, id) { return this.c.teams[ti].players.find((p) => p.id === id); },
   strength(ti) {
-    const ps = this.c.teams[ti].players, sk = ps.filter((p) => p.role !== 'G');
+    const R = this.rosterFor(ti), sk = R.lines.flat();
     let att = 0, def = 0, wa = 0, wd = 0;
     for (const p of sk) {
       const w = LINE_W[p.line] || 0.5, a = p.at;
       if (p.role[1] === 'D') { def += w * (a.SIL * 0.45 + a.RYC * 0.3 + a.PRE * 0.25); wd += w; }
       else { att += w * (a.PRE * 0.5 + a.RYC * 0.3 + a.SIL * 0.2); wa += w; }
     }
-    const g = ps.filter((p) => p.role === 'G').sort((a, b) => a.line - b.line)[0];
-    return { att: att / wa, def: def / wd, gk: g.at.REF };
+    return { att: att / wa, def: def / wd, gk: R.goalies[0].at.REF };
   },
 
   // ---------- kalendář a zápasy ----------
@@ -141,12 +181,11 @@ const Career = {
       if (Math.random() < 0.55) { ot = true; if (Math.random() < lh / (lh + la)) { hg++; this.simStats(m.h, 1, 0, true); } else { ag++; this.simStats(m.a, 1, 0, true); } }
       else { so = true; if (Math.random() < clamp(0.5 + (H.att - A.att) * 0.01 + (H.gk - A.gk) * 0.012, 0.2, 0.8)) hg++; else ag++; }
     }
-    return { hg, ag, ot, so };
+    return { hg, ag, ot, so, inj: [...this.simInjuries(m.h), ...this.simInjuries(m.a)] };
   },
   // rozdělí góly a asistence mezi hráče, brankáři zákroky
   simStats(ti, goals, against, extraOnly) {
-    const ps = this.c.teams[ti].players, sk = ps.filter((p) => p.role !== 'G');
-    const g = ps.filter((p) => p.role === 'G').sort((a, b) => a.line - b.line)[0];
+    const R = this.rosterFor(ti), sk = R.lines.flat(), g = R.goalies[0];
     if (!extraOnly) {
       for (const p of sk) p.st.gp++;
       g.st.gp++;
@@ -195,13 +234,15 @@ const Career = {
   advance(userRes) {
     const c = this.c, ev = this.event();
     if (ev.k === 'END') return;
-    this.day = []; const label = this.eventLabel(ev);
+    this.day = []; this.dayInj = []; const label = this.eventLabel(ev);
     const um = this.userMatch(ev);
     for (const m of this.fixtures(ev)) {
-      const mine = um && m.h === um.h && m.a === um.a;
-      this.record(m, mine && userRes ? userRes : this.sim(m));
+      const mine = um && m.h === um.h && m.a === um.a, res = mine && userRes ? userRes : this.sim(m);
+      this.record(m, res);
+      this.tickInj(m.h); this.tickInj(m.a);
+      for (const q of res.inj || []) this.injure(q.ti, q.id, q);
     }
-    c.lastDay = { label, results: this.day };
+    c.lastDay = { label, results: this.day, inj: this.dayInj };
     if (ev.k === 'C') {
       const rd = c.cup.rounds[ev.s];
       if (ev.s < 2) c.cup.rounds.push([0, 1].slice(0, rd.length / 2).map((i) => ({ a: rd[i * 2].w, b: rd[i * 2 + 1].w, w: null, s: '' })));
@@ -257,7 +298,7 @@ const Career = {
     const c = this.c; let retired = 0;
     for (const t of c.teams) {
       t.players = t.players.map((p) => {
-        p.age++;
+        p.age++; p.inj = 0; delete p.injName;
         const d = p.age <= 22 ? [1, 5] : p.age <= 26 ? [0, 3] : p.age <= 30 ? [-1, 1] : p.age <= 33 ? [-3, 0] : [-5, -1];
         for (const k in p.at) p.at[k] = Math.round(clamp(p.at[k] + d[0] + Math.random() * (d[1] - d[0] + 1), 40, 99));
         if (p.age >= 35 && Math.random() < 0.35 + (p.age - 35) * 0.2) {
@@ -317,7 +358,7 @@ const Career = {
     const c = this.c, ids = [...Array(TEAMS.length).keys()].filter((i) => i !== c.user);
     const [x, y] = shuffle(ids), role = pick(POS_ORDER);
     const px = pick(c.teams[x].players.filter((p) => p.role === role)), py = pick(c.teams[y].players.filter((p) => p.role === role));
-    if (!px || !py || Math.abs(plValue(px) - plValue(py)) > 1.5) return;
+    if (!px || !py || px.inj > 0 || py.inj > 0 || Math.abs(plValue(px) - plValue(py)) > 1.5) return;
     const tx = c.teams[x].players, ty = c.teams[y].players;
     tx[tx.indexOf(px)] = py; ty[ty.indexOf(py)] = px;
     this.sortLines(x); this.sortLines(y); this.fixNumbers(x); this.fixNumbers(y);
@@ -332,12 +373,13 @@ const Career = {
     const humans = devs.slice(0, 4).map((d) => ({ dev: d, team: side }));
     Sfx.init(); Sfx.resume();
     App.game = new Game({ home: m.h, away: m.a, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans,
-      autoChange: S.autoChange !== false, penalties: S.penalties !== false, rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
+      autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
     App.careerMatch = m; App.screen = 'game'; App.sel = 0;
   },
   finishPlayed(g) {
     const c = this.c, m = App.careerMatch;
-    const res = { hg: g.teams[0].score, ag: g.teams[1].score, ot: g.period > 3, so: false };
+    const res = { hg: g.teams[0].score, ag: g.teams[1].score, ot: g.period > 3, so: false, inj: [] };
+    for (const q of g.injuries || []) if (q.player.id != null) res.inj.push({ ti: q.team === g.teams[0] ? m.h : m.a, id: q.player.id, name: q.name, games: q.games });
     if (res.hg === res.ag) {
       res.so = true; const H = this.strength(m.h), A = this.strength(m.a);
       if (Math.random() < clamp(0.5 + (H.gk - A.gk) * 0.012, 0.25, 0.75)) res.hg++; else res.ag++;
@@ -532,7 +574,9 @@ Object.assign(Career, {
       this.T(this.teamName(m.h), x0 + 150, 340, 16, '#fff', 'center'); this.T(this.teamName(m.a), x0 + 450, 340, 16, '#fff', 'center');
       this.T(m.h === u ? 'DOMA' : 'VENKU', x0 + 300, 372, 16, '#9fe3ff', 'center');
       if (m.comp === 'P') { const s = c.po.rounds[c.po.round][m.ref]; this.T(`Série ${TEAMS[s.a].abbr} ${s.wa}:${s.wb} ${TEAMS[s.b].abbr}  (hraje se na 2 vítězství)`, x0 + 300, 404, 15, '#cfd8ea', 'center'); }
-      else { const o = m.h === u ? m.a : m.h; this.T(`Soupeř: ${this.standings().indexOf(o) + 1}. místo, ${c.table[o].pts} b.`, x0 + 300, 404, 15, '#cfd8ea', 'center'); }
+      else { const o = m.h === u ? m.a : m.h; this.T(`Soupeř: ${this.standings().indexOf(o) + 1}. místo, ${c.table[o].pts} b.`, x0 + 300, 400, 15, '#cfd8ea', 'center'); }
+      const inj = this.injured(u);
+      if (inj.length) this.T('Zranění: ' + inj.map((p) => `${p.first} ${p.name} (${p.inj})`).join(', '), x0 + 300, 422, 13, '#ff9a7a', 'center');
     } else if (c.phase === 'offseason') {
       const S = c.summary; this.T(`Mistr: ${this.teamName(S.champ)}`, x0 + 300, 230, 22, '#fff', 'center');
       this.T(`Tvůj tým: ${S.rank}. místo v základní části`, x0 + 300, 270, 17, '#cfd8ea', 'center');
@@ -633,8 +677,15 @@ Object.assign(Career, {
   playerRow(p, y, x0, cols, me, extra) {
     const a = p.at, G = p.role === 'G';
     const vals = [p.role, p.num, p.first + ' ' + p.name, p.age, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p), money(plValue(p)).replace(' mil. Kč', ' M')];
-    vals.forEach((v, k) => this.T(v, x0 + cols[k], y, 14, k === 8 ? '#ffd21f' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
+    vals.forEach((v, k) => this.T(v, x0 + cols[k], y, 14, k === 8 ? '#ffd21f' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
+    if (p.inj > 0) this.injTag(p, x0 + cols[2] + 132, y);
     if (extra) extra.forEach(([v, x]) => this.T(v, x0 + x, y, 14, '#cfd8ea', 'center'));
+  },
+  injTag(p, x, y) {
+    const t = `+ ZRANĚN (${p.inj})`, ctx = R.ctx;
+    ctx.font = font(11, 'bold'); const w = ctx.measureText(t).width + 12;
+    ctx.fillStyle = 'rgba(200,40,40,0.85)'; ctx.fillRect(x, y - 9, w, 18);
+    this.T(t, x + 6, y + 1, 11, '#fff', 'left', 'bold');
   },
   drawRosterC() {
     const c = this.c, rows = this.rosterRows(), x0 = R.W / 2 - 600;
@@ -654,6 +705,8 @@ Object.assign(Career, {
       this.playerRow(p, y, x0, cols, false, G ? [[st.gp, 950], [st.sa ? (st.sv / st.sa * 100).toFixed(1) + '%' : '–', 1037]] : [[st.gp, 950], [st.g, 1008], [st.a, 1066], [st.g + st.a, 1124]]);
       y += 27;
     });
+    const inj = this.injured(c.user);
+    if (inj.length) this.T('Zraněné hráče v zápase nahradí hráč z nižší formace, chybějící místo zaplní junior z farmy.', R.W / 2, 754, 12, '#ff9a7a', 'center');
     this.footer(this.mark ? 'Vyber druhého hráče na stejném postu → prohodí se formace   B zrušit' : 'A vybrat hráče a prohodit formace   Y seřadit formace podle síly   B zpět');
   },
   drawMarket() {
@@ -740,6 +793,7 @@ Object.assign(Career, {
     if (c.phase === 'season' || c.phase === 'playoffs') this.T(`Tvůj tým je ${this.myPos()}. v tabulce (${c.table[u].pts} b.)`, R.W / 2, 560, 18, '#9fe3ff', 'center');
     if (c.phase === 'playoffs' && c.po) this.T(`Play-off: ${ROUND_NAMES[c.po.round]}`, R.W / 2, 592, 16, '#cfd8ea', 'center');
     if (c.phase === 'offseason') this.T('Sezóna skončila!', R.W / 2, 600, 22, '#ffd21f', 'center', 'italic 900');
+    (ld && ld.inj || []).forEach((q, i) => this.T(`ZRANĚNÍ: #${q.num} ${q.name} – ${q.injName}, mimo ${q.games} ${gamesWord(q.games)}`, R.W / 2, 640 + i * 28, 16, '#ff9a7a', 'center'));
     this.footer('A pokračovat');
   },
   drawSummary() {
