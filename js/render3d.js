@@ -4,11 +4,25 @@
 const ZOOMS = [0.72, 0.86, 1.0, 1.2, 1.45];
 const ZOOM_NAMES = ['VELMI BLÍZKO', 'BLÍZKO', 'STŘEDNÍ', 'DALEKO', 'VELMI DALEKO'];
 const GFX = {
-  low: { name: 'NÍZKÁ', pr: 0.7, shadow: 0, refl: false, ice: 2048 },
-  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048 },
-  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096 },
+  low: { name: 'NÍZKÁ', pr: 0.7, shadow: 0, refl: false, ice: 2048, post: false, wear: false },
+  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048, post: false, wear: true },
+  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096, post: true, wear: true },
 };
 const GFX_ORDER = ['low', 'mid', 'high'];
+// barevné ladění „TV přenos“: kontrast, sytost, vinětace (v lineárním HDR před tone mappingem)
+const GRADE_SHADER = {
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      c.rgb = mix(vec3(l), c.rgb, 1.12);                       // sytost
+      c.rgb *= mix(vec3(0.96, 0.99, 1.05), vec3(0.99, 1.0, 1.02), smoothstep(0.05, 0.9, l)); // chladný nádech ledu
+      vec2 d = vUv - 0.5; c.rgb *= 1.0 - uVig * smoothstep(0.25, 0.85, dot(d, d) * 2.2);
+      gl_FragColor = c;
+    }`,
+};
 
 function rrPts(hl, hw, r, n) {
   const pts = [], cx = hl - r, cy = hw - r;
@@ -235,7 +249,7 @@ const G3 = {
     this.clipNear = new THREE.Plane(new THREE.Vector3(0, 0, -1), RINK.HW + 5);
     this.modelMap = new Map(); this.modelGame = null; this.teamCache = new Map();
     this.buildShared(); this.buildEnv(); this.buildLights(); this.buildIce(); this.buildBoards(); this.buildStands();
-    this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights();
+    this.buildNets(); this.buildPuck(); this.buildRings(); this.buildGoalLights(); this.buildWear();
     this.quality = null;
     this.loadBase();
     this.setView();
@@ -370,6 +384,108 @@ const G3 = {
     k.shadow.bias = -0.0004; k.shadow.normalBias = 0.04;
     this.scene.add(k, k.target);
     const f = new THREE.DirectionalLight(0xc8d8ff, 0.45); f.position.set(-80, 90, 60); this.scene.add(f);
+    const rim = new THREE.DirectionalLight(0xdfe8ff, 0.55); rim.position.set(90, 40, -70); this.scene.add(rim);
+    // rampy světel nad kluzištěm (odrážejí se v ledu, v bloomu září)
+    const fix = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 6, 5.6) }), frame = new THREE.MeshStandardMaterial({ color: 0x23262d, roughness: 0.6, metalness: 0.5 });
+    const fg = new THREE.BoxGeometry(5.2, 0.5, 2.2), lg = new THREE.PlaneGeometry(4.6, 1.7).rotateX(Math.PI / 2), tg = new THREE.BoxGeometry(150, 0.8, 0.8);
+    const fixtures = [];
+    for (const z of [-34, -12, 12, 34]) {
+      const truss = new THREE.Mesh(tg, frame); truss.position.set(0, 66.5, z); this.scene.add(truss);
+      for (let x = -70; x <= 70; x += 14) fixtures.push([x, z]);
+    }
+    const fi = new THREE.InstancedMesh(fg, frame, fixtures.length), li = new THREE.InstancedMesh(lg, fix, fixtures.length), mm = new THREE.Matrix4();
+    fixtures.forEach(([x, z], i) => { mm.makeTranslation(x, 66, z); fi.setMatrixAt(i, mm); mm.makeTranslation(x, 65.7, z); li.setMatrixAt(i, mm); });
+    this.scene.add(fi, li);
+  },
+  // ---------- postprocessing (vysoká kvalita): bloom + ladění + tone mapping ----------
+  setPost(on) {
+    if (!on || !window.PP) { this.comp = null; return; }
+    if (this.comp) return;
+    try {
+      const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: IS_MOBILE ? 0 : 4 });
+      const c = this.comp = new PP.EffectComposer(this.r, rt);
+      c.addPass(new PP.RenderPass(this.scene, this.cam));
+      this.bloom = new PP.UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.55, 1.6);
+      c.addPass(this.bloom);
+      c.addPass(new PP.ShaderPass(GRADE_SHADER));
+      c.addPass(new PP.OutputPass());
+    } catch (e) { console.warn('postprocessing nejde', e); this.comp = null; }
+  },
+  // ---------- stopy bruslí a sníh ----------
+  buildWear() {
+    const W = 2048, H = Math.round(W * 85 / 200);
+    const [c, g] = mkCanvas(W, H);
+    this.wear = { c, g, ppf: W / 200, dirty: 0, last: new Map(), tex: null };
+    this.wear.tex = canvasTex(c, true, 4);
+    const m = new THREE.MeshStandardMaterial({ map: this.wear.tex, transparent: true, depthWrite: false, roughness: 0.95, color: 0xffffff,
+      polygonOffset: true, polygonOffsetFactor: -2 });
+    this.wearMesh = new THREE.Mesh(this.iceFlat.clone().rotateX(-Math.PI / 2), m);
+    this.wearMesh.position.y = 0.01; this.wearMesh.renderOrder = 2; this.wearMesh.receiveShadow = true;
+    this.scene.add(this.wearMesh);
+    // částice sněhu
+    const N = this.snowN = 500;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
+    geo.setAttribute('alpha', new THREE.Float32BufferAttribute(new Float32Array(N), 1));
+    this.snowP = Array.from({ length: N }, () => ({ x: 0, y: -50, z: 0, vx: 0, vy: 0, vz: 0, life: 0, max: 1 }));
+    this.snowI = 0;
+    const sm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+      uniforms: { uScale: { value: 400 } },
+      vertexShader: 'attribute float alpha; varying float vA; uniform float uScale; void main() { vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = uScale * 0.55 / -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float vA; void main() { vec2 d = gl_PointCoord - 0.5; float a = smoothstep(0.5, 0.1, length(d)) * vA; if (a < 0.01) discard; gl_FragColor = vec4(vec3(1.6), a * 0.85); }' });
+    this.snow = new THREE.Points(geo, sm); this.snow.frustumCulled = false; this.snow.renderOrder = 5;
+    this.scene.add(this.snow);
+  },
+  clearWear() { if (!this.wear) return; this.wear.g.clearRect(0, 0, this.wear.c.width, this.wear.c.height); this.wear.tex.needsUpdate = true; this.wear.last.clear(); },
+  spray(x, y, dir, power) {
+    for (let i = 0; i < 4 + power * 10; i++) {
+      const s = this.snowP[this.snowI]; this.snowI = (this.snowI + 1) % this.snowN;
+      const a = dir + (Math.random() - 0.5) * 1.4, v = 6 + Math.random() * 12 * power;
+      Object.assign(s, { x: x + (Math.random() - 0.5), y: y + (Math.random() - 0.5), z: 0.2, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 2 + Math.random() * 5 * power, life: 0, max: 0.35 + Math.random() * 0.4 });
+    }
+  },
+  updateWear(players, dt, play) {
+    const W = this.wear; if (!W || !this.wearMesh.visible) return;
+    const g = W.g, ppf = W.ppf, X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf;
+    const seen = new Set();
+    for (const p of players) {
+      const ref = p.ref || p; seen.add(ref);
+      if (p.isRef || p.isGoalie && !play) continue;
+      const prev = W.last.get(ref), sp = p.spdN || 0;
+      W.last.set(ref, { x: p.x, y: p.y, sp, dir: p.dir });
+      if (!prev || !play) continue;
+      const jump = Math.hypot(p.x - prev.x, p.y - prev.y); if (jump > 6 || jump < 0.05) continue;
+      // dvě stopy bruslí, šířka podle rychlosti a fáze kroku
+      const lx = -Math.sin(p.dir), ly = Math.cos(p.dir), off = 0.55 + 0.35 * Math.abs(Math.sin(p.stride || 0)) * clamp(sp / 20, 0, 1);
+      g.strokeStyle = 'rgba(236,242,248,0.16)'; g.lineWidth = Math.max(1, 0.22 * ppf); g.lineCap = 'round';
+      for (const sd of [1, -1]) {
+        g.beginPath(); g.moveTo(X(prev.x + lx * off * sd), Y(prev.y + ly * off * sd)); g.lineTo(X(p.x + lx * off * sd), Y(p.y + ly * off * sd)); g.stroke();
+      }
+      // prudké brzdění / ostrá zatáčka: sníh
+      const decel = (prev.sp - sp) / Math.max(dt, 1e-3), turn = Math.abs(angDiff(prev.dir, p.dir)) / Math.max(dt, 1e-3);
+      if ((decel > 55 && prev.sp > 12) || (turn > 4.5 && sp > 14)) {
+        const pw = clamp(Math.max(decel / 120, turn * sp / 120), 0.3, 1);
+        this.spray(p.x + Math.cos(p.dir) * 1.2, p.y + Math.sin(p.dir) * 1.2, p.dir + (Math.random() < 0.5 ? 1 : -1) * 1.2, pw);
+        const gx = X(p.x + Math.cos(p.dir)), gy = Y(p.y + Math.sin(p.dir)), r = (1.2 + pw * 1.5) * ppf;
+        const gg = g.createRadialGradient(gx, gy, 0, gx, gy, r); gg.addColorStop(0, 'rgba(240,244,248,0.35)'); gg.addColorStop(1, 'rgba(240,244,248,0)');
+        g.fillStyle = gg; g.fillRect(gx - r, gy - r, 2 * r, 2 * r);
+      }
+    }
+    for (const k of W.last.keys()) if (!seen.has(k)) W.last.delete(k);
+    W.dirty += dt; if (W.dirty > 0.25) { W.dirty = 0; W.tex.needsUpdate = true; }
+  },
+  updateSnow(dt) {
+    if (!this.snow) return;
+    const pos = this.snow.geometry.attributes.position, al = this.snow.geometry.attributes.alpha;
+    for (let i = 0; i < this.snowN; i++) {
+      const s = this.snowP[i];
+      if (s.life < s.max) {
+        s.life += dt; s.vz -= 30 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z = Math.max(0.05, s.z + s.vz * dt);
+        s.vx *= 1 - 3 * dt; s.vy *= 1 - 3 * dt;
+      }
+      pos.setXYZ(i, s.x, s.z, -s.y); al.setX(i, s.life < s.max ? 1 - s.life / s.max : 0);
+    }
+    pos.needsUpdate = true; al.needsUpdate = true;
   },
 
   // ---------- led ----------
@@ -716,6 +832,7 @@ const G3 = {
     this.setReflector(q.refl);
     if (this.bodies) { const n = this.seats.length; this.bodies.count = this.heads.count = name === 'low' ? Math.floor(n * 0.55) : n; }
     if (changedIce) this.paintIce();
+    this.setPost(q.post); this.wearMesh.visible = q.wear; this.resize();
   },
   setView() {
     const S = Settings.data, view = S.cam === 'side' ? 'side' : 'top';
@@ -754,9 +871,15 @@ const G3 = {
     if (this.fail) return;
     tx = clamp(tx, -this.limX, this.limX); ty = clamp(ty * 0.85, -this.limY, this.limY);
     const k = snap ? 1 : Math.min(1, dt * 3.2);
+    // dynamický zoom: při rychlé akci (brejk) kamera mírně odjede, v klidné hře v pásmu se přiblíží
+    const v = dt > 0 && !snap && this.lastTx != null ? Math.hypot(tx - this.lastTx, ty - this.lastTy) / dt : 0;
+    this.lastTx = tx; this.lastTy = ty;
+    this.vEst = (this.vEst || 0) + (Math.min(v, 80) - (this.vEst || 0)) * Math.min(1, dt * 1.5);
+    const zt = 0.95 + clamp((this.vEst - 8) / 30, 0, 1) * 0.1;
+    this.zf = snap || this.zf == null ? zt : this.zf + (zt - this.zf) * Math.min(1, dt * 0.8);
     this.camT.x += (tx - this.camT.x) * k; this.camT.y += (ty - this.camT.y) * k * 0.85;
     const sx = (Math.random() - 0.5) * shake * 1.2, sy = (Math.random() - 0.5) * shake * 1.0;
-    const [ox, oy, oz] = this.off;
+    const [ox, oy, oz] = this.off.map((q) => q * this.zf);
     this.cam.position.set(this.camT.x + ox + sx, oz + sy, -(this.camT.y + oy));
     this.cam.lookAt(this.camT.x + sx * 0.5, 0, -this.camT.y);
   },
@@ -767,6 +890,8 @@ const G3 = {
     const vw = R.vw || window.innerWidth, vh = R.vh || window.innerHeight;
     this.r.setSize(vw, vh, false);
     this.cam.aspect = vw / Math.max(1, vh); this.cam.updateProjectionMatrix();
+    if (this.comp) { this.comp.setPixelRatio(this.r.getPixelRatio()); this.comp.setSize(vw, vh); }
+    if (this.snow) this.snow.material.uniforms.uScale.value = vh * this.r.getPixelRatio() * 0.9;
     this.computeLims(); this.sizeReflector();
   },
   toScreen(x, y, z) {
@@ -828,6 +953,10 @@ const G3 = {
     const k = this.key;
     k.target.position.set(this.camT.x, 0, -this.camT.y);
     k.position.set(this.camT.x + 25, 120, -this.camT.y + 30);
-    this.r.render(this.scene, this.cam);
+    if (g && g !== this.wearGame) { this.wearGame = g; this.clearWear(); }
+    if (g && this.wearPeriod !== g.period) { this.wearPeriod = g.period; this.clearWear(); } // rolba mezi třetinami
+    this.updateWear(players, dt, !!g && (g.state === 'play' || g.state === 'stop' || g.state === 'goal'));
+    this.updateSnow(dt);
+    if (this.comp) this.comp.render(dt); else this.r.render(this.scene, this.cam);
   },
 };

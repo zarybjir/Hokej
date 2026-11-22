@@ -359,6 +359,9 @@ class Game {
       t.numCol = L > 0.6 ? (lightness(t.stripe) < 0.6 ? t.stripe : '#111') : '#ffffff';
       t.helmet = L > 0.7 ? (lightness(t.stripe) < 0.7 ? t.stripe : t.def.pants) : t.jersey;
       t.pants = t.def.pants;
+      // lemovka: kontrastní k dresu i k pruhům
+      const d = t.def, cand = L > 0.7 ? [d.c3, d.c2, d.c1, '#111111'] : ['#ffffff', d.c3, d.c2];
+      t.trim = cand.find((q) => Math.abs(lightness(q) - L) > 0.3 && q !== t.stripe) || cand[0];
     }
   }
   setDirs() {
@@ -656,7 +659,7 @@ class Game {
     pk.owner = null; pk.vx = Math.cos(ang) * speed; pk.vy = Math.sin(ang) * speed; pk.vz = vz; pk.z = 0.1;
     pk.shot = { by: p, team: p.team, t: this.time, counted: false, dist: d };
     pk.oneTimer = !!oneTimer; pk.passTarget = null; pk.wasPass = false; pk.lastTouch = p; p.pickCD = 0.35;
-    p.winding = false; p.windT = 0;
+    p.winding = false; p.windT = 0; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap;
     if (slap) this.sfx('slap', 0.6 + 0.4 * power); else this.sfx('stick', 1);
     if (oneTimer) this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f');
   }
@@ -753,7 +756,7 @@ class Game {
       if (p.isGoalie) continue;
       p.pokeA = Math.max(0, p.pokeA - h * 3.3); p.pokeCD -= h; p.checkCD -= h; p.pickCD -= h;
       if (p.checkT > 0) { p.checkT -= h; if (p.checkT <= 0 && !p.checkHit) p.recoverT = 0.3; }
-      p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h);
+      p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h); if (p.shotFT > 0) p.shotFT -= h;
       p.carry = pk.owner === p;
       if (p.downT > 0) {
         p.downT -= h; const f = 1 - 3 * h; p.vx *= f; p.vy *= f; p.spdN = Math.hypot(p.vx, p.vy);
@@ -1315,7 +1318,7 @@ class Game {
       px: pk.x, py: pk.y, pz: pk.z,
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
-        windT: p.winding ? p.windT : 0, pokeA: p.pokeA, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
+        windT: p.winding ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, pokeA: p.pokeA, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
         num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role })),
     });
     if (this.rec.length > 330) this.rec.shift();

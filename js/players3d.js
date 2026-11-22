@@ -49,10 +49,12 @@ vPos = position;
   float armM = smoothstep(0.15, 0.21, ax) * smoothstep(1.27, 1.33, y);
   float bodyM = 1.0 - armM;
   float inf = 0.0;
-  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.98, 1.04, y)) * 0.042;           // kalhoty
-  inf += bodyM * smoothstep(0.98, 1.04, y) * (1.0 - smoothstep(1.46, 1.5, y)) * (0.03 + 0.035 * smoothstep(1.22, 1.42, y)); // hruď + ramena
-  inf += bodyM * smoothstep(0.12, 0.17, y) * (1.0 - smoothstep(0.56, 0.62, y)) * 0.03;            // chrániče holení
-  inf += armM * (1.0 - smoothstep(0.64, 0.68, ax)) * (0.025 + 0.02 * (1.0 - smoothstep(0.2, 0.32, ax)));   // rukávy, ramena
+  float back = smoothstep(0.02, -0.06, position.z);
+  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.98, 1.04, y)) * (0.044 - 0.016 * back * smoothstep(0.8, 0.95, y)); // kalhoty
+  inf += bodyM * smoothstep(0.98, 1.04, y) * (1.0 - smoothstep(1.46, 1.5, y)) * (0.04 + 0.045 * smoothstep(1.2, 1.42, y)); // dres přes chrániče
+  inf += bodyM * smoothstep(0.12, 0.17, y) * (1.0 - smoothstep(0.56, 0.62, y)) * 0.032;           // chrániče holení
+  inf += armM * (1.0 - smoothstep(0.64, 0.68, ax)) * (0.03 + 0.03 * (1.0 - smoothstep(0.2, 0.34, ax)));   // rukávy, ramenní chrániče
+  inf += armM * exp(-pow((ax - 0.45) / 0.035, 2.0)) * 0.018;                                         // loketní chránič
   inf += armM * smoothstep(0.64, 0.68, ax) * 0.02;                                                   // rukavice
   transformed += normal * inf * uInfl;
 }
@@ -60,13 +62,31 @@ vPos = position;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
-uniform float uRef;
+uniform float uRef, uStyle, uYoke;
 varying vec3 vPos;
+// pruhy (lem dresu, rukávy, štulpny): t = vzdálenost od okraje v metrech
+vec3 band(vec3 base, float t) {
+  vec3 c = base;
+  if (uStyle < 0.5) {            // klasika: široký pruh lemovaný linkami
+    if (t > 0.035 && t < 0.085) c = uStripe;
+    if ((t > 0.026 && t < 0.035) || (t > 0.085 && t < 0.094)) c = uTrim;
+  } else if (uStyle < 1.5) {     // dva pruhy
+    if ((t > 0.03 && t < 0.052) || (t > 0.066 && t < 0.088)) c = uStripe;
+    if (t > 0.052 && t < 0.066) c = uTrim;
+  } else if (uStyle < 2.5) {     // široký pás s linkou uprostřed
+    if (t > 0.02 && t < 0.1) c = uStripe;
+    if (t > 0.055 && t < 0.065) c = uTrim;
+  } else {                       // tři tenké pruhy
+    if ((t > 0.03 && t < 0.045) || (t > 0.06 && t < 0.075) || (t > 0.09 && t < 0.105)) c = uStripe;
+  }
+  return c;
+}
 `;
 const BODY_FRAG = `
 {
   float ax = abs(vPos.x), y = vPos.y;
   vec3 c;
+  float fab = 1.0;
   if (ax > 0.17 && y > 1.29 && uRef > 0.5) {
     // rozhodčí: pruhované rukávy, hlavní má oranžové pásky
     c = fract(atan(y - 1.438, vPos.z) / 6.2832 * 8.0) < 0.5 ? uJersey : uStripe;
@@ -74,12 +94,17 @@ const BODY_FRAG = `
     else if (ax > 0.6) c = uStripe;
     else if (uRef > 1.5 && ax > 0.27 && ax < 0.33) c = vec3(1.0, 0.35, 0.0);
   } else if (ax > 0.17 && y > 1.29) {
+    // rukáv: barva dresu, pruhy u lokte, manžeta, sedlo přes rameno
+    c = uJersey;
     if (ax > 0.66) c = uGlove;
-    else if (ax > 0.47 && ax < 0.515) c = uStripe;
-    else if ((ax > 0.455 && ax < 0.47) || (ax > 0.515 && ax < 0.53)) c = uTrim;
-    else if (ax > 0.6) c = uStripe;
-    else c = uJersey;
-    // číslo na horní straně ramen (čitelné z kamery shora)
+    else {
+      c = band(c, 0.615 - ax + 0.06);
+      if (ax > 0.6) c = uStripe;
+      if (uYoke > 0.5 && ax < 0.3 && y > 1.44) c = uStripe;
+      if (uYoke > 0.5 && ax > 0.3 && ax < 0.308 && y > 1.44) c = uTrim;
+      fab = 0.97 + 0.03 * sin(ax * 140.0);
+    }
+    // číslo na horní straně ramen / rukávů (čitelné z kamery shora)
     if (ax > 0.19 && ax < 0.35 && y > 1.445) {
       vec2 st = vec2((ax - 0.19) / 0.16, 0.5 - sign(vPos.x) * vPos.z / 0.17);
       vec4 t = texture2D(uNum, vec2(st.x * 0.5, 0.11 + clamp(st.y, 0.0, 1.0) * 0.6));
@@ -91,54 +116,71 @@ const BODY_FRAG = `
     c = fract(atan(vPos.x, vPos.z) / 6.2832 * 14.0) < 0.5 ? uJersey : uStripe;
     if (y > 1.44) c = uStripe;
   } else if (y > 0.99) {
-    c = uJersey;
-    if (y > 1.03 && y < 1.08) c = uStripe;
-    if ((y > 1.015 && y < 1.03) || (y > 1.08 && y < 1.095)) c = uTrim;
-    if (y > 1.43 && (ax > 0.1 || vPos.z < 0.0)) c = uStripe;
+    // dres: lem s pruhy, sedlo s lemovkou, límec do V se šněrováním, znak, záda se jménem a číslem
+    c = band(uJersey, y - 0.99);
+    if (uYoke > 0.5) {
+      float yk = 1.425 + (vPos.z > 0.0 ? 0.02 : 0.0) - ax * 0.12;
+      if (y > yk) c = uStripe; else if (y > yk - 0.009) c = uTrim;
+    } else if (y > 1.455) c = uStripe;
+    if (y > 1.47 && ax < 0.11) c = uTrim;                                   // límec
+    if (vPos.z > 0.02 && y > 1.39 && ax < (y - 1.39) * 0.55 + 0.004) {      // výstřih do V
+      c = uTrim;
+      if (ax < (y - 1.39) * 0.55 - 0.008) c = uStripe * 0.6;
+      if (ax < 0.004 && fract(y * 60.0) < 0.5) c = uTrim;                   // šněrování
+    }
     if (vPos.z < -0.03 && ax < 0.15 && y > 1.1 && y < 1.44) {
       vec4 t = texture2D(uNum, vec2((0.15 - vPos.x) / 0.6, (y - 1.1) / 0.34));
       c = mix(c, t.rgb, t.a);
-    } else if (vPos.z > 0.03 && ax < 0.085 && y > 1.24 && y < 1.4) {
-      vec4 t = texture2D(uNum, vec2(0.5 + (vPos.x + 0.085) / 0.34, (y - 1.24) / 0.16));
+    } else if (vPos.z > 0.03 && ax < 0.1 && y > 1.2 && y < 1.4) {
+      vec4 t = texture2D(uNum, vec2(0.5 + (vPos.x + 0.1) / 0.4, (y - 1.2) / 0.2));
       c = mix(c, t.rgb, t.a);
     }
+    // látka: jemné záhyby
+    fab = 0.95 + 0.05 * sin(y * 95.0 + sin(vPos.x * 30.0) * 2.0);
   } else if (y > 0.585) {
+    // kalhoty: pas, boční pruh s linkami
     c = uPants;
     if (y > 0.955) c = uPants * 0.55;
-    if (ax > 0.178 && y < 0.95 && y > 0.66) c = mix(c, uStripe, 0.85);
+    float sz = abs(vPos.z + 0.01);
+    if (ax > 0.08 && y < 0.95 && y > 0.64 && sz < 0.018) c = uStripe;
+    if (ax > 0.08 && y < 0.95 && y > 0.64 && sz > 0.018 && sz < 0.025) c = uTrim;
+    fab = 0.93 + 0.07 * smoothstep(0.62, 0.7, y) * (1.0 - smoothstep(0.88, 0.95, y)) * sin(y * 70.0);
   } else if (y > 0.115) {
-    c = uSock;
-    if (y > 0.34 && y < 0.41) c = uStripe;
-    if ((y > 0.325 && y < 0.34) || (y > 0.41 && y < 0.425)) c = uTrim;
+    // štulpny: stejné pruhy jako dres
+    c = band(uSock, y - 0.29);
   } else c = vec3(0.03);
-  diffuseColor.rgb = c;
+  diffuseColor.rgb = c * fab;
 }
 `;
 
 function bodyMaterial(T, p) {
-  const [c, g] = mkCanvas(512, 320);
+  const [c, g] = mkCanvas(1024, 640);
   if (p.isRef) return bodyMaterialFinish(T, p, c, true);
-  // levá polovina: záda (jméno + číslo), pravá: znak na hrudi
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = T.numCol;
-  g.font = 'bold 40px "DejaVu Sans", Arial, sans-serif';
+  const trim = T.trim || '#ffffff';
+  const outer = lightness(T.stripe) > 0.85 && lightness(T.jersey) > 0.7 ? T.def.c1 : T.stripe;
+  // levá polovina: záda (jméno + číslo s dvojitým obrysem)
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  g.font = 'bold 78px "DejaVu Sans", Arial, sans-serif';
   const nm = p.name.toUpperCase(); const nw = g.measureText(nm).width;
-  g.save(); g.translate(128, 36); g.scale(Math.min(1, 230 / nw), 1); g.fillText(nm, 0, 0); g.restore();
-  g.font = 'bold 200px "DejaVu Sans", Arial, sans-serif';
+  g.save(); g.translate(256, 72); g.scale(Math.min(1, 440 / nw), 1);
+  g.lineWidth = 8; g.strokeStyle = outer; g.strokeText(nm, 0, 0); g.fillStyle = T.numCol; g.fillText(nm, 0, 0); g.restore();
+  g.font = 'bold 400px "DejaVu Sans", Arial, sans-serif';
   const num = String(p.num), w = g.measureText(num).width;
-  g.save(); g.translate(128, 190); g.scale(Math.min(1, 236 / w), 1);
-  g.lineWidth = 14; g.strokeStyle = T.stripe; g.strokeText(num, 0, 0); g.fillText(num, 0, 0); g.restore();
-  const trim = lightness(T.jersey) > 0.7 ? T.def.c3 : '#ffffff';
-  g.fillStyle = T.stripe; g.beginPath(); g.arc(384, 160, 120, 0, TAU); g.fill();
-  g.fillStyle = trim; g.beginPath(); g.arc(384, 160, 98, 0, TAU); g.fill();
-  g.fillStyle = T.def.c1 === T.jersey ? T.stripe : T.def.c1;
-  g.font = 'italic 900 78px "Arial Black", "DejaVu Sans", sans-serif'; g.fillText(T.def.abbr, 384, 166);
+  g.save(); g.translate(256, 384); g.scale(Math.min(1, 470 / w), 1);
+  g.lineWidth = 46; g.strokeStyle = outer; g.strokeText(num, 0, 0);
+  g.lineWidth = 22; g.strokeStyle = trim === T.numCol ? T.def.c3 : trim; g.strokeText(num, 0, 0);
+  g.fillStyle = T.numCol; g.fillText(num, 0, 0); g.restore();
+  // pravá polovina: znak týmu na hrudi (textura je v poměru 1 : 1.25, proto protažení)
+  g.save(); g.translate(768, 320); g.scale(1, 1.25);
+  drawEmblem(g, T.def, 440);
+  g.restore();
   return bodyMaterialFinish(T, p, c, false);
 }
 function bodyMaterialFinish(T, p, c, ref) {
   const tex = canvasTex(c, true, 4);
-  const trim = lightness(T.jersey) > 0.7 ? T.def.c3 : '#ffffff';
+  const trim = T.trim || '#ffffff';
   const col = (h) => new THREE.Color(h);
+  const idx = TEAMS.indexOf(T.def);
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
     uInfl: { value: p.isGoalie ? 1.55 : 1 },
@@ -146,13 +188,14 @@ function bodyMaterialFinish(T, p, c, ref) {
     uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
+    uStyle: { value: ref ? 0 : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.uniforms);
     sh.vertexShader = BODY_VERT_HEAD + sh.vertexShader.replace('#include <begin_vertex>', BODY_VERT);
     sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + BODY_FRAG);
   };
-  m.customProgramCacheKey = () => 'hokej-body';
+  m.customProgramCacheKey = () => 'hokej-body2';
   m.userData.tex = tex;
   return m;
 }
@@ -164,7 +207,9 @@ function helmetMaterial(T, p) {
   if (!p.isRef) {
     const nc = lightness(T.helmet) > 0.55 ? '#111111' : '#ffffff';
     g.fillStyle = nc; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 54px "DejaVu Sans", Arial, sans-serif';
-    for (const x of [384, 256, 0, 512]) g.fillText(String(p.num), x, 70);
+    g.fillText(String(p.num), 384, 70);
+    // znak na bocích helmy
+    for (const x of [0, 256, 512]) { g.save(); g.translate(x, 66); g.scale(0.5, 1); drawEmblem(g, T.def, 84); g.restore(); }
   }
   const m = new THREE.MeshPhysicalMaterial({ map: canvasTex(c, true, 4), roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.08 });
   return m;
@@ -173,7 +218,7 @@ function helmetMaterial(T, p) {
 // ---------- model hráče ----------
 class HModel {
   constructor(G, p) {
-    this.G = G; this.goalie = p.isGoalie;
+    this.G = G; this.goalie = p.isGoalie; this.turn = 0;
     const T = p.team, tm = G.teamMats(T);
     this.isRef = !!p.isRef;
     this.helmetMat = helmetMaterial(T, p);
@@ -252,6 +297,10 @@ class HModel {
   }
   reset() { this.bones.forEach((b, i) => { b.quaternion.copy(this.bind[i][0]); b.position.copy(this.bind[i][1]); }); }
   pose(p, t) {
+    // rychlost otáčení (pro náklon v zatáčce a překládání)
+    const dtp = clamp(t - (this.lastT == null ? t : this.lastT), 0, 0.1); this.lastT = t;
+    if (this.prevDir != null && dtp > 0) { const tr = angDiff(this.prevDir, p.dir) / dtp; this.turn += (clamp(tr, -6, 6) - this.turn) * Math.min(1, dtp * 8); }
+    this.prevDir = p.dir;
     const d = p.dir, c = Math.cos(d), s = Math.sin(d);
     const O = new THREE.Vector3(p.x, 0, -p.y), F = new THREE.Vector3(c, 0, -s), Lv = new THREE.Vector3(-s, 0, -c);
     const J = (a, b, z) => new THREE.Vector3(O.x + F.x * a + Lv.x * b, z, O.z + F.z * a + Lv.z * b);
@@ -301,7 +350,8 @@ class HModel {
     // trup: předklon, kolébání do stran při odrazu
     rotAxis(B.Hips, Lv, down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind);
     rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
-    rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd);
+    const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
+    rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
     const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind;
     for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3);
     rotAxis(B.Spine1, UPV, -Math.sin(ph) * 0.12 * spd + p.hand * wind * 0.35);
@@ -309,23 +359,37 @@ class HModel {
     rotAxis(B.Neck, Lv, headUp * 0.55); rotAxis(B.Head, Lv, headUp * 0.45);
     // nohy: střídavé odrazy do stran
     const sw = Math.sin(ph) * spd, cw = Math.cos(ph);
-    const fL = J(0.15 - 0.85 * sw, 0.52 + 0.55 * Math.max(0, -sw), Math.max(0, cw) * 0.4 * spd);
-    const fR = J(0.15 + 0.85 * sw, -0.52 - 0.55 * Math.max(0, sw), Math.max(0, -cw) * 0.4 * spd);
+    // odraz do strany a dozadu, návrat pod tělo; v zatáčce vnější brusle překračuje vnitřní
+    let latL = 0.48 + 0.75 * Math.max(0, -sw), latR = -0.48 - 0.75 * Math.max(0, sw);
+    if (cross > 0) {
+      const outerUp = Math.max(0, ts > 0 ? sw : -sw), innerPush = Math.max(0, ts > 0 ? -sw : sw);
+      if (ts > 0) { latR = lerp(latR, 0.55 * outerUp - 0.3, cross); latL = lerp(latL, 0.35 - 0.9 * innerPush, cross); }
+      else { latL = lerp(latL, -0.55 * outerUp + 0.3, cross); latR = lerp(latR, -0.35 + 0.9 * innerPush, cross); }
+    }
+    const fL = J(0.15 - 1.0 * sw, latL, Math.max(0, cw) * 0.45 * spd);
+    const fR = J(0.15 + 1.0 * sw, latR, Math.max(0, -cw) * 0.45 * spd);
     const poleL = F.clone().addScaledVector(Lv, 0.25), poleR = F.clone().addScaledVector(Lv, -0.25);
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce
     const bo = bladeOffset(p.dir, p.hand, p.carry, t, wind, poke);
+    // dokončení střely: hůl jde vysoko dopředu přes tělo
+    const ftk = p.shotFT > 0 ? clamp(p.shotFT / (p.shotSlap ? 0.5 : 0.32), 0, 1) : 0;
+    if (ftk > 0) {
+      const k = Math.sin(ftk * Math.PI * 0.5) * (p.shotSlap ? 1 : 0.7), fx = Math.cos(p.dir), fy = Math.sin(p.dir);
+      bo[0] = lerp(bo[0], fx * 4.4 + fy * p.hand * 0.6, k); bo[1] = lerp(bo[1], fy * 4.4 - fx * p.hand * 0.6, k); bo[2] = lerp(bo[2], 3.4, k);
+      rotAxis(B.Spine1, UPV, -p.hand * k * 0.45);
+    }
     const heel = new THREE.Vector3(O.x + bo[0], bo[2] + 0.1, O.z - bo[1]);
     const H = wpos(B.Hips);
     const topSide = -p.hand; // horní ruka je na opačné straně než čepel
-    const topT = H.clone().addScaledVector(F, 0.85 + poke * 0.6 - wind * 0.5).addScaledVector(Lv, topSide * 0.5).add(new THREE.Vector3(0, -0.15 + wind * 2.1, 0));
+    const topT = H.clone().addScaledVector(F, 0.85 + poke * 0.6 - wind * 0.5 + ftk * 0.6).addScaledVector(Lv, topSide * (0.5 - ftk * 0.4)).add(new THREE.Vector3(0, -0.15 + wind * 2.1 + ftk * 1.6, 0));
     const [tA, tF, tH, tM] = topSide > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1] : [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1];
     const [bA, bF, bH, bM] = topSide > 0 ? [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1] : [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1];
     const dn = new THREE.Vector3(0, -1, 0);
     ik2(tA, tF, tH, topT, dn.clone().addScaledVector(Lv, topSide * 0.9).addScaledVector(F, -0.3), this.L.upper, this.L.fore);
     const top = wpos(tH);
     const sdir = new THREE.Vector3().subVectors(heel, top), slen = sdir.length(); sdir.divideScalar(slen);
-    const freeArm = !p.carry && spd > 0.55 && wind === 0 && poke === 0;
+    const freeArm = !p.carry && spd > 0.55 && wind === 0 && poke === 0 && ftk === 0;
     const sh = wpos(bA);
     if (freeArm) {
       const sw2 = Math.sin(ph + Math.PI) * spd;

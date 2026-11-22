@@ -94,7 +94,7 @@ const App = {
         break;
       }
       case 'settings': {
-        const n = 14;
+        const n = 15;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
         if (this.sel === 0 && d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); }
@@ -110,10 +110,12 @@ const App = {
         if (this.sel === 10 && (d || a)) S.tags = !S.tags;
         if (this.sel === 11 && (d || a)) S.penalties = S.penalties === false;
         if (this.sel === 12 && (d || a)) S.injuries = S.injuries === false;
-        if ((this.sel === 13 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
+        if (this.sel === 13 && a) { Settings.save(); this.openTeamEditor(); break; }
+        if ((this.sel === 14 && a) || M.pressed('b')) { Settings.save(); this.go('title', 2); }
         if (d || a) Settings.save();
         break;
       }
+      case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
       case 'help':
         if (M.pressed('a') || M.pressed('b') || M.pressed('start')) {
           if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 3);
@@ -236,15 +238,11 @@ const App = {
   },
   teamLogo(T, x, y, s) {
     const ctx = R.ctx;
-    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-    ctx.beginPath(); ctx.moveTo(-60, -70); ctx.lineTo(60, -70); ctx.lineTo(60, 10); ctx.quadraticCurveTo(60, 60, 0, 80); ctx.quadraticCurveTo(-60, 60, -60, 10); ctx.closePath();
-    ctx.fillStyle = T.c2; ctx.fill();
-    ctx.scale(0.86, 0.86); ctx.beginPath(); ctx.moveTo(-60, -70); ctx.lineTo(60, -70); ctx.lineTo(60, 10); ctx.quadraticCurveTo(60, 60, 0, 80); ctx.quadraticCurveTo(-60, 60, -60, 10); ctx.closePath();
-    ctx.fillStyle = T.c1; ctx.fill();
-    ctx.fillStyle = T.c3; ctx.fillRect(-60, -22, 120, 14);
-    ctx.font = font(46); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6; ctx.strokeStyle = lightness(T.c1) > 0.6 ? T.c2 : '#000'; ctx.strokeText(T.abbr, 0, 22);
-    ctx.fillStyle = lightness(T.c1) > 0.6 ? '#111' : '#fff'; ctx.fillText(T.abbr, 0, 22);
+    ctx.save(); ctx.translate(x, y);
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12 * s; ctx.shadowOffsetY = 4 * s;
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 80 * s, 0, TAU); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    drawEmblem(ctx, T, 160 * s);
     ctx.restore();
   },
   teamCard(T, x, y, label, on) {
@@ -258,11 +256,12 @@ const App = {
       ctx.fillText('◄', x - 150 - Math.sin(this.t * 6) * 3, y + 110); ctx.fillText('►', x + 150 + Math.sin(this.t * 6) * 3, y + 110);
     }
     R.chromeText(T.city.toUpperCase(), x, y + 200, 28);
-    ctx.font = font(18, 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(T.name.toUpperCase(), x, y + 228);
+    ctx.font = font(18, 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(T.name.toUpperCase(), x, y + 226);
+    ctx.font = font(10, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText((T.conf ? 'ZÁPAD' : 'VÝCHOD') + ' • ' + ({ ATLANTIC: 'ATLANTICKÁ', METRO: 'METROPOLITNÍ', CENTRAL: 'CENTRÁLNÍ', PACIFIC: 'PACIFICKÁ' }[T.div] || '') + ' DIVIZE', x, y + 240);
     const RT = teamRatings(TEAMS.indexOf(T));
     const bars = [['SÍLA', RT.SIL], ['RYCHLOST', RT.RYC], ['PŘESNOST', RT.PRE], ['STAMINA', RT.STA], ['BRANKÁŘ', RT.REF]];
     bars.forEach(([n, v], i) => {
-      const yy = y + 246 + i * 16;
+      const yy = y + 254 + i * 15;
       ctx.font = font(11, 'bold'); ctx.textAlign = 'right'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(n, x - 70, yy);
       ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x - 60, yy - 5, 200, 10);
       ctx.fillStyle = v >= 80 ? '#4cff7a' : v >= 74 ? '#ffd21f' : '#ff9a3a'; ctx.fillRect(x - 60, yy - 5, 200 * clamp((v - 50) / 45, 0, 1), 10);
@@ -349,6 +348,45 @@ const App = {
     ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
     ctx.fillText('Každý hráč posune svůj ovladač páčkou doleva/doprava.  Dva na jedné straně = spolupráce.   B zpět', R.W / 2, 750);
   },
+  // editor vlastních názvů týmů (HTML formulář přes hru, kvůli psaní textu)
+  openTeamEditor() {
+    this.screen = 'teamedit';
+    const el = document.createElement('div'); el.id = 'teamedit';
+    el.style.cssText = 'cursor:auto;position:fixed;inset:0;z-index:50;background:rgba(6,10,22,.94);color:#fff;font:15px "DejaVu Sans",Arial,sans-serif;overflow:auto;padding:16px';
+    const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const inp = 'background:#101a33;color:#fff;border:1px solid #3a4d7a;border-radius:4px;padding:5px 7px;font:inherit;width:100%;box-sizing:border-box';
+    const btn = 'background:#ffd21f;color:#111;border:0;border-radius:6px;padding:10px 18px;font:bold 15px "DejaVu Sans",Arial,sans-serif;margin:0 6px;cursor:pointer';
+    el.innerHTML = `<div style="max-width:900px;margin:0 auto">
+      <h2 style="margin:4px 0 6px;font-style:italic">VLASTNÍ NÁZVY TÝMŮ</h2>
+      <p style="margin:0 0 12px;color:#9fe3ff">Názvy se ukládají jen v tomto prohlížeči. Zkratka má nejvýš 3 znaky. Na Legion Go / Steam Decku otevřeš klávesnici přes Steam + X.</p>
+      <table style="width:100%;border-collapse:collapse">
+      <tr style="color:#9fe3ff;text-align:left"><th style="width:34%">Město</th><th style="width:44%">Přezdívka</th><th>Zkratka</th></tr>
+      ${TEAMS.map((t, i) => `<tr>
+        <td style="padding:3px 6px 3px 0"><input data-i="${i}" data-k="city" maxlength="16" value="${esc(t.city)}" style="${inp}"></td>
+        <td style="padding:3px 6px 3px 0"><input data-i="${i}" data-k="name" maxlength="18" value="${esc(t.name)}" style="${inp}"></td>
+        <td style="padding:3px 0"><input data-i="${i}" data-k="abbr" maxlength="3" value="${esc(t.abbr)}" style="${inp};text-transform:uppercase"></td></tr>`).join('')}
+      </table>
+      <div style="position:sticky;bottom:0;padding:14px 0;background:rgba(6,10,22,.96);text-align:center">
+        <button data-a="save" style="${btn}">ULOŽIT</button>
+        <button data-a="reset" style="${btn};background:#8a93a6">VÝCHOZÍ NÁZVY</button>
+        <button data-a="close" style="${btn};background:#cfd8ea">ZAVŘÍT</button>
+      </div></div>`;
+    const close = () => { el.remove(); this.go('settings', 13); };
+    el.addEventListener('click', (e) => {
+      const a = e.target.dataset && e.target.dataset.a; if (!a) return;
+      if (a === 'save') {
+        el.querySelectorAll('input').forEach((x) => { const v = x.value.trim(); if (v) TEAMS[+x.dataset.i][x.dataset.k] = x.dataset.k === 'abbr' ? v.toUpperCase().slice(0, 3) : v; });
+        TeamNames.save(); if (window.G3 && G3.refreshTeams) G3.refreshTeams(); close();
+      } else if (a === 'reset') {
+        try { localStorage.removeItem(TeamNames.KEY); } catch (err) {}
+        TeamNames.load(); if (window.G3 && G3.refreshTeams) G3.refreshTeams(); close();
+      } else close();
+    });
+    // klávesy z formuláře nepouštět do hry
+    for (const ev of ['keydown', 'keyup']) el.addEventListener(ev, (e) => e.stopPropagation());
+    el.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    document.body.appendChild(el);
+  },
   drawSettings() {
     const ctx = R.ctx, S = Settings.data;
     R.chromeText('NASTAVENÍ', R.W / 2, 64, 44);
@@ -356,11 +394,11 @@ const App = {
       ['ZÁZNAM PO GÓLU', S.replay ? 'ZAP' : 'VYP'], ['ZOBRAZIT FPS', S.fps ? 'ZAP' : 'VYP'], ['CELÁ OBRAZOVKA', document.fullscreenElement ? 'ZAP' : 'VYP'], ['KAMERA', S.cam === 'side' ? 'Z BOKU' : 'SESHORA'],
       ['ZOOM', '◄ ' + ZOOM_NAMES[S.zoom == null ? 1 : S.zoom] + ' ►'], ['GRAFIKA', '◄ ' + GFX[S.gfx || 'high'].name + ' ►'],
       ['OBTÍŽNOST', '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►'], ['STŘÍDÁNÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'],
-      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZRANĚNÍ', S.injuries !== false ? 'ZAP' : 'VYP'], ['ZPĚT', '']];
+      ['JMENOVKA NAD HRÁČEM S PUKEM', S.tags !== false ? 'ZAP' : 'VYP'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['ZRANĚNÍ', S.injuries !== false ? 'ZAP' : 'VYP'], ['VLASTNÍ NÁZVY TÝMŮ', 'UPRAVIT ►'], ['ZPĚT', '']];
     rows.forEach(([n, v], i) => {
-      const y = 122 + i * 41, on = this.sel === i;
-      R.panel(R.W / 2 - 330, y - 19, 660, 38, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 18, 658, 36); }
+      const y = 118 + i * 39, on = this.sel === i;
+      R.panel(R.W / 2 - 330, y - 18, 660, 36, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 17, 658, 34); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(n, R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(v, R.W / 2 + 305, y);
     });

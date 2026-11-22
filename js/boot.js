@@ -3,10 +3,16 @@ import * as THREE from 'three';
 import { Reflector } from '../lib/Reflector.js';
 import { GLTFLoader } from '../lib/loaders/GLTFLoader.js';
 import * as SkeletonUtils from '../lib/utils/SkeletonUtils.js';
+import { EffectComposer } from '../lib/postprocessing/EffectComposer.js';
+import { RenderPass } from '../lib/postprocessing/RenderPass.js';
+import { ShaderPass } from '../lib/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from '../lib/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from '../lib/postprocessing/OutputPass.js';
 window.THREE = THREE;
 window.Reflector = Reflector;
 window.GLTFLoader = GLTFLoader;
 window.SkeletonUtils = SkeletonUtils;
+window.PP = { EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass };
 
 const msg = document.getElementById('msg');
 const files = ['util', 'data', 'audio', 'input', 'game', 'led', 'render', 'touch', 'render3d', 'players3d', 'career', 'app'];

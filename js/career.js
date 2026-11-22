@@ -1,11 +1,11 @@
 'use strict';
 // ---------- Režim kariéry: liga, pohár, play-off, přestupy, vývoj hráčů ----------
-const CAREER_KEY = 'hokej98-career';
-const CUP_AFTER = { 5: 0, 11: 1, 17: 2 }; // po kterém kole ligy se hraje kolo poháru
+const CAREER_KEY = 'hokej98-career2';
+const CUP_AFTER = { 9: 0, 19: 1, 29: 2 }; // po kterém kole ligy (0..29) se hraje kolo poháru
 const ROUND_NAMES = ['ČTVRTFINÁLE', 'SEMIFINÁLE', 'FINÁLE'];
 const POS_ORDER = ['C', 'LW', 'RW', 'LD', 'RD', 'G'];
 const LINE_W = [1, 0.75, 0.5];
-const TRANSFER_LAST_ROUND = 13; // přestupy jen do 14. kola ligy
+const TRANSFER_LAST_ROUND = 22; // přestupy jen do 23. kola ligy
 const r1 = (v) => Math.round(v * 10) / 10;
 const money = (v) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',') + ' mil. Kč';
 
@@ -38,7 +38,9 @@ const Career = {
       first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.', hand: rnd() < 0.6 ? 1 : -1, age, at, st: blankSt() };
   },
   newCareer(user) {
-    const c = this.c = { v: 1, season: 1, year: 1998, user, nextId: 1, teams: [], budget: [], fa: [], news: [], history: [], results: [], lastDay: null };
+    const c = this.c = { v: 2, season: 1, year: 1998, user, nextId: 1, teams: [], budget: [], fa: [], news: [], history: [], results: [], lastDay: null };
+    // liga = konference tvého klubu (16 týmů); přestupy a pohár napříč celou soutěží
+    c.league = TEAMS.map((t, i) => i).filter((i) => TEAMS[i].conf === TEAMS[user].conf);
     for (let i = 0; i < TEAMS.length; i++) {
       const R = buildRoster(i), rnd = mulberry32(i * 31 + 7), players = [];
       const add = (p) => players.push({ ...p, id: c.nextId++, age: 19 + Math.floor(rnd() * 15), st: blankSt() });
@@ -56,11 +58,11 @@ const Career = {
     for (const role of ['C', 'LW', 'RW', 'LD', 'RD', 'G', 'C', 'LW', 'RW', 'LD', 'RD', 'G']) c.fa.push(this.genPlayer(role, 20 + Math.floor(Math.random() * 14), 58 + Math.random() * 16));
   },
   newSeason() {
-    const c = this.c, n = TEAMS.length;
+    const c = this.c, n = c.league.length;
     c.phase = 'season';
     c.table = TEAMS.map(() => ({ gp: 0, w: 0, otw: 0, otl: 0, l: 0, gf: 0, ga: 0, pts: 0 }));
     // rozpis: každý s každým doma a venku (kruhová metoda)
-    const arr = [...Array(n).keys()], first = [];
+    const arr = c.league.slice(), first = [];
     for (let r = 0; r < n - 1; r++) {
       const rd = [];
       for (let i = 0; i < n / 2; i++) { const a = arr[i], b = arr[n - 1 - i]; rd.push((r + i) % 2 ? [a, b] : [b, a]); }
@@ -71,7 +73,7 @@ const Career = {
     c.cal = [];
     c.schedule.forEach((_, r) => { c.cal.push({ k: 'L', r }); if (CUP_AFTER[r] != null) c.cal.push({ k: 'C', s: CUP_AFTER[r] }); });
     c.calPos = 0;
-    const cupTeams = shuffle([c.user, ...shuffle([...Array(n).keys()].filter((i) => i !== c.user)).slice(0, 7)]);
+    const cupTeams = shuffle([c.user, ...shuffle([...TEAMS.keys()].filter((i) => i !== c.user)).slice(0, 7)]);
     c.cup = { rounds: [[0, 1, 2, 3].map((i) => ({ a: cupTeams[i * 2], b: cupTeams[i * 2 + 1], w: null, s: '' }))], winner: null };
     c.po = null; c.summary = null; c.results = [];
     for (const t of c.teams) for (const p of t.players) p.st = blankSt();
@@ -228,7 +230,7 @@ const Career = {
   },
   standings() {
     const T = this.c.table;
-    return [...T.keys()].sort((a, b) => T[b].pts - T[a].pts || (T[b].gf - T[b].ga) - (T[a].gf - T[a].ga) || T[b].gf - T[a].gf);
+    return this.c.league.slice().sort((a, b) => T[b].pts - T[a].pts || (T[b].gf - T[b].ga) - (T[a].gf - T[a].ga) || T[b].gf - T[a].gf);
   },
   // posune kalendář o jeden „den" (výsledek uživatelova zápasu, pokud ho odehrál)
   advance(userRes) {
@@ -280,7 +282,7 @@ const Career = {
     const all = c.teams.flatMap((t) => t.players.map((p) => ({ p, t: t.idx })));
     const sk = all.filter((o) => o.p.role !== 'G').sort((a, b) => (b.p.st.g + b.p.st.a) - (a.p.st.g + a.p.st.a) || b.p.st.g - a.p.st.g);
     const gk = all.filter((o) => o.p.role === 'G' && o.p.st.sa > 60).sort((a, b) => b.p.st.sv / b.p.st.sa - a.p.st.sv / a.p.st.sa);
-    st.forEach((ti, i) => { c.budget[ti] = r1(c.budget[ti] + (TEAMS.length - i) * 0.3); });
+    st.forEach((ti, i) => { c.budget[ti] = r1(c.budget[ti] + (st.length - i) * 0.19); });
     c.budget[champ] = r1(c.budget[champ] + 5);
     const fin = c.po.rounds[c.po.round][0], runner = fin.a === champ ? fin.b : fin.a; c.budget[runner] = r1(c.budget[runner] + 2.5);
     const top = sk[0], bg = gk[0];
@@ -542,7 +544,7 @@ Object.assign(Career, {
     const c = this.c;
     if (c) this.T(`Uložená kariéra: ${this.teamName(c.user)} • sezóna ${c.year}/${String((c.year + 1) % 100).padStart(2, '0')}`, R.W / 2, 230, 18, '#9fe3ff', 'center');
     App.drawList([c && 'POKRAČOVAT KARIÉRU', 'NOVÁ KARIÉRA', 'ZPĚT'].filter(Boolean), 330, this.sel);
-    this.footer('Liga 10 týmů (18 kol), Pohár, Play-off, přestupy a vývoj hráčů. Kariéra se ukládá automaticky.');
+    this.footer('Liga = konference 16 týmů (30 kol), Pohár napříč soutěží, Play-off, přestupy a vývoj hráčů. Kariéra se ukládá automaticky.');
   },
   drawConfirm(t, s) {
     R.panel(R.W / 2 - 360, 260, 720, 240, 0.95);
@@ -574,7 +576,7 @@ Object.assign(Career, {
       this.T(this.teamName(m.h), x0 + 150, 340, 16, '#fff', 'center'); this.T(this.teamName(m.a), x0 + 450, 340, 16, '#fff', 'center');
       this.T(m.h === u ? 'DOMA' : 'VENKU', x0 + 300, 372, 16, '#9fe3ff', 'center');
       if (m.comp === 'P') { const s = c.po.rounds[c.po.round][m.ref]; this.T(`Série ${TEAMS[s.a].abbr} ${s.wa}:${s.wb} ${TEAMS[s.b].abbr}  (hraje se na 2 vítězství)`, x0 + 300, 404, 15, '#cfd8ea', 'center'); }
-      else { const o = m.h === u ? m.a : m.h; this.T(`Soupeř: ${this.standings().indexOf(o) + 1}. místo, ${c.table[o].pts} b.`, x0 + 300, 400, 15, '#cfd8ea', 'center'); }
+      else { const o = m.h === u ? m.a : m.h, k = this.standings().indexOf(o); this.T(k >= 0 ? `Soupeř: ${k + 1}. místo, ${c.table[o].pts} b.` : `Soupeř z ${TEAMS[o].conf ? 'Západní' : 'Východní'} konference`, x0 + 300, 400, 15, '#cfd8ea', 'center'); }
       const inj = this.injured(u);
       if (inj.length) this.T('Zranění: ' + inj.map((p) => `${p.first} ${p.name} (${p.inj})`).join(', '), x0 + 300, 422, 13, '#ff9a7a', 'center');
     } else if (c.phase === 'offseason') {
@@ -603,30 +605,32 @@ Object.assign(Career, {
     this.footer('↑↓ výběr   A potvrdit   B uložit a odejít');
   },
   drawTable() {
-    const c = this.c, st = this.standings(), x0 = R.W / 2 - 430;
-    R.chromeText('TABULKA LIGY', R.W / 2, 44, 40);
-    R.panel(x0, 80, 860, 430, 0.9);
+    const c = this.c, st = this.standings(), x0 = R.W / 2 - 620;
+    R.chromeText(CONF_NAMES[TEAMS[c.user].conf], R.W / 2, 40, 36);
+    R.panel(x0, 74, 860, 676, 0.9);
     const cols = [['#', 30], ['TÝM', 70], ['Z', 420], ['V', 480], ['VP', 540], ['PP', 600], ['P', 660], ['SKÓRE', 730], ['B', 820]];
-    cols.forEach(([h, x]) => this.T(h, x0 + x, 104, 13, '#9fe3ff', h === 'TÝM' ? 'left' : 'center'));
+    cols.forEach(([h, x]) => this.T(h, x0 + x, 94, 13, '#9fe3ff', h === 'TÝM' ? 'left' : 'center'));
     st.forEach((ti, i) => {
-      const t = c.table[ti], y = 136 + i * 36, me = ti === c.user;
-      if (me) this.hl(x0 + 10, y - 16, 840, 32);
-      if (i === 8) { R.ctx.fillStyle = 'rgba(255,255,255,0.35)'; R.ctx.fillRect(x0 + 10, y - 18, 840, 2); }
-      App.teamLogo(TEAMS[ti], x0 + 55, y, 0.16);
+      const t = c.table[ti], y = 122 + i * 39, me = ti === c.user;
+      if (me) this.hl(x0 + 10, y - 17, 840, 34);
+      if (i === 8) { R.ctx.fillStyle = 'rgba(255,255,255,0.35)'; R.ctx.fillRect(x0 + 10, y - 20, 840, 2); }
+      App.teamLogo(TEAMS[ti], x0 + 55, y, 0.17);
       const vals = [i + 1, null, t.gp, t.w, t.otw, t.otl, t.l, `${t.gf}:${t.ga}`, t.pts];
       vals.forEach((v, k) => { if (v != null) this.T(v, x0 + cols[k][1], y, 15, me ? '#ffd21f' : '#fff', 'center'); });
       this.T(this.teamName(ti), x0 + 72, y, 15, me ? '#ffd21f' : '#fff');
     });
-    this.T('Výhra 3 b., výhra po prodloužení/nájezdech 2 b., prohra po prodloužení/nájezdech 1 b. Prvních 8 jde do play-off.', R.W / 2, 532, 13, '#cfd8ea', 'center');
-    this.drawResultsBox(R.W / 2 - 430, 556, 860, 196);
+    this.drawResultsBox(x0 + 880, 74, 360, 400, true);
+    R.panel(x0 + 880, 490, 360, 260, 0.85);
+    ['Výhra 3 body, výhra po prodloužení', 'nebo nájezdech 2 b., prohra po', 'prodloužení či nájezdech 1 b.', '', 'Prvních 8 týmů konference', 'postupuje do play-off.']
+      .forEach((l, i) => this.T(l, x0 + 900, 524 + i * 26, 14, '#cfd8ea'));
     this.footer('A / B zpět');
   },
-  drawResultsBox(x, y, w, h) {
+  drawResultsBox(x, y, w, h, oneCol) {
     const c = this.c, ld = c.lastDay;
     R.panel(x, y, w, h, 0.85);
     this.T(ld ? 'POSLEDNÍ DEN: ' + ld.label : 'ZATÍM SE NEHRÁLO', x + 20, y + 22, 15, '#ffd21f');
     if (ld) ld.results.forEach((r, i) => {
-      const col = i % 2, row = Math.floor(i / 2), xx = x + 20 + col * (w / 2), yy = y + 54 + row * 28, me = r.h === c.user || r.a === c.user;
+      const col = oneCol ? 0 : i % 2, row = oneCol ? i : Math.floor(i / 2), xx = x + 20 + col * (w / 2), yy = y + 54 + row * (oneCol ? 38 : 28), me = r.h === c.user || r.a === c.user;
       this.T(`${TEAMS[r.h].abbr} – ${TEAMS[r.a].abbr}   ${r.hg}:${r.ag}${r.suf}`, xx, yy, 15, me ? '#ffd21f' : '#fff');
     });
   },
@@ -655,7 +659,7 @@ Object.assign(Career, {
       }
     }
     if (c.cup.winner != null) this.T(`VÍTĚZ POHÁRU: ${this.teamName(c.cup.winner)}`, R.W / 2, 740, 20, '#ffd21f', 'center', 'italic 900');
-    else this.T('Čtvrtfinále po 6. kole ligy, semifinále po 12., finále po 18. kole. Jeden zápas, při remíze prodloužení a nájezdy.', R.W / 2, 740, 13, '#cfd8ea', 'center');
+    else this.T('Čtvrtfinále po 10. kole ligy, semifinále po 20., finále po 30. kole. Jeden zápas, při remíze prodloužení a nájezdy.', R.W / 2, 740, 13, '#cfd8ea', 'center');
     this.footer('A / B zpět');
   },
   drawPo() {

@@ -32,7 +32,20 @@ proti počítači nebo proti sobě, i ve spolupráci.
 
 Běží v prohlížeči (WebGL + Gamepad API), bez instalace čehokoli dalšího — Three.js je přibalené
 ve složce `lib/`, takže hra funguje i offline.
-Týmy a hráči jsou smyšlení.
+**Týmy:** 32 týmů z měst NHL ve skutečných barvách, rozdělených do Východní a Západní konference
+a čtyř divizí. Přezdívky, znaky i hráči jsou vlastní (oficiální názvy a loga NHL jsou chráněné
+ochrannými známkami). V Nastavení → *Vlastní názvy týmů* si můžeš města, přezdívky a zkratky přepsat
+podle sebe — uloží se jen v tvém prohlížeči.
+
+**Dresy:** domácí v klubové barvě, hosté v bílé; každý tým má svůj styl pruhů (lem dresu, rukávy,
+štulpny), sedlo s lemovkou, výstřih se šněrováním, znak na prsou, jméno a číslo s dvojitým obrysem
+na zádech, čísla na ramenou a helmě, znak na helmě a boční pruh na kalhotách.
+
+**Grafika (kvalita VYSOKÁ):** bloom (záře světel a branková světla), barevné ladění jako v TV
+přenosu, rampy světel nad ledem, které se v ledu odrážejí, stopy bruslí, které se během třetiny
+hromadí (rolba je smaže o přestávce), sníh od bruslí při prudkém brzdění a v ostrých obratech.
+Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
+švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
 ## Legion Go S / Steam Deck (SteamOS)
 
@@ -112,17 +125,17 @@ střední, nízká — pokud by hra na zařízení trhala), hlasitost, hlasový 
 
 ## Kariéra
 
-V hlavním menu **KARIÉRA** převezmeš jeden z 10 klubů a vedeš ho sezónu po sezóně (pozice se ukládá
+V hlavním menu **KARIÉRA** převezmeš jeden z 32 klubů a vedeš ho sezónu po sezóně (pozice se ukládá
 do prohlížeče, rozehranou kariéru jde kdykoli načíst).
 
-- **Liga:** 10 týmů, dvoukolově každý s každým (18 kol). Výhra 3 body, výhra po prodloužení
+- **Liga:** tvoje konference — 16 týmů, dvoukolově každý s každým (30 kol). Výhra 3 body, výhra po prodloužení
   či nájezdech 2, prohra po prodloužení 1. Tabulka, výsledky kola a statistiky střelců.
 - **Play-off:** nejlepších 8 hraje na 2 vítězné zápasy (1–8, 4–5, 2–7, 3–6), pavouk až do finále.
-- **Pohár:** vyřazovací pohár 8 týmů, kola se hrají mezi ligovými koly (po 5., 11. a 17. kole).
+- **Pohár:** vyřazovací pohár 8 týmů, kola se hrají mezi ligovými koly (po 10., 20. a 30. kole); losuje se z celé soutěže, i z druhé konference.
 - **Zápasy** odehraješ sám (všechny připojené ovladače hrají za tvůj tým, soupeř je počítač)
   nebo je necháš **simulovat**; jde i „simulovat do konce sezóny“.
 - **Soupiska a sestava:** přeskládání formací (A prohodí dva hráče, Y seřadí automaticky).
-- **Přestupy:** přestupní okno je otevřené do 13. kola. Hráče koupíš výměnou za svého hráče
+- **Přestupy:** přestupní okno je otevřené do 23. kola, kupovat jde od všech 31 klubů. Hráče koupíš výměnou za svého hráče
   na stejném postu plus doplatek z rozpočtu; počítačové týmy přestupují mezi sebou, nabízejí
   se i volní hráči. Rozpočet roste z diváků na domácích zápasech a z prémií za umístění.
 - **Zranění:** zraněný hráč vynechá podle typu zranění 1–14 zápasů (natažený sval, otřes mozku,
