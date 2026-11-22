@@ -36,6 +36,12 @@ ve složce `lib/`, takže hra funguje i offline.
 šikovnost. Se slabší sestavou to má hráč těžší, ale šikovnější hráč vyhraje (počítač proti počítači
 vyhrává tým o 10 bodů silnější zhruba ve 2 zápasech ze 3, s rozdílem necelého gólu).
 
+**Obtížnost a asistence:** obtížnosti Dětská / Lehká / Normální / Těžká / Legenda, k tomu **rychlost hry**
+(70–125 %) a **asistence pro každého hráče zvlášť** (Nastavení → Hra, nebo tlačítkem **Y** na obrazovce
+výběru ovladačů): *Částečná* přepíná na hráče u puku a zpřesní střely, *Plná (děti)* navíc sama napadá
+soupeře s pukem, když hráč nedrží páčku, sama míří do volného rohu, snadněji sebere puk a vyhraje buly.
+Obtížnost *Dětská* (pomalý a mírný soupeř, silnější vlastní brankář) zapne plnou asistenci oběma hráčům.
+
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
 rozjetý těžký hráč lehčího srazí, lehčí do těžkého často jen narazí (*ustál to*) nebo se sám odrazí,

@@ -373,7 +373,7 @@ const Career = {
     const c = this.c, m = this.userMatch(); if (!m) return;
     const S = Settings.data, side = m.h === c.user ? 0 : 1;
     let devs = Input.activeDevices(); if (!devs.length) devs = [Input.merged];
-    const humans = devs.slice(0, 4).map((d) => ({ dev: d, team: side }));
+    const humans = devs.slice(0, 4).map((d, i) => ({ dev: d, team: side, assist: App.assistFor(d, i) }));
     Sfx.init(); Sfx.resume();
     App.game = new Game({ home: m.h, away: m.a, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans,
       autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
@@ -683,8 +683,9 @@ Object.assign(Career, {
     const a = p.at, G = p.role === 'G';
     this.ensureBody(p);
     const vals = [p.role, p.num, p.first + ' ' + p.name, p.age, p.cm + ' / ' + p.kg, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p), money(plValue(p)).replace(' mil. Kč', ' M')];
-    vals.forEach((v, k) => this.T(v, x0 + cols[k], y, k === 4 ? 13 : 14, k === 9 ? '#ffd21f' : k === 4 ? '#cfd8ea' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
-    if (p.inj > 0) this.injTag(p, x0 + cols[2] + 132, y);
+    drawFlag(R.ctx, natOf(p), x0 + cols[2], y - 7, 20, 13);
+    vals.forEach((v, k) => this.T(v, x0 + cols[k] + (k === 2 ? 26 : 0), y, k === 4 ? 13 : 14, k === 9 ? '#ffd21f' : k === 4 ? '#cfd8ea' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
+    if (p.inj > 0) this.injTag(p, x0 + cols[2] + 152, y);
     if (extra) extra.forEach(([v, x]) => this.T(v, x0 + x, y, 14, '#cfd8ea', 'center'));
   },
   // starší uložené kariéry nemají výšku a váhu: dopočítat (stabilně podle jména a čísla)

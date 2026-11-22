@@ -254,7 +254,7 @@ function helmetMaterial(T, p) {
 // ---------- model hráče ----------
 class HModel {
   constructor(G, p) {
-    this.G = G; this.goalie = p.isGoalie; this.turn = 0;
+    this.G = G; this.goalie = p.isGoalie; this.turn = 0; this.phase = Math.random() * 6.28;
     const T = p.team, tm = G.teamMats(T);
     this.isRef = !!p.isRef;
     this.helmetMat = helmetMaterial(T, p);
@@ -381,23 +381,26 @@ class HModel {
   }
   poseSkater(p, t, O, F, Lv, J, down) {
     const B = this.b, spd = Math.min(1, (p.spdN || 0) / 26), ph = p.stride || 0, wind = p.windT || 0, poke = p.pokeA || 0;
-    const drop = down ? 0.05 : 0.32 + 0.5 * spd + 0.4 * wind;
+    // postoj na buly: vhazující hluboko v předklonu s holí na ledě, ostatní v připraveném podřepu
+    const take = !down && p.foTake ? 1 : 0, ready = !down && (p.foReady || take) ? 1 : 0, swipe = p.foSwipe > 0 ? p.foSwipe / 0.35 : 0;
+    const breathe = Math.sin(t * 2.6 + this.phase) * 0.03 * (1 - spd);
+    const drop = down ? 0.05 : 0.32 + 0.5 * spd + 0.4 * wind + 0.25 * ready + 0.25 * take + breathe;
     this.root.position.set(O.x, 0.15 - drop, O.z);
     this.root.updateMatrixWorld(true);
     // trup: předklon, kolébání do stran při odrazu
-    rotAxis(B.Hips, Lv, down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind);
+    rotAxis(B.Hips, Lv, down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind + 0.18 * ready + 0.22 * take);
     rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
-    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind;
+    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe;
     for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3);
-    rotAxis(B.Spine1, UPV, -Math.sin(ph) * 0.12 * spd + p.hand * wind * 0.35);
+    rotAxis(B.Spine1, UPV, -Math.sin(ph) * 0.12 * spd + p.hand * wind * 0.35 + p.hand * swipe * 0.5);
     const headUp = -(0.38 + 0.32 * spd + 0.15 * wind + lean) * 0.8;
     rotAxis(B.Neck, Lv, headUp * 0.55); rotAxis(B.Head, Lv, headUp * 0.45);
     // nohy: střídavé odrazy do stran
     const sw = Math.sin(ph) * spd, cw = Math.cos(ph);
     // odraz do strany a dozadu, návrat pod tělo; v zatáčce vnější brusle překračuje vnitřní
-    let latL = 0.48 + 0.75 * Math.max(0, -sw), latR = -0.48 - 0.75 * Math.max(0, sw);
+    let latL = 0.48 + 0.75 * Math.max(0, -sw) + 0.22 * ready + 0.15 * take, latR = -0.48 - 0.75 * Math.max(0, sw) - 0.22 * ready - 0.15 * take;
     if (cross > 0) {
       const outerUp = Math.max(0, ts > 0 ? sw : -sw), innerPush = Math.max(0, ts > 0 ? -sw : sw);
       if (ts > 0) { latR = lerp(latR, 0.55 * outerUp - 0.3, cross); latL = lerp(latL, 0.35 - 0.9 * innerPush, cross); }
@@ -409,6 +412,18 @@ class HModel {
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce
     const bo = bladeOffset(p.dir, p.hand, p.carry, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1);
+    {
+      const fx = Math.cos(p.dir), fy = Math.sin(p.dir), lx = -fy, ly = fx;
+      // buly: čepel na ledě u bodu vhazování, hůl se mírně chvěje, po vhození rychlé švihnutí dozadu
+      if (take) { const jig = Math.sin(t * 9 + this.phase) * 0.12; bo[0] = fx * 3.1 + lx * (p.hand * 0.2 + jig); bo[1] = fy * 3.1 + ly * (p.hand * 0.2 + jig); bo[2] = 0; }
+      else if (ready && !p.carry) { bo[0] = fx * 3.4 + lx * p.hand * 0.9; bo[1] = fy * 3.4 + ly * p.hand * 0.9; bo[2] = 0; }
+      if (swipe > 0) { const k = Math.sin(swipe * Math.PI); bo[0] += (-fx * 1.6 + lx * p.hand * 1.4) * k; bo[1] += (-fy * 1.6 + ly * p.hand * 1.4) * k; }
+      // přihrávka: krátký švih čepele dopředu po ledě
+      const pf = p.passFT > 0 ? Math.sin(clamp(p.passFT / 0.22, 0, 1) * Math.PI) : 0;
+      if (pf > 0) { bo[0] = lerp(bo[0], fx * 4.0, pf); bo[1] = lerp(bo[1], fy * 4.0, pf); bo[2] = lerp(bo[2], 0.35, pf); rotAxis(B.Spine1, UPV, -p.hand * pf * 0.25); }
+      // v klidu občas ťukne holí o led
+      if (!p.carry && !ready && spd < 0.15 && !wind && !poke) bo[2] += Math.pow(Math.max(0, Math.sin(t * 3.1 + this.phase * 3)), 16) * 0.55;
+    }
     // dokončení střely: hůl jde vysoko dopředu přes tělo
     const ftk = p.shotFT > 0 ? clamp(p.shotFT / (p.shotSlap ? 0.5 : 0.32), 0, 1) : 0;
     if (ftk > 0) {

@@ -1,12 +1,12 @@
 {
-  "build": 27,
-  "version": "1.27",
+  "build": 28,
+  "version": "1.28",
   "date": "2026-11-22",
   "notes": [
-    "Spouštěč: Chromium (flatpak) vidí ovladače přes /run/udev",
-    "Ovládání myší / dotykem posílaným jako myš, spouštěč povolí Chromiu přístup k ovladačům",
-    "Kariéra: výška a váha na soupisce, v přestupech i při výměně",
-    "Vyšší hráč má delší dosah hokejkou a je i větší",
-    "Vyváženost: sestava, hmotnost i led mají jen mírný vliv, rozhoduje šikovnost"
+    "Dětský režim, asistence pro každého hráče zvlášť, rychlost hry",
+    "Vlaječky států na soupisce",
+    "Animace hokejky a těla: buly, přihrávky, ťukání holí",
+    "Plynulá jízda rolby podél mantinelu",
+    "Spouštěč: Chromium (flatpak) vidí ovladače přes /run/udev"
   ]
 }

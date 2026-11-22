@@ -131,6 +131,40 @@ const SURNAMES = ['Novák', 'Svoboda', 'Dvořák', 'Černý', 'Procházka', 'Ku�
   'Pelletier', 'Belanger', 'Lindqvist', 'Nilsson', 'Eriksson', 'Larsson', 'Johansson', 'Lehtonen', 'Virtanen', 'Korhonen',
   'Heikkinen', 'Ivanov', 'Petrov', 'Smirnov', 'Volkov', 'Morozov', 'Sokolov', 'Novotný', 'Kováč', 'Horváth', 'Varga', 'Nagy'];
 const INITIALS = 'ADFJKLMOPRSTVZ'.split('');
+// stát původu podle příjmení (vlaječka na soupisce)
+const NAT_OF = (() => {
+  const m = {};
+  const set = (code, names) => names.split(' ').forEach((n) => (m[n] = code));
+  set('NA', 'Miller Johnson Smith Brown Wilson Anderson Thompson Martin Walker Hall Young King Wright Scott Green Baker Adams Nelson Carter Mitchell Roberts Turner Campbell Parker Evans Collins Stewart Murphy Cook Rogers Morgan Cooper Reed Bailey Kelly Howard Ward Watson Brooks Bennett Gray Hughes Price Sanders Foster');
+  set('CAN', 'Tremblay Gagnon Bouchard Gauthier Morin Lavoie Fortin Pelletier Belanger');
+  set('SWE', 'Lindqvist Nilsson Eriksson Larsson Johansson');
+  set('FIN', 'Lehtonen Virtanen Korhonen Heikkinen');
+  set('RUS', 'Ivanov Petrov Smirnov Volkov Morozov Sokolov');
+  set('SVK', 'Kováč Horváth Varga Nagy');
+  return m;
+})();
+function natOf(p) {
+  const n = NAT_OF[p.name];
+  if (!n) return 'CZE';
+  if (n !== 'NA') return n;
+  let h = 3; for (const ch of String(p.name) + p.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % 5 < 3 ? 'CAN' : 'USA';
+}
+const NAT_NAMES = { CZE: 'Česko', SVK: 'Slovensko', CAN: 'Kanada', USA: 'USA', SWE: 'Švédsko', FIN: 'Finsko', RUS: 'Rusko' };
+// malá vlajka (x, y = levý horní roh)
+function drawFlag(g, code, x, y, w = 22, h = 14) {
+  g.save(); g.translate(x, y);
+  const band = (cols, vert) => cols.forEach((c, i) => { g.fillStyle = c; if (vert) g.fillRect(i * w / cols.length, 0, w / cols.length + 0.5, h); else g.fillRect(0, i * h / cols.length, w, h / cols.length + 0.5); });
+  if (code === 'CZE') { band(['#ffffff', '#d7141a']); g.fillStyle = '#11457e'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w * 0.5, h / 2); g.lineTo(0, h); g.fill(); }
+  else if (code === 'SVK') { band(['#ffffff', '#0b4ea2', '#ee1c25']); g.fillStyle = '#ee1c25'; g.fillRect(w * 0.18, h * 0.22, w * 0.26, h * 0.56); g.fillStyle = '#ffffff'; g.fillRect(w * 0.29, h * 0.3, w * 0.04, h * 0.36); g.fillRect(w * 0.23, h * 0.38, w * 0.16, h * 0.06); }
+  else if (code === 'CAN') { band(['#d52b1e', '#ffffff', '#ffffff', '#d52b1e'], true); g.fillStyle = '#d52b1e'; const cx = w / 2, cy = h / 2, r = h * 0.32; g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.9, cy); g.lineTo(cx + r * 0.3, cy + r * 0.2); g.lineTo(cx, cy + r * 0.9); g.lineTo(cx - r * 0.3, cy + r * 0.2); g.lineTo(cx - r * 0.9, cy); g.closePath(); g.fill(); }
+  else if (code === 'USA') { for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#b22234'; g.fillRect(0, i * h / 7, w, h / 7 + 0.5); } g.fillStyle = '#3c3b6e'; g.fillRect(0, 0, w * 0.42, h * 0.54); }
+  else if (code === 'SWE') { g.fillStyle = '#006aa7'; g.fillRect(0, 0, w, h); g.fillStyle = '#fecc00'; g.fillRect(w * 0.3, 0, w * 0.14, h); g.fillRect(0, h * 0.4, w, h * 0.2); }
+  else if (code === 'FIN') { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); g.fillStyle = '#002f6c'; g.fillRect(w * 0.28, 0, w * 0.16, h); g.fillRect(0, h * 0.38, w, h * 0.24); }
+  else if (code === 'RUS') band(['#ffffff', '#0039a6', '#d52b1e']);
+  g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, w - 1, h - 1);
+  g.restore();
+}
 const ROLES = ['C', 'LW', 'RW', 'LD', 'RD'];
 const ROLE_NAMES = { C: 'Centr', LW: 'Levé křídlo', RW: 'Pravé křídlo', LD: 'Levý obránce', RD: 'Pravý obránce', G: 'Brankář' };
 

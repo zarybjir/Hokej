@@ -1,6 +1,9 @@
 'use strict';
 // ---------- Obrazovky, menu, hlavní smyčka ----------
 const PERIOD_OPTS = [1, 2, 3, 5, 10, 20];
+const ASSIST_NAMES = ['VYPNUTÁ', 'ČÁSTEČNÁ', 'PLNÁ (DĚTI)'];
+const ASSIST_HINT = 'ČÁSTEČNÁ: přepíná na hráče u puku, přesnější střely. PLNÁ: hráč sám napadá, střely míří samy.';
+const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.25];
 const App = {
   screen: 'press', sel: 0, game: null, demo: null, t: 0, fps: 60, slots: {}, pauseSel: 0, helpFrom: 'title', speed: 1,
 
@@ -61,7 +64,7 @@ const App = {
           if (this.sel === 0) S.home = nx(S.home, S.away);
           if (this.sel === 1) S.away = nx(S.away, S.home);
           if (this.sel === 2) { const i = PERIOD_OPTS.indexOf(S.periodLen); S.periodLen = PERIOD_OPTS[clamp((i < 0 ? 2 : i) + d, 0, PERIOD_OPTS.length - 1)]; }
-          if (this.sel === 3) S.diff = clamp(S.diff + d, 0, DIFF.length - 1);
+          if (this.sel === 3) { S.diff = clamp(S.diff + d, 0, DIFF.length - 1); this.kidsAssist(); }
           if (this.sel === 4) S.autoChange = !S.autoChange;
           if (this.sel === 5) S.penalties = S.penalties === false;
           Sfx.stick(0.4); Settings.save();
@@ -88,6 +91,7 @@ const App = {
           if (!(dv.id in this.slots)) this.slots[dv.id] = 0;
           if (dv.nav('left', dt)) { this.slots[dv.id] = Math.max(-1, this.slots[dv.id] - 1); Sfx.stick(0.5); }
           if (dv.nav('right', dt)) { this.slots[dv.id] = Math.min(1, this.slots[dv.id] + 1); Sfx.stick(0.5); }
+          if (dv.pressed('y')) { const i = Input.activeDevices().indexOf(dv), v = (this.assistFor(dv, i) + 1) % ASSIST_NAMES.length; this.assistDev[dv.id] = v; if (i < 2) Settings.data['assist' + (i + 1)] = v; Settings.save(); Sfx.stick(0.6); }
         }
         if (M.pressed('a') || M.pressed('start')) this.startGame();
         else if (M.pressed('b')) this.go('setup', 4);
@@ -138,7 +142,7 @@ const App = {
         else if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; Sfx.whistle(); break; }
         else if (M.pressed('a') || M.pressed('start')) g.confirm();
         if (M.pressed('back')) G3.zoomStep(Settings.data.zoom >= ZOOMS.length - 1 ? -(ZOOMS.length - 1) : 1);
-        for (let i = 0; i < this.speed; i++) g.update(dt);
+        for (let i = 0; i < this.speed; i++) g.update(dt * (g.state === 'zamboni' ? 1 : Settings.data.gameSpeed || 1));
         if (g.over) {
           if (this.careerMatch) { Career.finishPlayed(g); this.game = null; this.newDemo(); this.screen = 'career'; }
           else { this.game = null; this.newDemo(); this.go('title'); }
@@ -155,13 +159,16 @@ const App = {
       this.slots[first.id] = -1;
     }
   },
+  // asistence: pro každý ovladač zvlášť (výchozí z Nastavení: 1. a 2. hráč)
+  assistFor(d, i) { if (!this.assistDev) this.assistDev = {}; const v = this.assistDev[d.id]; return v != null ? v : i < 2 ? Settings.data['assist' + (i + 1)] || 0 : 0; },
+  kidsAssist() { const S = Settings.data; if (DIFF[S.diff] && DIFF[S.diff].kids) { S.assist1 = Math.max(S.assist1 || 0, 2); S.assist2 = Math.max(S.assist2 || 0, 2); this.assistDev = {}; } },
   startGame() {
     const S = Settings.data, humans = [];
-    for (const d of Input.activeDevices()) {
-      const s = this.slots[d.id];
-      if (s === -1 && humans.length < 4) humans.push({ dev: d, team: 0 });
-      if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1 });
-    }
+    Input.activeDevices().forEach((d, i) => {
+      const s = this.slots[d.id], assist = this.assistFor(d, i);
+      if (s === -1 && humans.length < 4) humans.push({ dev: d, team: 0, assist });
+      if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1, assist });
+    });
     Sfx.init(); Sfx.resume();
     this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto' });
     this.screen = 'game'; this.sel = 0;
@@ -306,7 +313,7 @@ const App = {
     const row = (p, vals) => {
       ctx.font = font(14, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(p.role === 'G' ? 'G' : p.role, x0 + cols[0], y);
       ctx.fillStyle = '#ffd21f'; ctx.fillText(String(p.num), x0 + cols[1], y);
-      ctx.fillStyle = '#fff'; ctx.fillText(p.first + ' ' + p.name, x0 + cols[2], y); if (p.kg) { const w = ctx.measureText(p.first + ' ' + p.name).width; ctx.save(); ctx.font = font(12, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText(p.cm + ' cm · ' + p.kg + ' kg', x0 + cols[2] + w + 12, y); ctx.restore(); }
+      drawFlag(ctx, natOf(p), x0 + cols[2], y - 7, 20, 13); ctx.fillStyle = '#fff'; ctx.fillText(p.first + ' ' + p.name, x0 + cols[2] + 26, y); if (p.kg) { const w = ctx.measureText(p.first + ' ' + p.name).width; ctx.save(); ctx.font = font(12, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText(p.cm + ' cm · ' + p.kg + ' kg', x0 + cols[2] + 26 + w + 12, y); ctx.restore(); }
       vals.forEach((v, i) => {
         if (v == null) return;
         ctx.textAlign = 'center'; ctx.fillStyle = col(v); ctx.font = font(15, 'bold'); ctx.fillText(String(v), x0 + cols[3 + i] + 30, y);
@@ -338,10 +345,12 @@ const App = {
       ctx.fillText('Stiskni tlačítko na ovladači, aby se objevil.', R.W / 2, 380);
     }
     devs.forEach((d, i) => {
-      const s = this.slots[d.id] || 0, x = cols[s + 1], y = 320 + i * 74;
+      const s = this.slots[d.id] || 0, x = cols[s + 1], y = 300 + i * 86;
       const col = d.kind === 'pad' ? '#2ee6ff' : '#ffd21f';
-      R.panel(x - 130, y, 260, 58, 0.9);
-      ctx.strokeStyle = s ? col : 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.strokeRect(x - 129, y + 1, 258, 56);
+      R.panel(x - 130, y, 260, 76, 0.9);
+      ctx.strokeStyle = s ? col : 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.strokeRect(x - 129, y + 1, 258, 74);
+      const as = this.assistFor(d, i);
+      ctx.font = font(12, 'bold'); ctx.fillStyle = as ? '#7dff8a' : '#8a93a6'; ctx.textAlign = 'center'; ctx.fillText('Y: ASISTENCE ' + ASSIST_NAMES[as], x, y + 64);
       ctx.font = font(18); ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(d.name.toUpperCase(), x, y + 22);
       ctx.font = font(11, 'bold'); ctx.fillStyle = '#aab';
@@ -350,7 +359,7 @@ const App = {
     const hum = devs.filter((d) => this.slots[d.id]).length;
     R.chromeText(hum ? 'A  =  ZAČÍT ZÁPAS' : 'A  =  SLEDOVAT (CPU vs CPU)', R.W / 2, 690, 30, '#fff8d0', '#ffcc33');
     ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
-    ctx.fillText('Každý hráč posune svůj ovladač páčkou doleva/doprava.  Dva na jedné straně = spolupráce.   B zpět', R.W / 2, 750);
+    ctx.fillText('Každý hráč posune svůj ovladač páčkou doleva/doprava, Y mění jeho asistenci.  Dva na jedné straně = spolupráce.   B zpět', R.W / 2, 750);
   },
   // editor vlastních názvů týmů (HTML formulář přes hru, kvůli psaní textu)
   openTeamEditor() {
@@ -411,7 +420,11 @@ const App = {
           hint: 'Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.' },
       ] },
       { name: 'HRA', desc: 'Obtížnost, střídání, fauly, zranění, rolba', items: [
-        { label: 'OBTÍŽNOST', val: () => '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►', set: (d) => { S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length; } },
+        { label: 'OBTÍŽNOST', val: () => '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►', set: (d) => { S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length; this.kidsAssist(); },
+          hint: 'DĚTSKÁ: soupeř je pomalý a mírný, vlastní brankář chytá víc; asistence se nastaví na PLNÁ.' },
+        { label: 'RYCHLOST HRY', val: () => '◄ ' + Math.round((S.gameSpeed || 1) * 100) + ' % ►', set: (d) => { S.gameSpeed = cyc(SPEEDS, S.gameSpeed || 1, d); }, hint: 'Nižší rychlost = víc času na rozhodnutí (vhodné pro začátečníky a děti).' },
+        { label: 'ASISTENCE 1. HRÁČE', val: () => '◄ ' + ASSIST_NAMES[S.assist1 || 0] + ' ►', set: (d) => { S.assist1 = ((S.assist1 || 0) + (d || 1) + 3) % 3; this.assistDev = {}; }, hint: ASSIST_HINT },
+        { label: 'ASISTENCE 2. HRÁČE', val: () => '◄ ' + ASSIST_NAMES[S.assist2 || 0] + ' ►', set: (d) => { S.assist2 = ((S.assist2 || 0) + (d || 1) + 3) % 3; this.assistDev = {}; }, hint: ASSIST_HINT },
         { label: 'STŘÍDÁNÍ FORMACÍ', val: () => (S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'), set: () => { S.autoChange = S.autoChange === false; } },
         { label: 'FAULY A VYLOUČENÍ', val: () => onoff(S.penalties !== false), set: () => { S.penalties = S.penalties === false; } },
         { label: 'ZRANĚNÍ', val: () => onoff(S.injuries !== false), set: () => { S.injuries = S.injuries === false; } },
