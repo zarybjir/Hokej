@@ -529,7 +529,7 @@ const App = {
   Input.init();
   App.init();
   Upd.init();
-  try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => Voice.pickVoice(); } catch (e) {}
+  Voice.load();
   // zvuk: s --autoplay-policy=no-user-gesture-required běží hned, jinak po první klávese
   Sfx.init();
   const unlock = () => { Sfx.init(); Sfx.resume(); };

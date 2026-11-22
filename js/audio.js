@@ -128,29 +128,58 @@ const Sfx = {
   claps() { if (!this.ok()) return; for (const w of [0, 0.3, 0.8, 1.05, 1.3]) setTimeout(() => this.burst(1500, 'bandpass', 0.25, 0.08, 0.7), w * 1000); },
 };
 
+// komentátor: předem namluvené hlášky (sounds/voice, hlas Piper „jirka“, CC0); text se skládá z částí
+// (např. ['Vyloučení!', 'Novák', 'hákování']); když nahrávka chybí, zkusí se systémová hlasová syntéza
 const Voice = {
-  last: 0, voice: null, picked: false,
-  pickVoice() {
-    if (this.picked || !window.speechSynthesis) return;
-    const vs = speechSynthesis.getVoices();
-    if (!vs.length) return;
-    this.picked = true;
-    this.voice = vs.find((v) => /^cs/i.test(v.lang)) || null;
+  last: 0, manifest: null, bufs: new Map(), srcs: [], busyUntil: 0, gain: null,
+  load() {
+    if (this.manifest) return;
+    this.manifest = {};
+    fetch('sounds/voice/manifest.json').then((r) => r.json()).then((m) => { this.manifest = m; }).catch(() => {});
   },
-  say(text, prio = false, chance = 1) {
-    if (!Settings.data.comm || !window.speechSynthesis) return;
+  buf(t) {
+    if (this.bufs.has(t)) return this.bufs.get(t);
+    const p = fetch('sounds/voice/' + this.manifest[t]).then((r) => r.arrayBuffer()).then((ab) => new Promise((res, rej) => Sfx.ctx.decodeAudioData(ab, res, rej))).catch(() => null);
+    this.bufs.set(t, p);
+    return p;
+  },
+  stop() { for (const s of this.srcs) { try { s.stop(); } catch (e) {} } this.srcs = []; this.busyUntil = 0; try { speechSynthesis.cancel(); } catch (e) {} },
+  say(parts, prio = false, chance = 1) {
+    if (!Settings.data.comm) return;
+    this.load();
+    if (!Array.isArray(parts)) parts = [parts];
     const now = performance.now();
     if (Math.random() > chance) return;
-    if (!prio && now - this.last < 3500) return;
+    const ctx = Sfx.ctx;
+    const busy = ctx ? ctx.currentTime < this.busyUntil : false;
+    if (!prio && (now - this.last < 3500 || busy)) return;
+    const known = parts.filter((t) => t && this.manifest[t]);
+    if (!ctx || !known.length) return this.speak(parts.filter(Boolean).join(' '), prio);
+    if (prio) this.stop();
+    this.last = now;
+    if (!this.gain) { this.gain = ctx.createGain(); this.gain.gain.value = 1.15; this.gain.connect(Sfx.master || ctx.destination); }
+    const at = ctx.currentTime;
+    this.busyUntil = at + 2;
+    Promise.all(known.map((t) => this.buf(t))).then((bs) => {
+      let tt = Math.max(ctx.currentTime + 0.02, at);
+      for (const b of bs) {
+        if (!b) continue;
+        const s = ctx.createBufferSource(); s.buffer = b; s.connect(this.gain); s.start(tt);
+        this.srcs.push(s); s.onended = () => { this.srcs = this.srcs.filter((q) => q !== s); };
+        tt += b.duration + 0.06;
+      }
+      this.busyUntil = tt;
+    });
+  },
+  // záloha: systémová syntéza (na SteamOS obvykle chybí)
+  speak(text, prio) {
+    if (!window.speechSynthesis || !text) return;
     try {
-      this.pickVoice();
-      if (prio) speechSynthesis.cancel();
-      else if (speechSynthesis.speaking) return;
+      if (prio) speechSynthesis.cancel(); else if (speechSynthesis.speaking) return;
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'cs-CZ'; if (this.voice) u.voice = this.voice;
-      u.rate = 1.12; u.pitch = 1.0; u.volume = Settings.data.vol / 10;
-      speechSynthesis.speak(u);
-      this.last = now;
+      u.lang = 'cs-CZ'; const v = speechSynthesis.getVoices().find((q) => /^cs/i.test(q.lang)); if (v) u.voice = v;
+      u.rate = 1.12; u.volume = Settings.data.vol / 10;
+      speechSynthesis.speak(u); this.last = performance.now();
     } catch (e) {}
   },
 };

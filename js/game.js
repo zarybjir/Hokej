@@ -96,7 +96,7 @@ class Game {
     this.setupFaceoff(0, 0);
     this.state = 'intro';
     this.showBanner(PERIOD_NAMES[1], this.teams[0].def.city + ' vs ' + this.teams[1].def.city, 2.2);
-    if (!this.silent) { Sfx.organ(0); this.say('Vítejte u zápasu. ' + this.teams[0].def.city + ' proti ' + this.teams[1].def.city + '.', true); }
+    if (!this.silent) { Sfx.organ(0); this.say([pick(['Vítejte u zápasu.', 'Dobrý večer, vítejte na stadionu.']), this.teams[0].def.city, 'proti', this.teams[1].def.city], true); }
   }
 
   // ---------- pomocné ----------
@@ -247,7 +247,7 @@ class Game {
     this.penalties.push({ team: t, player: p, role: p.role, left: this.penLen, total: this.penLen, type: pd.type });
     t.pim++; this.other(t).ppOpp++;
     this.lower = { title: '#' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ')', sub: FOULS[pd.type] + ' — 2 minuty', team: t, t: 0, dur: 3.4 };
-    this.say(pick(['Vyloučení!', 'Dvě minuty!', 'Rozhodčí vylučuje.']) + ' ' + p.name + ', ' + FOULS[pd.type].toLowerCase() + '.', true);
+    this.say([pick(['Vyloučení!', 'Dvě minuty!', 'Rozhodčí vylučuje.']), p.name, FOULS[pd.type].toLowerCase()], true);
   }
   // ---------- zranění ----------
   hurt(p, cause) {
@@ -281,7 +281,7 @@ class Game {
     const t = p.team, I = p.injured;
     this.toast = { text: 'ZRANĚNÍ: #' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ') NEDOHRAJE ZÁPAS', t: 0, dur: 3.2 };
     if (!this.pending) this.lower = { title: '#' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ')', sub: 'ZRANĚNÍ — ' + I.name + ', nedohraje zápas', team: t, t: 0, dur: 3.6 };
-    this.say(pick(['Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.']) + ' ' + p.name + ' nedohraje.', true);
+    this.say([pick(['Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.']), p.name, 'nedohraje.'], true);
   }
   nearestDot(x, y) {
     const xs = [-69, -20, 0, 20, 69], ys = [-22, 22];
@@ -708,7 +708,9 @@ class Game {
     pk.oneTimer = !!oneTimer; pk.passTarget = null; pk.wasPass = false; pk.lastTouch = p; p.pickCD = 0.35;
     p.winding = false; p.windT = 0; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap;
     if (slap) this.sfx('slap', 0.6 + 0.4 * power); else this.sfx('stick', 1);
-    if (oneTimer) this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f');
+    if (oneTimer) { this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f'); this.say('Z první!', false, 0.6); }
+    else if (slap && Math.abs(pk.x - nx) > 45) this.say('Dělovka od modré!', false, 0.35);
+    else this.say(pick(['Střela!', 'Pálí!']), false, 0.18);
   }
   startCheck(p) {
     if (p.checkCD > 0 || p.downT > 0 || p.carry) return;
@@ -1094,7 +1096,7 @@ class Game {
           if (zc > RINK.NET_H - 0.2) { pk.vz = -Math.abs(pk.vz) * 0.4 + 2; pk.vx *= -0.4; }
           else { pk.vx = -pk.vx * 0.55; pk.vy += sgn(yc) * rand(3, 10); }
           if (pk.shot && this.state === 'play') {
-            this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say('Tyčka!', false, 0.7); this.sfx('ooh', 1);
+            this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say(pick(['Tyčka!', 'Zvoní tyčka!']), true, 0.8); this.sfx('ooh', 1);
             pk.shot = null;
           } else this.sfx('stick', 0.6);
           return false;
@@ -1366,7 +1368,7 @@ class Game {
     const ast = (assists.length ? 'Asistence: ' + assists.map((a) => a.name).join(', ') : 'Bez asistence') + (ppNote ? '  •  ' + ppNote : '');
     this.lower = { title: who, sub: ast, team, t: 0, dur: 3.6 };
     this.sfx('horn'); this.sfx('cheer', 1);
-    this.say(pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!']) + (scorer ? ' Skóroval ' + scorer.name + '.' : ''), true);
+    this.say([pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!', 'Góóól!']), ppNote === 'Gól v přesilovce' ? 'Gól v přesilovce!' : null, scorer ? 'Skóroval' : null, scorer ? scorer.name : null], true);
     for (const p of team.skaters) { p.inX = 0; p.inY = 0; }
   }
   afterGoal() {
@@ -1481,6 +1483,6 @@ class Game {
     }).sort((x, y) => y.sc - x.sc);
     this.stars = all.slice(0, 3).map((o) => o.p);
     this.sfx('horn', 3.2); this.sfx('cheer', 0.8);
-    this.say(win ? 'Konec zápasu! Vítězí ' + win.def.city + '!' : 'Konec zápasu. Remíza.', true);
+    this.say(win ? ['Konec zápasu! Vítězí', win.def.city] : 'Konec zápasu. Remíza.', true);
   }
 }

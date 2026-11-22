@@ -1,12 +1,12 @@
 {
-  "build": 28,
-  "version": "1.28",
+  "build": 29,
+  "version": "1.29",
   "date": "2026-11-22",
   "notes": [
+    "Komentátor: namluvený český hlas (224 hlášek), funguje i na SteamOS",
     "Dětský režim, asistence pro každého hráče zvlášť, rychlost hry",
     "Vlaječky států na soupisce",
     "Animace hokejky a těla: buly, přihrávky, ťukání holí",
-    "Plynulá jízda rolby podél mantinelu",
-    "Spouštěč: Chromium (flatpak) vidí ovladače přes /run/udev"
+    "Plynulá jízda rolby podél mantinelu"
   ]
 }

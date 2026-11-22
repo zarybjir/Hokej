@@ -184,6 +184,14 @@ do prohlížeče, rozehranou kariéru jde kdykoli načíst).
 - **Mezi sezónami** hráči stárnou: mladí se zlepšují, starší ztrácejí, nad 35 let končí
   a nahradí je junioři. Zprávy shrnují přestupy, ocenění a historii vítězů.
 
+## Komentátor
+
+Komentář je předem namluvený neuronovým českým hlasem **Piper „jirka“** (licence CC0) — 224 hlášek
+včetně jmen hráčů a měst, uložených v `sounds/voice/`. Hra je skládá dohromady („Vyloučení! — Novák —
+hákování“), takže funguje i bez systémové hlasové syntézy (ta na SteamOS chybí). Hlášky se dají
+přegenerovat skriptem `tools/gen_voice.py` (potřebuje `pip install piper-tts`, ffmpeg a model hlasu).
+U vlastních názvů týmů z editoru komentátor město vynechá.
+
 ## Zdroje
 
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).
