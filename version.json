@@ -1,12 +1,12 @@
 {
-  "build": 24,
-  "version": "1.24",
+  "build": 25,
+  "version": "1.25",
   "date": "2026-11-22",
   "notes": [
+    "Kariéra: výška a váha na soupisce, v přestupech i při výměně",
     "Vyšší hráč má delší dosah hokejkou a je i větší",
     "Vyváženost: sestava, hmotnost i led mají jen mírný vliv, rozhoduje šikovnost",
     "Fyzika: hmotnost hráčů rozhoduje v soubojích, stav ledu ovlivňuje puk i bruslení",
-    "Nastavení: karty nahoře, přepínání LB / RB",
-    "Aktualizace přímo ze hry (Nastavení → Aktualizace)"
+    "Nastavení: karty nahoře, přepínání LB / RB"
   ]
 }

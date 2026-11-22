@@ -681,10 +681,17 @@ Object.assign(Career, {
   },
   playerRow(p, y, x0, cols, me, extra) {
     const a = p.at, G = p.role === 'G';
-    const vals = [p.role, p.num, p.first + ' ' + p.name, p.age, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p), money(plValue(p)).replace(' mil. Kč', ' M')];
-    vals.forEach((v, k) => this.T(v, x0 + cols[k], y, 14, k === 8 ? '#ffd21f' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
+    this.ensureBody(p);
+    const vals = [p.role, p.num, p.first + ' ' + p.name, p.age, p.cm + ' / ' + p.kg, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p), money(plValue(p)).replace(' mil. Kč', ' M')];
+    vals.forEach((v, k) => this.T(v, x0 + cols[k], y, k === 4 ? 13 : 14, k === 9 ? '#ffd21f' : k === 4 ? '#cfd8ea' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
     if (p.inj > 0) this.injTag(p, x0 + cols[2] + 132, y);
     if (extra) extra.forEach(([v, x]) => this.T(v, x0 + x, y, 14, '#cfd8ea', 'center'));
+  },
+  // starší uložené kariéry nemají výšku a váhu: dopočítat (stabilně podle jména a čísla)
+  ensureBody(p) {
+    if (p.kg && p.cm) return;
+    let h = 7; for (const ch of String(p.name) + p.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    Object.assign(p, playerBody(p.role, p.at.SIL, mulberry32(h)));
   },
   injTag(p, x, y) {
     const t = `+ ZRANĚN (${p.inj})`, ctx = R.ctx;
@@ -697,8 +704,8 @@ Object.assign(Career, {
     R.chromeText('SOUPISKA A SESTAVA', R.W / 2, 34, 34);
     this.T(`Rozpočet ${money(c.budget[c.user])}`, R.W / 2, 64, 14, '#9fe3ff', 'center');
     R.panel(x0, 78, 1200, 682, 0.9);
-    const cols = [40, 90, 130, 400, 470, 540, 610, 680, 760, 850];
-    ['POZ', '#', 'JMÉNO', 'VĚK', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK', 'CENA'].forEach((h, k) => this.T(h, x0 + cols[k], 96, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
+    const cols = [40, 85, 120, 382, 448, 520, 580, 640, 700, 770, 855];
+    ['POZ', '#', 'JMÉNO', 'VĚK', 'CM / KG', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK', 'CENA'].forEach((h, k) => this.T(h, x0 + cols[k], 96, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
     ['Z', 'G', 'A', 'B'].forEach((h, k) => this.T(h, x0 + 950 + k * 58, 96, 12, '#9fe3ff', 'center'));
     let y = 118;
     rows.forEach((p, i) => {
@@ -719,8 +726,8 @@ Object.assign(Career, {
     R.chromeText('PŘESTUPY', R.W / 2, 34, 34);
     this.T(`◄  POST: ${ROLE_NAMES[role].toUpperCase()}  ►      Rozpočet ${money(c.budget[c.user])}      ${this.windowOpen() ? 'okno OTEVŘENÉ' : 'okno ZAVŘENÉ'}`, R.W / 2, 66, 15, '#9fe3ff', 'center');
     R.panel(x0, 82, 1200, 640, 0.9);
-    const cols = [40, 90, 130, 400, 470, 540, 610, 680, 760, 850];
-    ['POZ', '#', 'JMÉNO', 'VĚK', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK', 'CENA'].forEach((h, k) => this.T(h, x0 + cols[k], 100, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
+    const cols = [40, 85, 120, 382, 448, 520, 580, 640, 700, 770, 855];
+    ['POZ', '#', 'JMÉNO', 'VĚK', 'CM / KG', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK', 'CENA'].forEach((h, k) => this.T(h, x0 + cols[k], 100, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
     this.T('KLUB', x0 + 1000, 100, 12, '#9fe3ff', 'center');
     list.slice(this.scroll, this.scroll + 15).forEach((o, i) => {
       const y = 128 + i * 38, idx = this.scroll + i;
@@ -734,14 +741,14 @@ Object.assign(Career, {
     const c = this.c, t = this.target, mine = this.mySameRole(), x0 = R.W / 2 - 520;
     R.chromeText('PŘESTUP', R.W / 2, 44, 40);
     R.panel(x0, 80, 1040, 150, 0.9);
-    this.T(`Chceš: #${t.p.num} ${t.p.first} ${t.p.name} (${ROLE_NAMES[t.p.role]}, ${t.p.age} let) – ${t.ti < 0 ? 'volný hráč' : this.teamName(t.ti)}`, x0 + 24, 116, 18, '#fff');
+    this.ensureBody(t.p); this.T(`Chceš: #${t.p.num} ${t.p.first} ${t.p.name} (${ROLE_NAMES[t.p.role]}, ${t.p.age} let, ${t.p.cm} cm, ${t.p.kg} kg) – ${t.ti < 0 ? 'volný hráč' : this.teamName(t.ti)}`, x0 + 24, 116, 18, '#fff');
     this.T(`Celkem ${plOvr(t.p)}   •   hodnota ${money(plValue(t.p))}   •   tvůj rozpočet ${money(c.budget[c.user])}`, x0 + 24, 152, 15, '#9fe3ff');
     this.T('Vyber, kterého svého hráče na stejném postu dáš na výměnu:', x0 + 24, 194, 15, '#ffd21f');
     R.panel(x0, 244, 1040, 80 + mine.length * 52, 0.9);
     mine.forEach((p, i) => {
       const y = 280 + i * 52, fee = this.fee(t.p, t.ti, p), can = fee <= c.budget[c.user];
       if (i === this.sel) this.hl(x0 + 10, y - 22, 1020, 44);
-      this.T(`${p.line + 1}. f.  #${p.num} ${p.first} ${p.name}  (${p.age} let, celkem ${plOvr(p)}, hodnota ${money(plValue(p))})`, x0 + 24, y, 16);
+      this.ensureBody(p); this.T(`${p.line + 1}. f.  #${p.num} ${p.first} ${p.name}  (${p.age} let, ${p.cm} cm / ${p.kg} kg, celkem ${plOvr(p)}, hodnota ${money(plValue(p))})`, x0 + 24, y, 16);
       this.T(fee >= 0 ? `doplatíš ${money(fee)}` : `dostaneš ${money(-fee)}`, x0 + 1016, y, 16, can ? '#7dff8a' : '#ff7a5a', 'right');
     });
     const y = 280 + mine.length * 52;
