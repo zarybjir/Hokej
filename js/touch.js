@@ -30,7 +30,7 @@ const Touch = {
       this.visible = true;
       for (const t of e.changedTouches) this.touches.set(t.identifier, toLogical(t));
     };
-    el.addEventListener('touchstart', (e) => {
+    const start = (e) => {
       update(e);
       if (window.Sfx) { Sfx.init(); Sfx.resume(); }
       if (!this.fsTried) {
@@ -45,7 +45,8 @@ const Touch = {
         if (!this.hitButton(x, y) && x < R.W * 0.5 && !this.stick) this.stick = { id: t.identifier, ox: x, oy: y };
       }
       this.refresh();
-    }, opt);
+    };
+    el.addEventListener('touchstart', start, opt);
     el.addEventListener('touchmove', (e) => { update(e); this.refresh(); }, opt);
     const end = (e) => {
       e.preventDefault();
@@ -57,6 +58,12 @@ const Touch = {
     };
     el.addEventListener('touchend', end, opt);
     el.addEventListener('touchcancel', end, opt);
+    // myš (a dotyk, který systém posílá jako myš – např. Steam s šablonou „Webový prohlížeč“) = jeden prst
+    let mdown = false;
+    const fake = (e) => ({ changedTouches: [{ identifier: 'mouse', clientX: e.clientX, clientY: e.clientY }], preventDefault() { e.preventDefault(); } });
+    el.addEventListener('mousedown', (e) => { mdown = true; start(fake(e)); });
+    window.addEventListener('mousemove', (e) => { if (mdown) { update(fake(e)); this.refresh(); } });
+    window.addEventListener('mouseup', (e) => { if (mdown) { mdown = false; end(fake(e)); } });
   },
   hitButton(x, y) { return this.buttons().find((b) => Math.hypot(x - b.x, y - b.y) < b.r * 1.25) || null; },
   refresh() {

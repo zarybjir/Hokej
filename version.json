@@ -1,12 +1,12 @@
 {
-  "build": 25,
-  "version": "1.25",
+  "build": 26,
+  "version": "1.26",
   "date": "2026-11-22",
   "notes": [
+    "Ovládání myší / dotykem posílaným jako myš, spouštěč povolí Chromiu přístup k ovladačům",
     "Kariéra: výška a váha na soupisce, v přestupech i při výměně",
     "Vyšší hráč má delší dosah hokejkou a je i větší",
     "Vyváženost: sestava, hmotnost i led mají jen mírný vliv, rozhoduje šikovnost",
-    "Fyzika: hmotnost hráčů rozhoduje v soubojích, stav ledu ovlivňuje puk i bruslení",
-    "Nastavení: karty nahoře, přepínání LB / RB"
+    "Fyzika: hmotnost hráčů rozhoduje v soubojích, stav ledu ovlivňuje puk i bruslení"
   ]
 }
