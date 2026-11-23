@@ -56,7 +56,9 @@ a přesnost) brzdí, zrychluje a zatáčí o kousek lépe. Hráči se dostanou d
 stranách), *vyvážená*, *útočná* (napadání ve dvou, obránci u modré – víc gólů, ale i víc protiútoků, víc
 únavy). Počítač volí taktiku podle povahy klubu. V Nastavení → Hra je i **agresivita soupeře**
 (nízká / normální / vysoká) a **ofsajd** (pravidlo jde vypnout; počítač ho dodržuje – drží se před modrou
-a nenahrává do pásma na hráče, kteří tam už stojí).
+a nenahrává do pásma na hráče, kteří tam už stojí) a **zakázané uvolnění** (icing: puk vyhozený zpoza červené
+čáry přes brankovou čáru soupeře → vhazování u vlastní branky a provinilý tým nesmí střídat; v oslabení je
+vyhození povolené; počítač z vlastní poloviny nenahazuje).
 
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —

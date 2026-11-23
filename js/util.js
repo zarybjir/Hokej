@@ -105,7 +105,7 @@ window.addEventListener('error', (e) => showError('Chyba: ' + e.message + (e.fil
 window.addEventListener('unhandledrejection', (e) => showError('Chyba: ' + (e.reason && e.reason.message || e.reason)));
 
 const Settings = {
-  data: { cam: 'top', zoom: 1, gfx: 'high', autoChange: true, penalties: true, injuries: true, zamboni: 'auto', autoUpdate: true, rumble: true, camShake: true, offside: true, cpuAggr: 1, tactics: [1, 1, 1], tags: true, vol: 8, comm: true, replay: true, periodLen: 3, diff: 2, diffV: 2, gameSpeed: 1, assist1: 0, assist2: 0, home: 0, away: 1, fps: false },
+  data: { cam: 'top', zoom: 1, gfx: 'high', autoChange: true, penalties: true, injuries: true, zamboni: 'auto', autoUpdate: true, rumble: true, camShake: true, offside: true, icing: true, cpuAggr: 1, tactics: [1, 1, 1], tags: true, vol: 8, comm: true, replay: true, periodLen: 3, diff: 2, diffV: 2, gameSpeed: 1, assist1: 0, assist2: 0, home: 0, away: 1, fps: false },
   load() {
     let s = {};
     try { s = JSON.parse(localStorage.getItem('hokej98') || '{}'); Object.assign(this.data, s); } catch (e) {}

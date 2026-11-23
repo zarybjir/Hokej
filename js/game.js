@@ -404,6 +404,7 @@ class Game {
     for (const t of this.teams) {
       // střídání při přerušení
       const auto = t.cpu || this.autoChange;
+      if (t.iced) { t.iced = false; t.change = null; for (const p of t.skaters) p.goBench = false; this.instantChange(t, t.line); continue; } // po icingu se nestřídá
       if (t.change) this.instantChange(t, t.change.to);
       else if (auto && this.lineEnergy(t, t.line) < 0.72) { const nx = this.pickLine(t); if (this.lineEnergy(t, nx) > this.lineEnergy(t, t.line) + 0.1) this.instantChange(t, nx); }
       this.instantChange(t, t.line); // sestava podle vyloučení
@@ -512,6 +513,7 @@ class Game {
         this.updateChanges(h);
         this.updatePenalties(h);
         this.checkOffside();
+        this.checkIcing();
         this.updateInjuries(h);
         this.record();
         if (this.clock <= 0 && this.state === 'play') { this.clock = 0; this.endPeriod(); }
@@ -1086,6 +1088,7 @@ class Game {
       return;
     }
     if (pk.owner) {
+      pk.touchX = pk.owner.x; pk.touchTeam = pk.owner.team; // odkud naposledy tým puk hrál (pro zakázané uvolnění)
       const o = pk.owner, off = bladeOffset(o.dir, o.hand, true, this.time, 0, 0, o.reach);
       pk.x = o.x + off[0]; pk.y = o.y + off[1]; pk.z = 0; pk.vx = o.vx; pk.vy = o.vy; pk.vz = 0;
       const c = rinkContact(pk.x, pk.y, PH.PR);
@@ -1412,8 +1415,9 @@ class Game {
     const back = best && s * (best.x - p.x) < -6;
     if (best && ((pressure && bs > my - (back ? -6 : 4) && Math.random() < (back ? 0.3 : 0.55)) || (bs > my + (back ? 18 : 10) && Math.random() < 0.4))) { this.pass(p, best, false); return; }
     const offRisk = this.cfg.offside !== false && t.skaters.some((q) => q !== p && s * q.x > RINK.BLUE_X + 0.5);
-    if (pressure && u > -15 && u < 28 && !offRisk && Math.random() < 0.18) { this.dump(p); return; }
-    if (t.change && u > -30 && u < 40 && !offRisk && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
+    const iceRisk = this.cfg.icing !== false && u < 1 && !(t.skaters.length < opp.skaters.length);
+    if (pressure && u > -15 && u < 28 && !offRisk && !iceRisk && Math.random() < 0.18) { this.dump(p); return; }
+    if (t.change && u > -30 && u < 40 && !offRisk && !iceRisk && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
   }
   openScore(q, from) {
@@ -1554,6 +1558,22 @@ class Game {
     }
   }
   endZamboni() { if (this.state === 'zamboni') { this.zam = null; this.nextPeriod(); } }
+  // ---------- zakázané uvolnění (icing) ----------
+  // puk zahraný zpoza středové čáry přejede nedotčený brankovou čáru soupeře (mimo branku)
+  checkIcing() {
+    const pk = this.puck, prev = this.icePrev == null ? pk.x : this.icePrev;
+    this.icePrev = pk.x;
+    if (this.cfg.icing === false || this.state !== 'play' || pk.owner || pk.held || pk.inNet || !pk.lastTouch) return;
+    const t = pk.lastTouch.team, sN = t.dir;
+    if (pk.lastTouch.isGoalie || pk.touchTeam !== t || sN * (pk.touchX == null ? pk.x : pk.touchX) >= 0) return;
+    if (!(sN * prev <= RINK.GOAL_X && sN * pk.x > RINK.GOAL_X) || Math.abs(pk.y) <= RINK.NET_W + 0.3) return;
+    // tým v oslabení smí puk vyhodit
+    if (t.skaters.length < this.other(t).skaters.length) return;
+    this.icings = (this.icings || 0) + 1;
+    t.iced = true;
+    this.say('Zakázané uvolnění.', false, 0.8);
+    this.whistle('ZAKÁZANÉ UVOLNĚNÍ', [-sN * 69, (pk.y >= 0 ? 1 : -1) * 22]);
+  }
   // ---------- ofsajd ----------
   // puk vjede do útočného pásma a někdo z útočícího týmu (kromě hráče s pukem) už je za modrou čárou
   checkOffside() {
