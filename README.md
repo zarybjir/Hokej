@@ -192,6 +192,15 @@ hákování“), takže funguje i bez systémové hlasové syntézy (ta na Steam
 přegenerovat skriptem `tools/gen_voice.py` (potřebuje `pip install piper-tts`, ffmpeg a model hlasu).
 U vlastních názvů týmů z editoru komentátor město vynechá.
 
+## Postavy a pohyby
+
+Hráči jsou postava **Universal Base Character** od Quaternius (CC0) s dresem a výstrojí
+(objemné kalhoty, chrániče holení a kolen, ramenní a loketní chrániče, helma, brusle). Střely a oslavy
+používají **skutečné pohyby z motion capture** (CMU Graphics Lab Motion Capture Database,
+mocap.cs.cmu.edu, převedené na tuto postavu sadou codepawl/cmu-mocap-glb): příklep a švih podle
+golfového švihu, oslava gólu podle „high five“. Bruslení, buly a vedení puku jsou dopočítávané
+(volný záznam bruslení neexistuje). Soubor `models/player.glb` = postava + klipy.
+
 ## Zdroje
 
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).

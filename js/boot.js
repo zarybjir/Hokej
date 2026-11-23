@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Reflector } from '../lib/Reflector.js';
 import { GLTFLoader } from '../lib/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from '../lib/meshopt_decoder.module.js';
 import * as SkeletonUtils from '../lib/utils/SkeletonUtils.js';
 import { EffectComposer } from '../lib/postprocessing/EffectComposer.js';
 import { RenderPass } from '../lib/postprocessing/RenderPass.js';
@@ -11,6 +12,7 @@ import { OutputPass } from '../lib/postprocessing/OutputPass.js';
 window.THREE = THREE;
 window.Reflector = Reflector;
 window.GLTFLoader = GLTFLoader;
+window.MeshoptDecoder = MeshoptDecoder;
 window.SkeletonUtils = SkeletonUtils;
 window.PP = { EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass };
 

@@ -1,12 +1,12 @@
 {
-  "build": 29,
-  "version": "1.29",
+  "build": 30,
+  "version": "1.30",
   "date": "2026-11-22",
   "notes": [
+    "Nová postava hráče s objemnou výstrojí (kalhoty, chrániče)",
+    "Střely a oslavy podle skutečného motion capture",
     "Komentátor: namluvený český hlas (224 hlášek), funguje i na SteamOS",
     "Dětský režim, asistence pro každého hráče zvlášť, rychlost hry",
-    "Vlaječky států na soupisce",
-    "Animace hokejky a těla: buly, přihrávky, ťukání holí",
-    "Plynulá jízda rolby podél mantinelu"
+    "Vlaječky států na soupisce"
   ]
 }

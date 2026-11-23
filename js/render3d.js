@@ -254,6 +254,17 @@ function hockeyHelmetGeo() {
   return g;
 }
 
+// klip z motion capture připravený pro ruční vzorkování (kosti podle jména, interpolanty)
+function prepClip(a) {
+  const tracks = [];
+  for (const t of a.tracks) {
+    const [bone, path] = t.name.split('.');
+    if (path !== 'quaternion') continue;
+    tracks.push({ bone, interp: t.createInterpolant() });
+  }
+  return { duration: a.duration, tracks };
+}
+
 const G3 = {
   init(canvas) {
     this.cv = canvas;
@@ -990,12 +1001,18 @@ const G3 = {
   // ---------- snímek ----------
   loadBase() {
     if (!window.GLTFLoader) return;
-    const done = (gl) => { gl.animations = []; this.base = gl; this.modelGame = null; }; // přestavět hráče na nový model
+    // hráč: postava Quaternius Universal Base Character (CC0) + pohyby z motion capture CMU (mocap.cs.cmu.edu)
+    const done = (gl) => {
+      this.clips = {};
+      for (const a of gl.animations) this.clips[a.name] = prepClip(a);
+      gl.animations = [];
+      this.base = gl; this.modelGame = null; // přestavět hráče na nový model
+    };
     const fail = (e) => console.warn('Model hráče se nenačetl, používám náhradní', e);
-    const parse = (buf) => new GLTFLoader().parse(buf, 'models/', done, fail);
+    const parse = (buf) => { const L = new GLTFLoader(); if (window.MeshoptDecoder) L.setMeshoptDecoder(MeshoptDecoder); L.parse(buf, 'models/', done, fail); };
     // .glb, nebo záložně base64 text (kde server .glb neposílá)
-    fetch('models/xbot.glb').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then(parse)
-      .catch(() => fetch('models/xbot.glb.b64.txt').then((r) => (r.ok ? r.text() : Promise.reject(r.status))).then((t) => {
+    fetch('models/player.glb').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then(parse)
+      .catch(() => fetch('models/player.glb.b64.txt').then((r) => (r.ok ? r.text() : Promise.reject(r.status))).then((t) => {
         const bin = atob(t.trim()), u = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
         parse(u.buffer);

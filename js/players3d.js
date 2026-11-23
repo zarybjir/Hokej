@@ -3,6 +3,7 @@
 const FT = 3.28084; // metry → stopy (model je v metrech, hra ve stopách)
 
 const _hq1 = new THREE.Quaternion(), _hq2 = new THREE.Quaternion(), _hq3 = new THREE.Quaternion();
+const UPPER = new Set(['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'clavicle_l', 'clavicle_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r']);
 const _hp1 = new THREE.Vector3(), _hp2 = new THREE.Vector3(), _hd1 = new THREE.Vector3(), _hd2 = new THREE.Vector3();
 const UPV = new THREE.Vector3(0, 1, 0);
 function wpos(o, v = new THREE.Vector3()) { return v.setFromMatrixPosition(o.matrixWorld); }
@@ -39,13 +40,25 @@ function ik2(a, b, c, target, pole, la, lb) {
 // ---------- materiál těla: barvy podle oblastí + objem výstroje ----------
 const BODY_VERT_HEAD = `
 uniform float uInfl;
+attribute float aArm;
 varying vec3 vPos;
+varying float vArm;
 // trup pod dresem: místo úzkého pasu modelu souvislý tvar přes chrániče (elipsa v průřezu)
 float torsoM(vec3 p) {
-  float ax = abs(p.x), armM = smoothstep(0.15, 0.21, ax) * smoothstep(1.27, 1.33, p.y);
+  float armM = aArm;
   return (1.0 - armM) * smoothstep(0.9, 0.99, p.y) * (1.0 - smoothstep(1.43, 1.5, p.y));
 }
 vec2 torsoR(float y) { return vec2(mix(0.2, 0.215, smoothstep(1.05, 1.38, y)), mix(0.13, 0.15, smoothstep(1.05, 1.32, y))); }
+`;
+const LEG_FN = `
+// nohy: hokejové kalhoty ke kolenům, chránič kolene a holeně pod štulpnou (válec kolem osy nohy)
+float legM(vec3 p) { return (1.0 - aArm) * smoothstep(0.1, 0.16, p.y) * (1.0 - smoothstep(0.93, 0.99, p.y)); }
+vec2 legC(vec3 p) { return vec2(sign(p.x + 1e-5) * 0.105, mix(-0.045, -0.02, smoothstep(0.1, 0.9, p.y))); }
+float legR(float y) {
+  float r = mix(0.066, 0.08, smoothstep(0.44, 0.53, y));             // holeň → koleno
+  r = mix(r, 0.122 + 0.02 * smoothstep(0.65, 0.92, y), smoothstep(0.56, 0.64, y)); // kalhoty
+  return r * (1.0 + 0.25 * (uInfl - 1.0));
+}
 `;
 const BODY_NORMAL = `
 vec3 objectNormal = vec3( normal );
@@ -56,6 +69,12 @@ vec3 objectNormal = vec3( normal );
     vec3 rad = normalize(vec3(h.x / (R.x * R.x), 0.0, h.y / (R.y * R.y)) + vec3(0.0, 0.0001, 0.0));
     objectNormal = normalize(mix(objectNormal, rad, tm * 0.85));
   }
+  float lm = legM(position);
+  if (lm > 0.0) {
+    vec2 h = vec2(position.x, position.z) - legC(position);
+    float r = length(h);
+    if (r > 1e-4 && r < legR(position.y)) objectNormal = normalize(mix(objectNormal, vec3(h.x / r, 0.0, h.y / r), lm * 0.8));
+  }
 }
 #ifdef USE_TANGENT
   vec3 objectTangent = vec3( tangent.xyz );
@@ -63,7 +82,15 @@ vec3 objectNormal = vec3( normal );
 `;
 const BODY_VERT = `
 vec3 transformed = vec3( position );
-vPos = position;
+vPos = position; vArm = aArm;
+{
+  float lm = legM(position);
+  if (lm > 0.0) {
+    vec2 c = legC(position), h = vec2(position.x, position.z) - c;
+    float r = length(h), R = legR(position.y);
+    if (r > 1e-4) { float nr = mix(r, max(r, R), lm); transformed.x = c.x + h.x / r * nr; transformed.z = c.y + h.y / r * nr; }
+  }
+}
 {
   float tm = torsoM(position);
   if (tm > 0.0) {
@@ -79,13 +106,13 @@ vPos = position;
 }
 {
   float ax = abs(position.x), y = position.y;
-  float armM = smoothstep(0.15, 0.21, ax) * smoothstep(1.27, 1.33, y);
+  float armM = aArm;
   float bodyM = 1.0 - armM;
   float inf = 0.0;
   float back = smoothstep(0.02, -0.06, position.z);
-  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.9, 0.97, y)) * (0.028 - 0.014 * back * smoothstep(0.72, 0.9, y)); // kalhoty
+  inf += bodyM * smoothstep(0.56, 0.62, y) * (1.0 - smoothstep(0.9, 0.97, y)) * 0.0; // kalhoty: tvar řeší válec kolem osy nohy
   inf += bodyM * smoothstep(0.97, 1.04, y) * (1.0 - smoothstep(1.46, 1.5, y)) * (0.012 + 0.02 * smoothstep(1.25, 1.42, y)); // dres
-  inf += bodyM * smoothstep(0.12, 0.17, y) * (1.0 - smoothstep(0.56, 0.62, y)) * 0.032;           // chrániče holení
+  // chrániče holení: tvar řeší válec kolem osy nohy
   inf += armM * (1.0 - smoothstep(0.64, 0.68, ax)) * (0.03 + 0.03 * (1.0 - smoothstep(0.2, 0.34, ax)));   // rukávy, ramenní chrániče
   inf += armM * exp(-pow((ax - 0.45) / 0.035, 2.0)) * 0.018;                                         // loketní chránič
   inf += armM * smoothstep(0.64, 0.68, ax) * 0.02;                                                   // rukavice
@@ -95,8 +122,9 @@ vPos = position;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
-uniform float uRef, uStyle, uYoke;
+uniform float uRef, uStyle, uYoke, uHasMap;
 varying vec3 vPos;
+varying float vArm;
 // pruhy (lem dresu, rukávy, štulpny): t = vzdálenost od okraje v metrech
 vec3 band(vec3 base, float t) {
   vec3 c = base;
@@ -120,13 +148,13 @@ const BODY_FRAG = `
   float ax = abs(vPos.x), y = vPos.y;
   vec3 c;
   float fab = 1.0;
-  if (ax > 0.17 && y > 1.29 && uRef > 0.5) {
+  if (vArm > 0.5 && uRef > 0.5) {
     // rozhodčí: pruhované rukávy, hlavní má oranžové pásky
     c = fract(atan(y - 1.438, vPos.z) / 6.2832 * 8.0) < 0.5 ? uJersey : uStripe;
     if (ax > 0.66) c = uGlove;
     else if (ax > 0.6) c = uStripe;
     else if (uRef > 1.5 && ax > 0.27 && ax < 0.33) c = vec3(1.0, 0.35, 0.0);
-  } else if (ax > 0.17 && y > 1.29) {
+  } else if (vArm > 0.5) {
     // rukáv: barva dresu, pruhy u lokte, manžeta, sedlo přes rameno
     c = uJersey;
     if (ax > 0.66) c = uGlove;
@@ -143,7 +171,7 @@ const BODY_FRAG = `
       vec4 t = texture2D(uNum, vec2(st.x * 0.5, 0.11 + clamp(st.y, 0.0, 1.0) * 0.6));
       c = mix(c, t.rgb, t.a * step(0.0, st.y) * step(st.y, 1.0));
     }
-  } else if (y > 1.535 && ax < 0.15) c = uSkin;
+  } else if (y > 1.535 && ax < 0.15) c = uHasMap > 0.5 ? diffuseColor.rgb : uSkin;
   else if (y > 1.5 && ax < 0.08) c = vec3(0.06);     // chránič krku
   else if (y > 0.99 && uRef > 0.5) {
     c = fract(atan(vPos.x, vPos.z) / 6.2832 * 14.0) < 0.5 ? uJersey : uStripe;
@@ -154,11 +182,11 @@ const BODY_FRAG = `
     if (uYoke > 0.5) {
       float yk = 1.425 + (vPos.z > 0.0 ? 0.02 : 0.0) - ax * 0.12;
       if (y > yk) c = uStripe; else if (y > yk - 0.009) c = uTrim;
-    } else if (y > 1.455) c = uStripe;
+    } else if (y > 1.485) c = uStripe;
     if (y > 1.47 && ax < 0.11) c = uTrim;                                   // límec
-    if (vPos.z > 0.02 && y > 1.39 && ax < (y - 1.39) * 0.55 + 0.004) {      // výstřih do V
+    if (vPos.z > 0.02 && y > 1.42 && ax < (y - 1.42) * 0.5 + 0.004) {      // výstřih do V
       c = uTrim;
-      if (ax < (y - 1.39) * 0.55 - 0.008) c = uStripe * 0.6;
+      if (ax < (y - 1.42) * 0.5 - 0.008) c = uStripe * 0.6;
       if (ax < 0.004 && fract(y * 60.0) < 0.5) c = uTrim;                   // šněrování
     }
     if (vPos.z < -0.03 && ax < 0.15 && y > 1.1 && y < 1.44) {
@@ -220,14 +248,15 @@ function bodyMaterialFinish(T, p, c, ref) {
     uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
+    uHasMap: { value: 0 },
     uStyle: { value: ref ? 0 : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.uniforms);
-    sh.vertexShader = BODY_VERT_HEAD + sh.vertexShader.replace('#include <beginnormal_vertex>', BODY_NORMAL).replace('#include <begin_vertex>', BODY_VERT);
+    sh.vertexShader = BODY_VERT_HEAD + LEG_FN + sh.vertexShader.replace('#include <beginnormal_vertex>', BODY_NORMAL).replace('#include <begin_vertex>', BODY_VERT);
     sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + BODY_FRAG);
   };
-  m.customProgramCacheKey = () => 'hokej-body3';
+  m.customProgramCacheKey = () => 'hokej-body5';
   m.userData.tex = tex;
   return m;
 }
@@ -252,6 +281,53 @@ function helmetMaterial(T, p) {
 }
 
 // ---------- model hráče ----------
+// kosti postavy (Quaternius/UE) → jména, se kterými pracuje animační kód (Mixamo)
+const BONE_ALIAS = { pelvis: 'Hips', spine_01: 'Spine', spine_02: 'Spine1', spine_03: 'Spine2', neck_01: 'Neck', Head: 'Head' };
+for (const [s, S] of [['l', 'Left'], ['r', 'Right']]) Object.assign(BONE_ALIAS, {
+  ['clavicle_' + s]: S + 'Shoulder', ['upperarm_' + s]: S + 'Arm', ['lowerarm_' + s]: S + 'ForeArm', ['hand_' + s]: S + 'Hand',
+  ['middle_01_' + s]: S + 'HandMiddle1', ['thigh_' + s]: S + 'UpLeg', ['calf_' + s]: S + 'Leg', ['foot_' + s]: S + 'Foot', ['ball_' + s]: S + 'ToeBase' });
+// polohy kloubů původní figuríny (výstroj je laděná vůči nim, na nové postavě se posune s klouby)
+const XB = { Head: [0, 1.596, -0.01], LeftFoot: [0.082, 0.084, -0.022], LeftHand: [0.713, 1.438, -0.05], LeftLeg: [0.082, 0.529, 0.008], LeftUpLeg: [0.082, 0.972, 0.005] };
+// jednorázová příprava sdílené postavy: dekvantizace geometrie (shader barví podle polohy v metrech)
+function prepBase(scene) {
+  if (scene.userData.prepped) return; scene.userData.prepped = true;
+  scene.updateMatrixWorld(true);
+  scene.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    const g = o.geometry;
+    for (const k of ['position', 'normal']) {
+      const a = g.attributes[k]; if (!a || a.array instanceof Float32Array && !a.normalized) continue;
+      const f = new Float32Array(a.count * 3);
+      for (let i = 0; i < a.count; i++) { f[i * 3] = a.getX(i); f[i * 3 + 1] = a.getY(i); f[i * 3 + 2] = a.getZ(i); }
+      g.setAttribute(k, new THREE.BufferAttribute(f, 3));
+    }
+    g.applyMatrix4(o.matrix); o.position.set(0, 0, 0); o.quaternion.identity(); o.scale.set(1, 1, 1);
+    o.updateMatrixWorld(true);
+    // u kvantizovaných skinovaných sítí je převod na metry schovaný v inverzních maticích kostí:
+    // D = kost(svět) × inverze → přenést do geometrie a z inverzí odebrat
+    const sk = o.skeleton;
+    sk.bones.forEach((b) => b.updateMatrixWorld(true));
+    const D = new THREE.Matrix4().multiplyMatrices(o.matrixWorld.clone().invert(), new THREE.Matrix4().multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]));
+    const isId = D.elements.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-5);
+    if (!isId) {
+      g.applyMatrix4(D);
+      const Di = D.clone().invert();
+      sk.boneInverses.forEach((m) => m.multiply(Di));
+    }
+    // podíl vah kostí paže → rukáv (barvení nezávislé na tvaru postavy)
+    const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, armB = new Set();
+    o.skeleton.bones.forEach((b, i) => { if (/upperarm|lowerarm|hand|thumb|index|middle|ring|pinky|Arm|Hand/.test(b.name) && !/clavicle|Shoulder/.test(b.name)) armB.add(i); });
+    const arm = new Float32Array(g.attributes.position.count);
+    if (si && sw) for (let i = 0; i < arm.length; i++) {
+      let a = 0; for (let k = 0; k < 4; k++) if (armB.has(si.getComponent(i, k))) a += sw.getComponent(i, k);
+      arm[i] = a;
+    }
+    g.setAttribute('aArm', new THREE.BufferAttribute(arm, 1));
+    o.updateMatrixWorld(true); o.bind(o.skeleton, o.matrixWorld);
+    g.computeBoundingSphere();
+  });
+}
+
 class HModel {
   constructor(G, p) {
     this.G = G; this.goalie = p.isGoalie; this.turn = 0; this.phase = Math.random() * 6.28;
@@ -259,19 +335,30 @@ class HModel {
     this.isRef = !!p.isRef;
     this.helmetMat = helmetMaterial(T, p);
     this.root = new THREE.Group();
+    prepBase(G.base.scene);
     const sc = SkeletonUtils.clone(G.base.scene);
     this.root.add(sc);
     this.mat = bodyMaterial(T, p);
-    const B = this.b = {};
+    const B = this.b = {}, U = this.ue = {}, bodyMesh = [];
     sc.traverse((o) => {
-      if (o.isBone) B[o.name.replace('mixamorig', '')] = o;
-      if (o.isSkinnedMesh) { o.material = this.mat; o.castShadow = true; o.frustumCulled = false; }
+      if (o.isBone) { U[o.name] = o; B[BONE_ALIAS[o.name] || o.name.replace('mixamorig', '')] = o; }
+      if (o.isSkinnedMesh) {
+        o.frustumCulled = false;
+        // oči a obočí si nechají vlastní materiál, tělo dostane dres a výstroj
+        if (/eye/i.test(o.name)) { o.castShadow = false; return; }
+        if (o.material && o.material.map && !this.mat.map) { this.mat.map = o.material.map; this.mat.userData.uniforms.uHasMap.value = 1; }
+        o.material = this.mat; o.castShadow = true; bodyMesh.push(o);
+      }
     });
     this.root.updateMatrixWorld(true);
-    this.bones = Object.values(B);
+    this.bones = Object.values(U).length ? Object.values(U) : Object.values(B);
     this.bind = this.bones.map((b) => [b.quaternion.clone(), b.position.clone()]);
     // výstroj (v metrech, v bind póze) připnutá ke kostem
+    const bname = new Map(Object.entries(B).map(([k, v]) => [v, k]));
     const add = (bone, geo, mat, x, y, z, shadow = true) => {
+      // posun o rozdíl polohy kloubu oproti původní figuríně
+      const k = bname.get(bone), right = /^Right/.test(k), ref = XB[right ? k.replace('Right', 'Left') : k];
+      if (ref) { const w = wpos(bone); x += w.x - (right ? -ref[0] : ref[0]); y += w.y - ref[1]; z += w.z - ref[2]; }
       const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = shadow;
       this.root.add(m); m.updateMatrixWorld(true); bone.attach(m); return m;
     };
@@ -332,13 +419,37 @@ class HModel {
     this.root.traverse((o) => { if (o.isSkinnedMesh && o.skeleton) o.skeleton.dispose(); });
     this.mat.userData.tex.dispose(); this.mat.dispose();
   }
+  // vrstva motion capture: vzorek klipu na horní polovinu těla (váha w)
+  applyClip(name, frac, w) {
+    const C = this.G.clips && this.G.clips[name]; if (!C || w <= 0) return false;
+    const tt = clamp(frac, 0, 1) * C.duration;
+    for (const tr of C.tracks) {
+      const b = this.ue[tr.bone]; if (!b || !UPPER.has(tr.bone)) continue;
+      _hq3.fromArray(tr.interp.evaluate(tt)); b.quaternion.slerp(_hq3, w);
+    }
+    this.root.updateMatrixWorld(true);
+    return true;
+  }
+  // co právě hraje: střela (golfový švih z mocapu), oslava gólu (plácnutí)
+  clipState(p) {
+    if (this.isRef || this.goalie || !this.G.clips || p.downT > 0) return null;
+    const slapDur = p.shotSlap ? 0.5 : 0.32;
+    if (p.windT > 0) { const k = Math.min(1, p.windT / 0.9); return { clip: 'swing', frac: lerp(0.32, 0.6, k), w: Math.min(1, 0.4 + k * 2), yaw: 1 }; }
+    if (p.shotFT > 0) { const u = 1 - p.shotFT / slapDur, big = p.shotSlap ? 1 : 0.65; return { clip: 'swing', frac: lerp(p.shotSlap ? 0.64 : 0.67, 0.84, u), w: big * Math.min(1, (p.shotFT / slapDur) * 3), yaw: big }; }
+    if (p.celebT > 0) { const k = Math.min(1, p.celebT); return { clip: 'highfive', frac: 0.42 + 0.22 * (0.5 + 0.5 * Math.sin(p.celebT * 5)), w: k, yaw: 0 }; }
+    return null;
+  }
   reset() { this.bones.forEach((b, i) => { b.quaternion.copy(this.bind[i][0]); b.position.copy(this.bind[i][1]); }); }
   pose(p, t) {
     // rychlost otáčení (pro náklon v zatáčce a překládání)
     const dtp = clamp(t - (this.lastT == null ? t : this.lastT), 0, 0.1); this.lastT = t;
     if (this.prevDir != null && dtp > 0) { const tr = angDiff(this.prevDir, p.dir) / dtp; this.turn += (clamp(tr, -6, 6) - this.turn) * Math.min(1, dtp * 8); }
     this.prevDir = p.dir;
-    const d = p.dir, c = Math.cos(d), s = Math.sin(d);
+    // střela: postoj bokem k cíli (jako při golfovém švihu z mocapu); plynulý přechod
+    const cs = this.clipState(p);
+    this.cs = cs;
+    this.yawK = (this.yawK || 0) + ((cs ? cs.yaw * cs.w : 0) - (this.yawK || 0)) * Math.min(1, dtp * 14);
+    const d = p.dir - Math.PI / 2 * this.yawK, c = Math.cos(d), s = Math.sin(d);
     const O = new THREE.Vector3(p.x, 0, -p.y), F = new THREE.Vector3(c, 0, -s), Lv = new THREE.Vector3(-s, 0, -c);
     const J = (a, b, z) => new THREE.Vector3(O.x + F.x * a + Lv.x * b, z, O.z + F.z * a + Lv.z * b);
     this.reset();
@@ -388,12 +499,14 @@ class HModel {
     this.root.position.set(O.x, 0.15 - drop, O.z);
     this.root.updateMatrixWorld(true);
     // trup: předklon, kolébání do stran při odrazu
-    rotAxis(B.Hips, Lv, down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind + 0.18 * ready + 0.22 * take);
+    const cs = this.cs, cw0 = cs ? cs.w : 0;
+    rotAxis(B.Hips, Lv, (down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind + 0.18 * ready + 0.22 * take) * (1 - 0.55 * cw0));
     rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
     const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe;
-    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3);
+    if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
+    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3 * (1 - cw0));
     rotAxis(B.Spine1, UPV, -Math.sin(ph) * 0.12 * spd + p.hand * wind * 0.35 + p.hand * swipe * 0.5);
     const headUp = -(0.38 + 0.32 * spd + 0.15 * wind + lean) * 0.8;
     rotAxis(B.Neck, Lv, headUp * 0.55); rotAxis(B.Head, Lv, headUp * 0.45);
@@ -438,6 +551,17 @@ class HModel {
     const [tA, tF, tH, tM] = topSide > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1] : [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1];
     const [bA, bF, bH, bM] = topSide > 0 ? [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1] : [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1];
     const dn = new THREE.Vector3(0, -1, 0);
+    if (cs && cs.w > 0.5 && cs.clip === 'swing') {
+      // švih z mocapu: hůl pokračuje v linii ramena → ruce (jako golfová hůl), čepel na konci
+      const hl = wpos(B.LeftHand), hr = wpos(B.RightHand), hands = hl.clone().lerp(hr, 0.5);
+      const shm = wpos(B.LeftArm).lerp(wpos(B.RightArm), 0.5);
+      const dir = hands.clone().sub(shm).normalize();
+      const topH = hands.clone().addScaledVector(dir, -0.35), heel2 = hands.clone().addScaledVector(dir, 4.2);
+      if (heel2.y < 0.1) heel2.y = 0.1;
+      this.placeStick(heel2, topH, F.clone(), F);
+      return;
+    }
+    if (cs && cs.w > 0.5) return; // oslava: ruce nahoře, hůl volně v ruce
     ik2(tA, tF, tH, topT, dn.clone().addScaledVector(Lv, topSide * 0.9).addScaledVector(F, -0.3), this.L.upper, this.L.fore);
     const top = wpos(tH);
     const sdir = new THREE.Vector3().subVectors(heel, top), slen = sdir.length(); sdir.divideScalar(slen);
