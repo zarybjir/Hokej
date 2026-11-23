@@ -42,6 +42,9 @@ výběru ovladačů): *Částečná* přepíná na hráče u puku a zpřesní st
 soupeře s pukem, když hráč nedrží páčku, sama míří do volného rohu, snadněji sebere puk a vyhraje buly.
 Obtížnost *Dětská* (pomalý a mírný soupeř, silnější vlastní brankář) zapne plnou asistenci oběma hráčům.
 
+**Reakce počítače:** hráči počítače reagují se zpožděním podle obtížnosti (Legenda 0,10 s, Těžká 0,15 s,
+Normální 0,22 s, Lehká 0,30 s, Dětská 0,40 s); klička je zmate na další zlomek sekundy.
+
 **Bruslení a souboje:** bruslení má setrvačnost: v rychlosti se zatáčí po oblouku (čím rychleji,
 tím širší), proti směru jízdy hráč brzdí smykem, z místa se rozjíždí přímo; obratnější hráč (rychlost
 a přesnost) brzdí, zrychluje a zatáčí o kousek lépe. Hráči se dostanou do skutečného kontaktu

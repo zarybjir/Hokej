@@ -1,11 +1,11 @@
 'use strict';
 // ---------- Herní logika: fyzika, pravidla, AI ----------
 const DIFF = [
-  { name: 'Dětská', cpuSpd: 0.78, cpuAcc: 0.35, cpuGk: -0.2, myGk: 0.14, think: 0.5, aggr: 0.25, fo: -0.25, kids: true },
-  { name: 'Lehká', cpuSpd: 0.9, cpuAcc: 0.7, cpuGk: -0.1, myGk: 0.06, think: 0.34, aggr: 0.55, fo: -0.12 },
-  { name: 'Normální', cpuSpd: 0.97, cpuAcc: 1.0, cpuGk: -0.02, myGk: 0.02, think: 0.22, aggr: 0.9, fo: 0 },
-  { name: 'Těžká', cpuSpd: 1.04, cpuAcc: 1.2, cpuGk: 0.05, myGk: -0.02, think: 0.13, aggr: 1.3, fo: 0.12 },
-  { name: 'Legenda', cpuSpd: 1.08, cpuAcc: 1.35, cpuGk: 0.08, myGk: -0.05, think: 0.09, aggr: 1.6, fo: 0.2 },
+  { name: 'Dětská', react: 0.4, cpuSpd: 0.78, cpuAcc: 0.35, cpuGk: -0.2, myGk: 0.14, think: 0.5, aggr: 0.25, fo: -0.25, kids: true },
+  { name: 'Lehká', react: 0.3, cpuSpd: 0.9, cpuAcc: 0.7, cpuGk: -0.1, myGk: 0.06, think: 0.34, aggr: 0.55, fo: -0.12 },
+  { name: 'Normální', react: 0.22, cpuSpd: 0.97, cpuAcc: 1.0, cpuGk: -0.02, myGk: 0.02, think: 0.22, aggr: 0.9, fo: 0 },
+  { name: 'Těžká', react: 0.15, cpuSpd: 1.04, cpuAcc: 1.2, cpuGk: 0.05, myGk: -0.02, think: 0.13, aggr: 1.3, fo: 0.12 },
+  { name: 'Legenda', react: 0.1, cpuSpd: 1.08, cpuAcc: 1.35, cpuGk: 0.08, myGk: -0.05, think: 0.09, aggr: 1.6, fo: 0.2 },
 ];
 // rozhodčí: bílo-černé pruhy, hlavní má oranžové pásky
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
@@ -583,6 +583,21 @@ class Game {
       if (d.pressed('y')) { if (pk.owner === cur) this.saucer(cur, cur.inX, cur.inY); else this.switchPlayer(h); }
     }
   }
+  // paměť poloh pro zpožděné reakce AI (posledních ~0,5 s, krok 1/120 s)
+  remember(p) {
+    if (!p.hb) { p.hb = new Float32Array(64 * 4); p.hi = 0; p.hn = 0; }
+    const i = p.hi * 4; p.hb[i] = p.x; p.hb[i + 1] = p.y; p.hb[i + 2] = p.vx; p.hb[i + 3] = p.vy;
+    p.hi = (p.hi + 1) % 64; p.hn = Math.min(64, p.hn + 1);
+  }
+  // kde AI „vidí“ hráče: se zpožděním podle obtížnosti (klička obránce zmate)
+  seen(p, t) {
+    let tau = (t.cpu && this.vsHuman ? this.diff.react : 0.2) + (p.dekeT > 0 ? 0.15 : 0);
+    const k = Math.min(Math.round(tau * 120), (p.hn || 0) - 1);
+    if (!p.hb || k <= 0) return { x: p.x, y: p.y, vx: p.vx, vy: p.vy };
+    const i = ((p.hi - 1 - k) % 64 + 64) % 64 * 4, b = p.hb;
+    // poloha z minulosti posunutá o tehdejší rychlost (AI odhaduje, kam jedeš)
+    return { x: b[i] + b[i + 2] * tau, y: b[i + 1] + b[i + 3] * tau, vx: b[i + 2], vy: b[i + 3] };
+  }
   // vibrace ovladače hráče, který ovládá p
   feel(p, s, ms) { if (p.ctrl < 0 || this.silent) return; const h = this.humans.find((q) => q.player === p); if (h) Input.rumble(h.dev, s, ms); }
   // ---------- asistence pro lidského hráče (1 = částečná, 2 = plná / děti) ----------
@@ -881,6 +896,7 @@ class Game {
       if (p.carry && snow > 0.3 && Math.random() < snow * sp / 25 * h * 0.05) { this.loosePuck(p, p.vx + rand(-5, 5), p.vy + rand(-5, 5)); this.pop('PUK ODSKOČIL', p.x, p.y, '#cfd8ea'); }
       p.spdN = sp;
       this.integrate(p, h);
+      this.remember(p);
     }
     this.collidePlayers();
   }
@@ -1011,7 +1027,7 @@ class Game {
       }
       const reach = 3.2 + 0.6 * g.gk;
       if ((!onNet && lat > 1.2) || lat > reach) { pk.ignore.set(g, this.time + 0.5); continue; }
-      let sv = 0.962 + (g.gk - 1) * 0.6;
+      let sv = 0.968 + (g.gk - 1) * 0.6;
       if (this.vsHuman) sv += t.cpu ? this.diff.cpuGk : this.diff.myGk;
       sv -= clamp((sp - 60) / 200, 0, 0.22);
       sv -= clamp((lat - 1.4) * 0.11, -0.05, 0.3);
@@ -1261,12 +1277,12 @@ class Game {
       turbo = d > 18 && p.stamina > 0.35; urg = true;
     } else if (t.presser === p && pk.owner) {
       // obránce drží mezeru mezi útočníkem a brankou (podle rychlosti útočníka) a teprve pak napadá
-      const o = pk.owner, gx = -s * RINK.GOAL_X, dx = gx - o.x, dy = -o.y, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl;
-      const d = Math.hypot(o.x - p.x, o.y - p.y), osp = Math.hypot(o.vx, o.vy);
-      const goalSide = (p.x - o.x) * ux + (p.y - o.y) * uy > 0.5;
+      const o = pk.owner, os = this.seen(o, t), gx = -s * RINK.GOAL_X, dx = gx - os.x, dy = -os.y, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl;
+      const d = Math.hypot(o.x - p.x, o.y - p.y), osp = Math.hypot(os.vx, os.vy);
+      const goalSide = (p.x - os.x) * ux + (p.y - os.y) * uy > 0.5;
       const gap = clamp(2.5 + osp * 0.22, 2.5, 8);
-      if (goalSide && d < gap + 3) { tx = o.x + o.vx * 0.15 + ux * 1.2; ty = o.y + o.vy * 0.15 + uy * 1.2; }
-      else { tx = o.x + o.vx * 0.45 + ux * gap; ty = o.y + o.vy * 0.45 + uy * gap; }
+      if (goalSide && d < gap + 3) { tx = os.x + os.vx * 0.15 + ux * 1.2; ty = os.y + os.vy * 0.15 + uy * 1.2; }
+      else { tx = os.x + os.vx * 0.45 + ux * gap; ty = os.y + os.vy * 0.45 + uy * gap; }
       turbo = d > 14 && p.stamina > 0.3; urg = true;
       p.ai.t -= h;
       if (p.ai.t <= 0) {
@@ -1279,7 +1295,7 @@ class Game {
         }
       }
     } else if (t.marks.has(p)) {
-      const o = t.marks.get(p), gx = -s * RINK.GOAL_X;
+      const o = this.seen(t.marks.get(p), t), gx = -s * RINK.GOAL_X;
       tx = o.x + (gx - o.x) * 0.28; ty = o.y * 0.8;
     } else [tx, ty] = this.spotFor(p);
     const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);

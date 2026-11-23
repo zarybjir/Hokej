@@ -1,12 +1,12 @@
 {
-  "build": 32,
-  "version": "1.32",
+  "build": 33,
+  "version": "1.33",
   "date": "2026-11-22",
   "notes": [
+    "Obránci reagují s lidským zpožděním podle obtížnosti, klička je zmate",
     "Svižnější bruslení: ostřejší zatáčení, kratší brzdění",
     "Obránci drží mezeru a víc berou puky, tělem se dá puk vypíchnout",
     "Bruslení se setrvačností: oblouky v rychlosti, brzdění smykem, obratnost hráče",
-    "Skutečný kontakt hráčů, vibrace ovladače a otřes obrazu (vypnutelné)",
-    "Počítač už zbytečně nenahrává dozadu"
+    "Skutečný kontakt hráčů, vibrace ovladače a otřes obrazu (vypnutelné)"
   ]
 }
