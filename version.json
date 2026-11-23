@@ -1,12 +1,12 @@
 {
-  "build": 33,
-  "version": "1.33",
+  "build": 34,
+  "version": "1.34",
   "date": "2026-11-22",
   "notes": [
+    "Obrana: drží se mezi útočníkem a brankou v těsné mezeře, u branky pomáhá druhý hráč, kratší reakční doba",
     "Obránci reagují s lidským zpožděním podle obtížnosti, klička je zmate",
     "Svižnější bruslení: ostřejší zatáčení, kratší brzdění",
     "Obránci drží mezeru a víc berou puky, tělem se dá puk vypíchnout",
-    "Bruslení se setrvačností: oblouky v rychlosti, brzdění smykem, obratnost hráče",
-    "Skutečný kontakt hráčů, vibrace ovladače a otřes obrazu (vypnutelné)"
+    "Bruslení se setrvačností: oblouky v rychlosti, brzdění smykem, obratnost hráče"
   ]
 }

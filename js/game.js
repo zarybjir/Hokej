@@ -1,11 +1,11 @@
 'use strict';
 // ---------- Herní logika: fyzika, pravidla, AI ----------
 const DIFF = [
-  { name: 'Dětská', react: 0.4, cpuSpd: 0.78, cpuAcc: 0.35, cpuGk: -0.2, myGk: 0.14, think: 0.5, aggr: 0.25, fo: -0.25, kids: true },
-  { name: 'Lehká', react: 0.3, cpuSpd: 0.9, cpuAcc: 0.7, cpuGk: -0.1, myGk: 0.06, think: 0.34, aggr: 0.55, fo: -0.12 },
-  { name: 'Normální', react: 0.22, cpuSpd: 0.97, cpuAcc: 1.0, cpuGk: -0.02, myGk: 0.02, think: 0.22, aggr: 0.9, fo: 0 },
-  { name: 'Těžká', react: 0.15, cpuSpd: 1.04, cpuAcc: 1.2, cpuGk: 0.05, myGk: -0.02, think: 0.13, aggr: 1.3, fo: 0.12 },
-  { name: 'Legenda', react: 0.1, cpuSpd: 1.08, cpuAcc: 1.35, cpuGk: 0.08, myGk: -0.05, think: 0.09, aggr: 1.6, fo: 0.2 },
+  { name: 'Dětská', react: 0.32, cpuSpd: 0.78, cpuAcc: 0.35, cpuGk: -0.2, myGk: 0.14, think: 0.5, aggr: 0.25, fo: -0.25, kids: true },
+  { name: 'Lehká', react: 0.2, cpuSpd: 0.9, cpuAcc: 0.7, cpuGk: -0.1, myGk: 0.06, think: 0.34, aggr: 0.55, fo: -0.12 },
+  { name: 'Normální', react: 0.14, cpuSpd: 0.97, cpuAcc: 1.0, cpuGk: -0.02, myGk: 0.02, think: 0.22, aggr: 0.9, fo: 0 },
+  { name: 'Těžká', react: 0.1, cpuSpd: 1.04, cpuAcc: 1.2, cpuGk: 0.05, myGk: -0.02, think: 0.13, aggr: 1.3, fo: 0.12 },
+  { name: 'Legenda', react: 0.07, cpuSpd: 1.08, cpuAcc: 1.35, cpuGk: 0.08, myGk: -0.05, think: 0.09, aggr: 1.6, fo: 0.2 },
 ];
 // rozhodčí: bílo-černé pruhy, hlavní má oranžové pásky
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
@@ -591,7 +591,7 @@ class Game {
   }
   // kde AI „vidí“ hráče: se zpožděním podle obtížnosti (klička obránce zmate)
   seen(p, t) {
-    let tau = (t.cpu && this.vsHuman ? this.diff.react : 0.2) + (p.dekeT > 0 ? 0.15 : 0);
+    let tau = (t.cpu && this.vsHuman ? this.diff.react : 0.14) + (p.dekeT > 0 ? 0.15 : 0);
     const k = Math.min(Math.round(tau * 120), (p.hn || 0) - 1);
     if (!p.hb || k <= 0) return { x: p.x, y: p.y, vx: p.vx, vy: p.vy };
     const i = ((p.hi - 1 - k) % 64 + 64) % 64 * 4, b = p.hb;
@@ -1259,6 +1259,13 @@ class Game {
         free.forEach((p, i) => { const d = Math.hypot(p.x - o.x, p.y - o.y); if (d < bd) { bd = d; bi = i; } });
         t.marks.set(free[bi], o); free.splice(bi, 1);
       }
+      // když se útočník s pukem blíží k brance, nejbližší krycí hráč mu pomůže zastoupit cestu
+      t.helper = null;
+      if (Math.hypot(owner.x - gx, owner.y) < 42) {
+        let hb = null, hd = 1e9;
+        for (const [p] of t.marks) { const d = Math.hypot(p.x - owner.x, p.y - owner.y); if (d < hd && d < 28) { hd = d; hb = p; } }
+        t.helper = hb;
+      }
     }
   }
   aiSkater(p, h) {
@@ -1279,10 +1286,15 @@ class Game {
       // obránce drží mezeru mezi útočníkem a brankou (podle rychlosti útočníka) a teprve pak napadá
       const o = pk.owner, os = this.seen(o, t), gx = -s * RINK.GOAL_X, dx = gx - os.x, dy = -os.y, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl;
       const d = Math.hypot(o.x - p.x, o.y - p.y), osp = Math.hypot(os.vx, os.vy);
-      const goalSide = (p.x - os.x) * ux + (p.y - os.y) * uy > 0.5;
-      const gap = clamp(2.5 + osp * 0.22, 2.5, 8);
-      if (goalSide && d < gap + 3) { tx = os.x + os.vx * 0.15 + ux * 1.2; ty = os.y + os.vy * 0.15 + uy * 1.2; }
-      else { tx = os.x + os.vx * 0.45 + ux * gap; ty = os.y + os.vy * 0.45 + uy * gap; }
+      // obránce: nejdřív se dostat mezi útočníka a branku, pak držet těsnou mezeru a napadat
+      const along = (p.x - os.x) * ux + (p.y - os.y) * uy, lead = 0.25;
+      if (along < 1.5) {
+        const back = 5 + osp * 0.25;                      // projetý: dobruslit si postavení
+        tx = os.x + os.vx * lead + ux * back; ty = os.y + os.vy * lead + uy * back;
+      } else {
+        const gap = clamp(2.5 + osp * 0.1, 2.5, 5);
+        tx = os.x + os.vx * lead + ux * gap; ty = os.y + os.vy * lead + uy * gap;
+      }
       turbo = d > 14 && p.stamina > 0.3; urg = true;
       p.ai.t -= h;
       if (p.ai.t <= 0) {
@@ -1291,9 +1303,13 @@ class Game {
           const ag = this.aggrFor(t), fa = Math.abs(angDiff(p.dir, Math.atan2(o.y - p.y, o.x - p.x)));
           const rear = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > d * 0.5; // byl by to faul zezadu
           if (fa < 0.8 && p.spdN > 9 && (!rear || Math.random() < 0.12 * ag) && Math.random() < 0.2 * ag) this.startCheck(p);
-          else if (Math.random() < 0.42 * ag) this.poke(p);
+          else if (Math.random() < 0.55 * ag) this.poke(p);
         }
       }
+    } else if (t.marks.has(p) && t.helper === p && pk.owner) {
+      // pomoc: zastoupit útočníkovi s pukem cestu do slotu
+      const o = this.seen(pk.owner, t), gx = -s * RINK.GOAL_X;
+      tx = o.x + (gx - o.x) * 0.45; ty = o.y * 0.5; urg = true;
     } else if (t.marks.has(p)) {
       const o = this.seen(t.marks.get(p), t), gx = -s * RINK.GOAL_X;
       tx = o.x + (gx - o.x) * 0.28; ty = o.y * 0.8;
