@@ -358,6 +358,7 @@ class Game {
       r.arm = 0;
       if (dropping && !pk.drop) r.arm = 3;
       if (r.kind === 'R' && (this.state === 'stop' || (this.pending && this.state === 'play'))) r.arm = 1;
+      if (r.kind === 'L' && this.icing && this.state === 'play') r.arm = 1; // čárový signalizuje odložený icing
       if (r.kind === 'R' && this.state === 'goal' && this.stateT < 3) { r.arm = 2; r.armDir = Math.atan2(-r.y, this.goalLight * RINK.GOAL_X - r.x); }
     }
   }
@@ -1442,6 +1443,7 @@ class Game {
 
   // ---------- přerušení, góly, třetiny ----------
   whistle(reason, spot) {
+    this.icing = null;
     if (this.pending) { this.assess(this.pending); this.pending = null; }
     this.state = 'stop'; this.stateT = 0; this.stopSpot = spot;
     this.sfx('whistle');
@@ -1563,16 +1565,28 @@ class Game {
   checkIcing() {
     const pk = this.puck, prev = this.icePrev == null ? pk.x : this.icePrev;
     this.icePrev = pk.x;
-    if (this.cfg.icing === false || this.state !== 'play' || pk.owner || pk.held || pk.inNet || !pk.lastTouch) return;
+    if (this.cfg.icing === false || this.state !== 'play') { this.icing = null; return; }
+    const ic = this.icing;
+    if (ic) {
+      // odložený icing: rozhoduje, kdo se puku dotkne první
+      const by = pk.owner || pk.held || (pk.lastTouch !== ic.lt ? pk.lastTouch : null);
+      if (!by) return;
+      this.icing = null;
+      if (by.team === ic.team || by.isGoalie) { this.pop('BEZ ICINGU', by.x, by.y, '#cfd8ea'); return; } // dostihl ho útočník / zahrál brankář
+      this.icings = (this.icings || 0) + 1;
+      ic.team.iced = true;
+      this.say('Zakázané uvolnění.', false, 0.8);
+      this.whistle('ZAKÁZANÉ UVOLNĚNÍ', [-ic.team.dir * 69, ic.side * 22]);
+      return;
+    }
+    if (pk.owner || pk.held || pk.inNet || !pk.lastTouch) return;
     const t = pk.lastTouch.team, sN = t.dir;
     if (pk.lastTouch.isGoalie || pk.touchTeam !== t || sN * (pk.touchX == null ? pk.x : pk.touchX) >= 0) return;
     if (!(sN * prev <= RINK.GOAL_X && sN * pk.x > RINK.GOAL_X) || Math.abs(pk.y) <= RINK.NET_W + 0.3) return;
-    // tým v oslabení smí puk vyhodit
-    if (t.skaters.length < this.other(t).skaters.length) return;
-    this.icings = (this.icings || 0) + 1;
-    t.iced = true;
-    this.say('Zakázané uvolnění.', false, 0.8);
-    this.whistle('ZAKÁZANÉ UVOLNĚNÍ', [-sN * 69, (pk.y >= 0 ? 1 : -1) * 22]);
+    if (t.skaters.length < this.other(t).skaters.length) return; // tým v oslabení smí puk vyhodit
+    // čárový zvedne ruku a čeká, kdo puk zahraje
+    this.icing = { team: t, lt: pk.lastTouch, side: pk.y >= 0 ? 1 : -1 };
+    this.pop('ICING?', pk.x, pk.y, '#ffe066');
   }
   // ---------- ofsajd ----------
   // puk vjede do útočného pásma a někdo z útočícího týmu (kromě hráče s pukem) už je za modrou čárou

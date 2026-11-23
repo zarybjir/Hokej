@@ -1,12 +1,11 @@
 {
-  "build": 36,
-  "version": "1.36",
-  "date": "2026-11-22",
+  "build": 37,
+  "version": "1.37",
+  "date": "2026-11-23",
   "notes": [
-    "Zakázané uvolnění (icing): vhazování u vlastní branky, nestřídá se, v oslabení povoleno; vypínatelné",
-    "Taktika formací (obranná / vyvážená / útočná) pro každou lajnu, i během zápasu v pauze",
-    "Agresivita soupeře v nastavení",
-    "Pravidlo ofsajdu (vypínatelné), počítač ho dodržuje",
-    "Méně nechtěných podražení po přihrávce"
+    "Odložený icing: píská se, až se puku dotkne bránící hráč (útočník nebo brankář icing ruší)",
+    "Nastavení → Ovládání: přemapování tlačítek pro každý ovladač i klávesnici",
+    "Test ovladačů: ukáže stisknutá tlačítka, osy a co z toho hra čte",
+    "Podpora nestandardních (externích) ovladačů bez standardního mapování"
   ]
 }

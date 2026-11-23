@@ -9,6 +9,15 @@ const KB_MAPS = [
     rt: ['Numpad0', 'ShiftRight'], start: ['Enter', 'NumpadEnter'], back: ['Backspace'], lb: ['Numpad4'], rb: ['Numpad6'] },
 ];
 
+// rozložení tlačítek: logické tlačítko → fyzické (číslo tlačítka, nebo osa „a5+“/„a6-“)
+const PAD_STD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
+// ovladač bez „standard“ rozložení (Linux xpad/evdev): spouště a D-pad jsou osy
+const PAD_XPAD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 'a2+', rt: 'a5+', back: 6, start: 7, up: 'a7-', down: 'a7+', left: 'a6-', right: 'a6+' };
+const STD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'L3', 'R3', '↑', '↓', '←', '→', 'HOME'];
+function padSpecName(spec, std) {
+  if (typeof spec === 'number') return std ? (STD_NAMES[spec] || 'TL. ' + spec) : 'TL. ' + spec;
+  return 'OSA ' + spec.slice(1);
+}
 function blankState() { const s = { lx: 0, ly: 0 }; for (const b of BTN) s[b] = false; return s; }
 
 class Device {
@@ -43,7 +52,17 @@ class Device {
 }
 
 const Input = {
-  keys: new Set(), devices: [], pads: {}, kb: [], merged: null, anyEvent: false,
+  keys: new Set(), devices: [], pads: {}, kb: [], merged: null, anyEvent: false, lastKey: null,
+  // rozložení pro konkrétní ovladač (uložené v nastavení podle jeho jména), jinak výchozí podle typu
+  padMap(gp) {
+    const S = window.Settings && Settings.data, own = S && S.padMaps && S.padMaps[gp.id];
+    return Object.assign({}, gp.mapping === 'standard' ? PAD_STD : PAD_XPAD, own || {});
+  },
+  // klávesnice: vlastní klávesy z nastavení přes výchozí schéma
+  applyKb() {
+    const S = window.Settings && Settings.data;
+    this.kb.forEach((d, i) => { d.map = Object.assign({}, KB_MAPS[i], (S && S.kbMaps && S.kbMaps[i]) || {}); });
+  },
   init() {
     this.kb = KB_MAPS.map((m, i) => { const d = new Device('kb' + i, 'kb', m.name); d.active = false; d.map = m; return d; });
     this.devices.push(...this.kb);
@@ -51,7 +70,7 @@ const Input = {
     this.touchDev = new Device('touch', 'touch', 'Dotyk'); this.touchDev.active = false; this.devices.push(this.touchDev);
     window.addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
-      this.keys.add(e.code); this.anyEvent = true;
+      this.keys.add(e.code); this.anyEvent = true; if (!e.repeat) this.lastKey = e.code;
       if (window.Touch && Touch.visible && !e.repeat) Touch.visible = false;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -84,9 +103,16 @@ const Input = {
       d.connected = true;
       d.prev = d.st; const s = blankState();
       const B = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
-      s.a = B(0); s.b = B(1); s.x = B(2); s.y = B(3); s.lb = B(4); s.rb = B(5);
-      s.lt = B(6); s.rt = B(7); s.back = B(8); s.start = B(9);
-      s.up = B(12); s.down = B(13); s.left = B(14); s.right = B(15);
+      const V = (spec) => {
+        if (typeof spec === 'number') return B(spec);
+        if (typeof spec !== 'string') return false;
+        const v = gp.axes[+spec.slice(1, -1)] || 0; return spec.endsWith('+') ? v > 0.5 : v < -0.5;
+      };
+      const map = this.padMap(gp);
+      for (const b of BTN) s[b] = V(map[b]);
+      // syrový stav pro test ovladačů a zachytávání nového tlačítka
+      d.rawPrev = d.raw; d.raw = { b: gp.buttons.map((q) => !!(q && (q.pressed || q.value > 0.5))), a: Array.from(gp.axes) };
+      d.std = gp.mapping === 'standard'; d.gp = gp;
       let lx = gp.axes[0] || 0, ly = gp.axes[1] || 0;
       const m = Math.hypot(lx, ly);
       if (m < 0.2) { lx = 0; ly = 0; } else { const k = Math.min(1, (m - 0.2) / 0.75) / m; lx *= k; ly *= k; }
@@ -125,6 +151,19 @@ const Input = {
       if (act && act.playEffect) act.playEffect('dual-rumble', { duration: ms, strongMagnitude: clamp(s, 0, 1), weakMagnitude: clamp(s * 0.7 + 0.15, 0, 1) });
       else if (act && act.pulse) act.pulse(clamp(s, 0, 1), ms);
     } catch (e) {}
+  },
+  // zachytávání nového tlačítka (pro přemapování): vrátí první nově stisknuté tlačítko / pohnutou osu / klávesu
+  capture() {
+    for (const d of Object.values(this.pads)) {
+      if (!d.connected || !d.raw || !d.rawPrev) continue;
+      for (let i = 0; i < d.raw.b.length; i++) if (d.raw.b[i] && !d.rawPrev.b[i]) return { dev: d, spec: i };
+      for (let i = 2; i < d.raw.a.length; i++) {
+        const v = d.raw.a[i], p = d.rawPrev.a[i] || 0;
+        if (Math.abs(v) > 0.6 && Math.abs(p) <= 0.6) return { dev: d, spec: 'a' + i + (v > 0 ? '+' : '-') };
+      }
+    }
+    if (this.lastKey) { const k = this.lastKey; this.lastKey = null; return { key: k }; }
+    return null;
   },
   activeDevices() { return this.devices.filter((d) => d.connected && d.active); },
 };
