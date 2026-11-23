@@ -10,7 +10,7 @@ const DIFF = [
 // rozhodčí: bílo-černé pruhy, hlavní má oranžové pásky
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
   def: { c1: '#111111', c2: '#f2f2f2', c3: '#111111', abbr: '', pants: '#111111' } };
-const PH = { GRIP: 72, BRAKE: 58, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.0, GR: 1.6, BE: 0.6 };
+const PH = { GRIP: 112, BRAKE: 85, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.2, GR: 1.6, BE: 0.6 };
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
 const FOULS = { hook: 'HÁKOVÁNÍ', trip: 'PODRÁŽENÍ', slash: 'SEKÁNÍ', back: 'NAPADENÍ ZEZADU', board: 'NARÁŽENÍ NA MANTINEL', interf: 'BRÁNĚNÍ VE HŘE', rough: 'HRUBOST' };
@@ -856,11 +856,11 @@ class Game {
           let sp = sp0, dir = Math.atan2(uy, ux);
           if (cosA < -0.3) { sp = Math.max(0, sp - PH.BRAKE * ag * h); p.braking = true; }
           else {
-            const grip = PH.GRIP * ag * (p.turbo ? 0.85 : 1) * (p.carry ? 0.94 : 1), wMax = grip / Math.max(sp, 7);
+            const grip = PH.GRIP * ag * (p.turbo ? 0.88 : 1) * (p.carry ? 0.95 : 1), wMax = grip / Math.max(sp, 5);
             const turn = clamp(Math.atan2(cr, cosA), -wMax * h, wMax * h);
             dir += turn;
-            sp *= 1 - Math.min(0.5, Math.abs(turn) / h / wMax) * 0.35 * h;       // ostrá zatáčka ubírá rychlost
-            const a = acc * ag * (1 - 0.45 * clamp(sp / maxV, 0, 1));            // čím rychleji, tím pomaleji přidává
+            sp *= 1 - Math.min(0.5, Math.abs(turn) / h / wMax) * 0.15 * h;       // ostrá zatáčka ubírá trochu rychlosti
+            const a = acc * ag * (1 - 0.3 * clamp(sp / maxV, 0, 1));             // čím rychleji, tím pomaleji přidává
             sp += clamp(want - sp, -acc * 0.5 * h, a * h);
           }
           p.vx = Math.cos(dir) * sp; p.vy = Math.sin(dir) * sp;
@@ -924,6 +924,11 @@ class Game {
         const imp = rel * 0.8;
         a.vx -= imp * nx * mb / mt; a.vy -= imp * ny * mb / mt; b.vx += imp * nx * ma / mt; b.vy += imp * ny * ma / mt;
         // kontakt je cítit: lidský hráč dostane vibraci, při větší rychlosti se lehce otřese obraz
+        // tělem do soupeře s pukem: zpomalí ho a puk může odskočit
+        if (rel > 9 && this.state === 'play' && a.team !== b.team) {
+          const pk = this.puck, car = pk.owner === a ? a : pk.owner === b ? b : null;
+          if (car) { const o = car === a ? b : a; if (Math.random() < clamp(0.18 * o.mass / car.mass * (rel / 15), 0, 0.45)) { this.loosePuck(car, car.vx * 0.4 + rand(-5, 5), car.vy * 0.4 + rand(-5, 5)); this.pop('ZTRÁTA!', car.x, car.y, '#cfd8ea'); } }
+        }
         if (rel > 6 && this.state === 'play') { this.feel(a, rel / 40, 90); this.feel(b, rel / 40, 90); if (a.ctrl >= 0 || b.ctrl >= 0) this.shake = Math.max(this.shake, clamp(rel / 60, 0, 0.35)); }
       }
     }
@@ -1255,9 +1260,13 @@ class Game {
       tx = pk.x + pk.vx * look; ty = pk.y + pk.vy * look;
       turbo = d > 18 && p.stamina > 0.35; urg = true;
     } else if (t.presser === p && pk.owner) {
-      const o = pk.owner, gx = -s * RINK.GOAL_X, dx = gx - o.x, dy = -o.y, dl = Math.hypot(dx, dy) || 1;
-      tx = o.x + o.vx * 0.25 + (dx / dl) * 2.5; ty = o.y + o.vy * 0.25 + (dy / dl) * 2.5;
-      const d = Math.hypot(o.x - p.x, o.y - p.y);
+      // obránce drží mezeru mezi útočníkem a brankou (podle rychlosti útočníka) a teprve pak napadá
+      const o = pk.owner, gx = -s * RINK.GOAL_X, dx = gx - o.x, dy = -o.y, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl;
+      const d = Math.hypot(o.x - p.x, o.y - p.y), osp = Math.hypot(o.vx, o.vy);
+      const goalSide = (p.x - o.x) * ux + (p.y - o.y) * uy > 0.5;
+      const gap = clamp(2.5 + osp * 0.22, 2.5, 8);
+      if (goalSide && d < gap + 3) { tx = o.x + o.vx * 0.15 + ux * 1.2; ty = o.y + o.vy * 0.15 + uy * 1.2; }
+      else { tx = o.x + o.vx * 0.45 + ux * gap; ty = o.y + o.vy * 0.45 + uy * gap; }
       turbo = d > 14 && p.stamina > 0.3; urg = true;
       p.ai.t -= h;
       if (p.ai.t <= 0) {

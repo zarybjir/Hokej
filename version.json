@@ -1,12 +1,12 @@
 {
-  "build": 31,
-  "version": "1.31",
+  "build": 32,
+  "version": "1.32",
   "date": "2026-11-22",
   "notes": [
+    "Svižnější bruslení: ostřejší zatáčení, kratší brzdění",
+    "Obránci drží mezeru a víc berou puky, tělem se dá puk vypíchnout",
     "Bruslení se setrvačností: oblouky v rychlosti, brzdění smykem, obratnost hráče",
     "Skutečný kontakt hráčů, vibrace ovladače a otřes obrazu (vypnutelné)",
-    "Počítač už zbytečně nenahrává dozadu",
-    "Nová postava hráče s objemnou výstrojí (kalhoty, chrániče)",
-    "Střely a oslavy podle skutečného motion capture"
+    "Počítač už zbytečně nenahrává dozadu"
   ]
 }
