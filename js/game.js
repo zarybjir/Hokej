@@ -88,6 +88,8 @@ class Game {
     this.humans = (cfg.humans || []).map((h, i) => ({ idx: i, dev: h.dev, team: this.teams[h.team], player: null, foPress: -9, color: HUMAN_COLORS[i % 4], assist: h.assist || 0, swT: 0, autoT: 0 }));
     for (const h of this.humans) h.team.humans.push(h);
     for (const t of this.teams) t.cpu = t.humans.length === 0;
+    // počítač hraje taktiku podle povahy týmu (útočné / obranné kluby); lidský tým podle nastavení
+    for (const t of this.teams) if (t.cpu) { const d = t.def; t.tactics = d.off >= d.def + 3 ? [2, 1, 1] : d.def >= d.off + 3 ? [1, 0, 0] : [1, 1, 1]; }
     this.vsHuman = this.humans.length > 0 && this.teams.some((t) => t.cpu);
     for (const t of this.teams) t.spdMod = t.cpu && this.vsHuman ? this.diff.cpuSpd : 1;
     this.setColors();
@@ -105,7 +107,7 @@ class Game {
   makeTeam(idx, side) {
     const def = TEAMS[idx];
     const t = { idx, def, side, dir: 1, players: [], skaters: [], goalie: null, score: 0, shots: 0, hits: 0, humans: [],
-      chaser: null, presser: null, marks: new Map(), thinkT: Math.random() * 0.15, cpu: true, spdMod: 1, line: 0, change: null, pim: 0, ppg: 0, ppOpp: 0 };
+      chaser: null, presser: null, presser2: null, marks: new Map(), tactics: ((this.cfg.tactics && this.cfg.tactics[side]) || [1, 1, 1]).slice(), thinkT: Math.random() * 0.15, cpu: true, spdMod: 1, line: 0, change: null, pim: 0, ppg: 0, ppOpp: 0 };
     const R = (this.cfg.rosters && this.cfg.rosters[side]) || buildRoster(idx);
     t.lines = R.lines.map((l) => l.map((r) => new Player(t, r)));
     t.goalies = R.goalies.map((r) => new Player(t, r));
@@ -169,7 +171,7 @@ class Game {
       if (p.isGoalie) continue;
       if (!p.onIce) p.stamina = Math.min(1, p.stamina + h / 30);
       else if (this.state === 'play') {
-        p.stamina = Math.max(0, p.stamina - h * (0.6 + 0.6 * clamp(p.spdN / 25, 0, 1)) / 70 * p.staMul);
+        p.stamina = Math.max(0, p.stamina - h * (0.6 + 0.6 * clamp(p.spdN / 25, 0, 1)) / 70 * p.staMul * [0.92, 1, 1.1][this.tacOf(t)]);
         // velké vyčerpání: hrozí natažený sval
         if (p.stamina < 0.1 && Math.random() < h * 0.02 * (1 - p.stamina / 0.1) * p.staMul) this.hurt(p, 'tired');
       }
@@ -387,7 +389,13 @@ class Game {
   showBanner(text, sub, dur = 2, color) { this.banner = { text, sub, t: 0, dur, color }; }
   pop(text, x, y, color = '#fff') { this.pops.push({ text, x, y, t: 0, color }); }
   thinkFor(t) { return t.cpu && this.vsHuman ? this.diff.think : 0.2; }
-  aggrFor(t) { return t.cpu && this.vsHuman ? this.diff.aggr : 0.85; }
+  aggrFor(t) {
+    const base = t.cpu && this.vsHuman ? this.diff.aggr : 0.85;
+    const cpuM = t.cpu ? [0.55, 1, 1.5][this.cfg.cpuAggr == null ? 1 : this.cfg.cpuAggr] : 1;
+    return base * cpuM * [0.8, 1, 1.2][this.tacOf(t)];
+  }
+  // taktika právě hrající formace: 0 obranná, 1 vyvážená, 2 útočná
+  tacOf(t) { const v = t.tactics && t.tactics[t.line]; return v == null ? 1 : v; }
 
   // ---------- buly ----------
   setupFaceoff(fx, fy) {
@@ -503,6 +511,7 @@ class Game {
         this.updatePuck(h);
         this.updateChanges(h);
         this.updatePenalties(h);
+        this.checkOffside();
         this.updateInjuries(h);
         this.record();
         if (this.clock <= 0 && this.state === 'play') { this.clock = 0; this.endPeriod(); }
@@ -579,7 +588,7 @@ class Game {
       }
       const cur = h.player;
       if (cur.winding && !st.x) this.releaseShot(cur);
-      if (d.pressed('b')) { if (pk.owner === cur) this.deke(cur); else this.poke(cur); }
+      if (d.pressed('b')) { if (pk.owner === cur) this.deke(cur); else if (this.time - (cur.relT || -9) > 0.6) this.poke(cur); }
       if (d.pressed('y')) { if (pk.owner === cur) this.saucer(cur, cur.inX, cur.inY); else this.switchPlayer(h); }
     }
   }
@@ -679,7 +688,7 @@ class Game {
     pk.vx = Math.cos(ang) * speed; pk.vy = Math.sin(ang) * speed;
     if (saucer) { const t = dist / speed; pk.vz = PH.G * t * 0.5; pk.z = 0.3; } else { pk.vz = 0; pk.z = 0; }
     pk.passTarget = m || null; pk.passT = dist / speed + 0.6; pk.wasPass = true; pk.shot = null; pk.oneTimer = false;
-    pk.lastTouch = p; p.pickCD = 0.3; p.winding = false; p.windT = 0; p.passFT = saucer ? 0.3 : 0.22;
+    pk.lastTouch = p; p.pickCD = 0.3; p.winding = false; p.windT = 0; p.relT = this.time; p.passFT = saucer ? 0.3 : 0.22;
     if (p.isGoalie) { p.holdT = 0; pk.ignore.set(p, this.time + 0.8); }
     this.sfx('stick', 0.7);
   }
@@ -725,7 +734,7 @@ class Game {
     pk.owner = null; pk.vx = Math.cos(ang) * speed; pk.vy = Math.sin(ang) * speed; pk.vz = vz; pk.z = 0.1;
     pk.shot = { by: p, team: p.team, t: this.time, counted: false, dist: d };
     pk.oneTimer = !!oneTimer; pk.passTarget = null; pk.wasPass = false; pk.lastTouch = p; p.pickCD = 0.35;
-    p.winding = false; p.windT = 0; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap;
+    p.winding = false; p.windT = 0; p.relT = this.time; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap;
     if (slap) this.sfx('slap', 0.6 + 0.4 * power); else this.sfx('stick', 1);
     if (oneTimer) { this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f'); this.say('Z první!', false, 0.6); }
     else if (slap && Math.abs(pk.x - nx) > 45) this.say('Dělovka od modré!', false, 0.35);
@@ -758,7 +767,7 @@ class Game {
           this.sfx('stick', 0.8);
           if (behind && Math.random() < 0.06) this.foul(p, o, 'hook');
         } else if (behind && Math.random() < 0.08) this.foul(p, o, 'hook');
-        else if (d > 2.6 && dd < 4.5 && Math.random() < 0.1) {
+        else if (d > 2.6 && dd < 4.5 && (behind || Math.abs(angDiff(p.dir, o.dir)) > 1.2) && Math.random() < 0.04) {
           // hůl do nohou místo do puku
           o.downT = 0.8; o.lie = Math.atan2(o.y - p.y, o.x - p.x); this.loosePuck(o, o.vx * 0.5, o.vy * 0.5);
           this.foul(p, o, 'trip');
@@ -1029,6 +1038,7 @@ class Game {
       if ((!onNet && lat > 1.2) || lat > reach) { pk.ignore.set(g, this.time + 0.5); continue; }
       let sv = 0.968 + (g.gk - 1) * 0.6;
       if (this.vsHuman) sv += t.cpu ? this.diff.cpuGk : this.diff.myGk;
+      sv += [0.025, 0, -0.02][this.tacOf(t)];   // obranná taktika = horší šance soupeře, útočná = víc protiútoků
       sv -= clamp((sp - 60) / 200, 0, 0.22);
       sv -= clamp((lat - 1.4) * 0.11, -0.05, 0.3);
       if (pk.oneTimer) sv -= 0.09;
@@ -1175,7 +1185,7 @@ class Game {
     if (!best) return;
     const p = best;
     if (sp > 52 && pk.passTarget !== p) {
-      if (Math.random() < 0.4) {
+      if (Math.random() < 0.4 * (pk.shot && pk.shot.team !== p.team ? [1.4, 1, 0.9][this.tacOf(p.team)] : 1)) {
         const a = Math.atan2(pk.vy, pk.vx) + rand(-1.2, 1.2), ns = sp * rand(0.2, 0.5);
         pk.vx = Math.cos(a) * ns; pk.vy = Math.sin(a) * ns; pk.vz = rand(0, 5); pk.deflT = 0.5;
         if (pk.shot && pk.shot.team !== p.team) { pk.shot = null; this.pop('BLOK!', p.x, p.y, '#ddd'); }
@@ -1249,10 +1259,14 @@ class Game {
       if (a && !(hd < ad - 8)) t.chaser = a;
     } else if (owner.team !== t && !owner.isGoalie) {
       const [a, ad] = near(ais, owner.x, owner.y), [, hd] = near(hum, owner.x, owner.y);
-      if (a && !(hd < ad - 6)) t.presser = a;
+      // obranná taktika nenapadá hluboko v pásmu soupeře, útočná napadá ve dvou
+      const deep = t.dir * owner.x;
+      if (a && !(hd < ad - 6) && !(this.tacOf(t) === 0 && deep > 32)) t.presser = a;
+      t.presser2 = null;
+      if (this.tacOf(t) === 2 && deep > 18) { const rest = ais.filter((q) => q !== t.presser && q.role[1] !== 'D'); const [b2] = near(rest, owner.x, owner.y); t.presser2 = b2 || null; }
       const gx = -t.dir * RINK.GOAL_X;
       const attackers = opp.skaters.filter((o) => o !== owner).sort((a, b) => Math.hypot(a.x - gx, a.y) - Math.hypot(b.x - gx, b.y));
-      const free = ais.filter((p) => p !== t.presser);
+      const free = ais.filter((p) => p !== t.presser && p !== t.presser2);
       for (const o of attackers.slice(0, 3)) {
         if (!free.length) break;
         let bi = 0, bd = 1e9;
@@ -1306,6 +1320,10 @@ class Game {
           else if (Math.random() < 0.55 * ag) this.poke(p);
         }
       }
+    } else if (t.presser2 === p && pk.owner) {
+      // druhý napadající: zavírá přihrávku do středu
+      const o = this.seen(pk.owner, t);
+      tx = o.x + o.vx * 0.3 + t.dir * -6; ty = o.y * 0.5; urg = true; turbo = p.stamina > 0.4;
     } else if (t.marks.has(p) && t.helper === p && pk.owner) {
       // pomoc: zastoupit útočníkovi s pukem cestu do slotu
       const o = this.seen(pk.owner, t), gx = -s * RINK.GOAL_X;
@@ -1327,7 +1345,8 @@ class Game {
     const off = owner ? owner.team === t : pu > 5;
     if (off) {
       if (pu > 18) {
-        const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [33, 16], RD: [33, -16] }[p.role];
+        const tac = this.tacOf(t), dU = [27, 33, 42][tac];   // obránci: obranná taktika vzadu, útočná až k modré
+        const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [dU, 16], RD: [dU, -16] }[p.role];
         u = S[0] + Math.sin(tm * 0.6 + ph) * (D ? 3 : 7); v = S[1] + Math.cos(tm * 0.45 + ph * 1.3) * (D ? 6 : 7);
         if (p.role === 'C' && Math.sin(tm * 0.4 + ph) > 0.5) { u = 78; v = Math.sin(ph) > 0 ? 4 : -4; }
       } else {
@@ -1335,9 +1354,15 @@ class Game {
         u = S[0]; v = S[1];
         if (!D) u = Math.min(u, 70);
       }
+      // ofsajd: dokud puk není v útočném pásmu, nikdo nesmí být za modrou čárou
+      if (this.cfg.offside !== false && pu < RINK.BLUE_X) u = Math.min(u, RINK.BLUE_X - 1.5);
     } else {
-      const S = { C: [pu - 12, pv * 0.5], LW: [pu - 14, 18], RW: [pu - 14, -18], LD: [Math.min(pu - 28, 50), 12], RD: [Math.min(pu - 28, 50), -12] }[p.role];
+      const tac = this.tacOf(t), fb = [-21, -13, -7][tac], db = [-32, -28, -24][tac], dmax = [44, 50, 56][tac];
+      const S = { C: [pu + fb + 1, pv * 0.5], LW: [pu + fb, 18 * (tac ? 1 : 0.7)], RW: [pu + fb, -18 * (tac ? 1 : 0.7)], LD: [Math.min(pu + db, dmax), 12], RD: [Math.min(pu + db, dmax), -12] }[p.role];
       u = S[0]; v = S[1];
+      // ve vlastním pásmu nikdy za branku: útočníci hlídají slot a modrou, obránci brankoviště
+      u = Math.max(u, D ? -80 : [-62, -66, -70][tac]);
+      if (tac === 0 && !D && pu < -25) v *= 0.6;                     // obranná taktika: zahustit střed
     }
     u = clamp(u, -84, 84);
     const hw = rinkHalfWidthAt(s * u) - 4; v = clamp(v, -hw, hw);
@@ -1357,6 +1382,8 @@ class Game {
       const du = s * o.x - u, dv = s * o.y - v, d = Math.hypot(du, dv);
       if (d < 16 && du > -4) { const w = (16 - d) / 16; tv += (dv >= 0 ? -1 : 1) * w * 16; tu -= w * 4; }
     }
+    // ofsajd: když je spoluhráč ještě v útočném pásmu, počkej před modrou (ať se vrátí)
+    if (this.cfg.offside !== false && u < RINK.BLUE_X && t.skaters.some((q) => q !== p && s * q.x > RINK.BLUE_X + 0.5)) tu = Math.min(tu, RINK.BLUE_X - 4);
     tu = clamp(tu, -85, 85);
     const hw = rinkHalfWidthAt(s * tu) - 5; tv = clamp(tv, -hw, hw);
     const dx = s * tu - p.x, dy = s * tv - p.y, d = Math.hypot(dx, dy) || 1;
@@ -1384,8 +1411,9 @@ class Game {
     const pressure = td < 9 && front;
     const back = best && s * (best.x - p.x) < -6;
     if (best && ((pressure && bs > my - (back ? -6 : 4) && Math.random() < (back ? 0.3 : 0.55)) || (bs > my + (back ? 18 : 10) && Math.random() < 0.4))) { this.pass(p, best, false); return; }
-    if (pressure && u > -15 && u < 28 && Math.random() < 0.18) { this.dump(p); return; }
-    if (t.change && u > -30 && u < 40 && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
+    const offRisk = this.cfg.offside !== false && t.skaters.some((q) => q !== p && s * q.x > RINK.BLUE_X + 0.5);
+    if (pressure && u > -15 && u < 28 && !offRisk && Math.random() < 0.18) { this.dump(p); return; }
+    if (t.change && u > -30 && u < 40 && !offRisk && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
   }
   openScore(q, from) {
@@ -1396,6 +1424,8 @@ class Game {
     if (u > 55 && Math.abs(v) < 22) sc += 12;
     if (q !== from) {
       if (this.laneBlocked(from, q)) sc -= 25;
+      // ofsajd: přihrávka zpoza modré na hráče v útočném pásmu (nebo když tam někdo zůstal) je zakázaná
+      if (this.cfg.offside !== false && s * from.x <= RINK.BLUE_X && (u > RINK.BLUE_X - 1 || q.team.skaters.some((o) => o !== from && s * o.x > RINK.BLUE_X + 0.5))) sc -= 200;
       // dopředu je lepší; dozadu jen když to opravdu stojí za to
       const adv = s * (q.x - from.x);
       sc += clamp(adv, -40, 40) * 0.35;
@@ -1524,6 +1554,26 @@ class Game {
     }
   }
   endZamboni() { if (this.state === 'zamboni') { this.zam = null; this.nextPeriod(); } }
+  // ---------- ofsajd ----------
+  // puk vjede do útočného pásma a někdo z útočícího týmu (kromě hráče s pukem) už je za modrou čárou
+  checkOffside() {
+    const pk = this.puck, prev = this.offPrev == null ? pk.x : this.offPrev;
+    this.offPrev = pk.x;
+    if (this.cfg.offside === false || this.state !== 'play' || pk.held) return;
+    for (const t of this.teams) {
+      const sN = t.dir;
+      if (!(sN * prev <= RINK.BLUE_X && sN * pk.x > RINK.BLUE_X)) continue;
+      const by = pk.owner || pk.lastTouch;
+      if (!by || by.team !== t) continue;
+      const off = t.skaters.find((q) => q !== pk.owner && !q.goBench && sN * q.x > RINK.BLUE_X + 1.2);
+      if (!off) continue;
+      this.offsides = (this.offsides || 0) + 1;
+      this.pop('OFSAJD', off.x, off.y, '#ffe066');
+      this.say('Ofsajd!', false, 0.8);
+      this.whistle('OFSAJD', [sN * 20, (pk.y >= 0 ? 1 : -1) * 22]);
+      return;
+    }
+  }
   // ---------- stav ledu ----------
   iceIdx(x, y) { return Math.floor(clamp(y + 42.5, 0, 84.9) / 2) * 100 + Math.floor(clamp(x + 100, 0, 199.9) / 2); }
   iceAt(x, y) { return this.ice[this.iceIdx(x, y)]; }

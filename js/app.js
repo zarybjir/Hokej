@@ -119,12 +119,25 @@ const App = {
         break;
       case 'game': {
         const g = this.game;
+        if (g.paused && this.tacView) {
+          // taktika formací pro lidské týmy (platí hned)
+          const rows = this.tacRows(g);
+          this.menuMove(0, rows.length + 1, dt);
+          const d = this.lr(dt);
+          if (this.sel < rows.length && (d || M.pressed('a'))) {
+            const r = rows[this.sel]; r.t.tactics[r.L] = (r.t.tactics[r.L] + (d || 1) + 3) % 3;
+            Settings.data.tactics = r.t.tactics.slice(); Settings.save(); Sfx.stick(0.6);
+          }
+          if (M.pressed('b') || (this.sel === rows.length && M.pressed('a'))) { this.tacView = false; this.sel = 1; }
+          break;
+        }
         if (g.paused) {
-          this.menuMove(0, 3, dt);
+          this.menuMove(0, 4, dt);
           if (M.pressed('start') || M.pressed('b')) g.paused = false;
           else if (M.pressed('a')) {
             if (this.sel === 0) g.paused = false;
-            else if (this.sel === 1) { this.helpFrom = 'pause'; this.screen = 'help'; }
+            else if (this.sel === 1) { this.tacView = true; this.sel = 0; }
+            else if (this.sel === 2) { this.helpFrom = 'pause'; this.screen = 'help'; }
             else {
               this.game = null; this.newDemo(); try { speechSynthesis.cancel(); } catch (e) {}
               if (this.careerMatch) { this.careerMatch = null; this.screen = 'career'; Career.go('hub'); } else this.go('title');
@@ -139,7 +152,7 @@ const App = {
           g.zam.ix = ax * VIEW.rx + ay * VIEW.fx; g.zam.iy = ax * VIEW.ry + ay * VIEW.fy;
           if (M.pressed('b') || M.pressed('start')) g.endZamboni();
         } else if (g.state === 'periodEnd' && M.pressed('y') && g.humans.length && g.cfg.zamboni !== 'off') { g.startZamboni(); }
-        else if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; Sfx.whistle(); break; }
+        else if (M.pressed('start') && !['final', 'periodEnd'].includes(g.state)) { g.paused = true; this.sel = 0; this.tacView = false; Sfx.whistle(); break; }
         else if (M.pressed('a') || M.pressed('start')) g.confirm();
         if (M.pressed('back')) G3.zoomStep(Settings.data.zoom >= ZOOMS.length - 1 ? -(ZOOMS.length - 1) : 1);
         for (let i = 0; i < this.speed; i++) g.update(dt * (g.state === 'zamboni' ? 1 : Settings.data.gameSpeed || 1));
@@ -170,7 +183,7 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1, assist });
     });
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto' });
+    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] });
     this.screen = 'game'; this.sel = 0;
   },
   toggleFull() {
@@ -429,7 +442,11 @@ const App = {
         { label: 'ASISTENCE 1. HRÁČE', val: () => '◄ ' + ASSIST_NAMES[S.assist1 || 0] + ' ►', set: (d) => { S.assist1 = ((S.assist1 || 0) + (d || 1) + 3) % 3; this.assistDev = {}; }, hint: ASSIST_HINT },
         { label: 'ASISTENCE 2. HRÁČE', val: () => '◄ ' + ASSIST_NAMES[S.assist2 || 0] + ' ►', set: (d) => { S.assist2 = ((S.assist2 || 0) + (d || 1) + 3) % 3; this.assistDev = {}; }, hint: ASSIST_HINT },
         { label: 'STŘÍDÁNÍ FORMACÍ', val: () => (S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'), set: () => { S.autoChange = S.autoChange === false; } },
+        { label: 'AGRESIVITA SOUPEŘE', val: () => '◄ ' + ['NÍZKÁ', 'NORMÁLNÍ', 'VYSOKÁ'][S.cpuAggr == null ? 1 : S.cpuAggr] + ' ►', set: (d) => { S.cpuAggr = ((S.cpuAggr == null ? 1 : S.cpuAggr) + (d || 1) + 3) % 3; },
+          hint: 'Jak často počítač napadá, šťouchá holí a hraje bodyčeky (a tím i fauluje).' },
         { label: 'FAULY A VYLOUČENÍ', val: () => onoff(S.penalties !== false), set: () => { S.penalties = S.penalties === false; } },
+        { label: 'OFSAJD', val: () => onoff(S.offside !== false), set: () => { S.offside = S.offside === false; },
+          hint: 'Puk musí do útočného pásma před hráči; počítač pravidlo dodržuje.' },
         { label: 'ZRANĚNÍ', val: () => onoff(S.injuries !== false), set: () => { S.injuries = S.injuries === false; } },
         { label: 'ROLBA O PŘESTÁVCE', val: () => '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►', set: (d) => { S.zamboni = cyc(['auto', 'manual', 'off'], S.zamboni || 'auto', d); },
           hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },
@@ -514,9 +531,34 @@ const App = {
     ctx.font = font(14, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.fillText('A / B — zpět', R.W / 2, 740);
   },
   drawPause() {
-    this.dim(0.6);
+    this.dim(this.tacView ? 0.75 : 0.6);
+    if (this.tacView) return this.drawTactics(this.game);
     R.chromeText('PAUZA', R.W / 2, 220, 64);
-    this.drawList(['POKRAČOVAT', 'OVLÁDÁNÍ', 'UKONČIT ZÁPAS'], 360);
+    this.drawList(['POKRAČOVAT', 'TAKTIKA FORMACÍ', 'OVLÁDÁNÍ', 'UKONČIT ZÁPAS'], 340);
+  },
+  tacRows(g) {
+    const rows = [];
+    for (const t of g.teams) if (t.humans.length) for (const L of [0, 1, 2]) rows.push({ t, L });
+    return rows;
+  },
+  drawTactics(g) {
+    const ctx = R.ctx, rows = this.tacRows(g), N = ['OBRANNÁ', 'VYVÁŽENÁ', 'ÚTOČNÁ'];
+    R.chromeText('TAKTIKA FORMACÍ', R.W / 2, 120, 44);
+    if (!rows.length) { ctx.font = font(18, 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('Taktiku nastavuje tým, za který hraješ.', R.W / 2, 240); }
+    rows.forEach((r, i) => {
+      const y = 200 + i * 48 + (rows.length > 3 && i >= 3 ? 20 : 0), on = this.sel === i, cur = r.t.line === r.L;
+      R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 19, 658, 38); }
+      ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea';
+      ctx.fillText((g.teams[0].humans.length && g.teams[1].humans.length ? r.t.def.abbr + '  ' : '') + (r.L + 1) + '. FORMACE' + (cur ? '  (na ledě)' : ''), R.W / 2 - 305, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText('◄ ' + N[r.t.tactics[r.L]] + ' ►', R.W / 2 + 305, y);
+    });
+    const yb = 200 + rows.length * 48 + (rows.length > 3 ? 20 : 0);
+    R.panel(R.W / 2 - 330, yb - 20, 660, 40, this.sel === rows.length ? 0.95 : 0.6);
+    ctx.font = font(18); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText('ZPĚT', R.W / 2 - 305, yb);
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'center';
+    ctx.fillText('OBRANNÁ: méně gólů na obou stranách, šetří síly.   ÚTOČNÁ: napadání ve dvou, obránci u modré – víc gólů, ale víc protiútoků.', R.W / 2, yb + 60);
+    ctx.fillText('↑↓ formace   ◄► taktika   B zpět', R.W / 2, yb + 86);
   },
 };
 

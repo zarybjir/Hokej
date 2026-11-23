@@ -28,6 +28,7 @@ PHRASES = [
     'Odložené vyloučení.', 'Vyloučení!', 'Dvě minuty!', 'Rozhodčí vylučuje.',
     'hákování', 'podrážení', 'sekání', 'napadení zezadu', 'narážení na mantinel', 'bránění ve hře', 'hrubost',
     # zranění
+    'Ofsajd!', 'Postavení mimo hru.',
     'Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.', 'nedohraje.',
 ] + surnames + cities
 

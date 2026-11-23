@@ -51,6 +51,13 @@ a přesnost) brzdí, zrychluje a zatáčí o kousek lépe. Hráči se dostanou d
 (rameno na rameno); srážky a bodyčeky jsou cítit — **vibrace ovladače** (Nastavení → Zvuk) a lehký
 **otřes obrazu** (Nastavení → Obraz), obojí jde vypnout.
 
+**Taktika formací:** v pauze (START → *Taktika formací*) nastavíš každé lajně taktiku a platí hned:
+*obranná* (útočníci se vracejí, nenapadá se hluboko, víc blokovaných střel, šetří síly – méně gólů na obou
+stranách), *vyvážená*, *útočná* (napadání ve dvou, obránci u modré – víc gólů, ale i víc protiútoků, víc
+únavy). Počítač volí taktiku podle povahy klubu. V Nastavení → Hra je i **agresivita soupeře**
+(nízká / normální / vysoká) a **ofsajd** (pravidlo jde vypnout; počítač ho dodržuje – drží se před modrou
+a nenahrává do pásma na hráče, kteří tam už stojí).
+
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
 rozjetý těžký hráč lehčího srazí, lehčí do těžkého často jen narazí (*ustál to*) nebo se sám odrazí,
