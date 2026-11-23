@@ -117,5 +117,14 @@ const Input = {
     if (this.keys.has('Escape') || this.keys.has('Backspace')) s.b = true;
     M.st = s;
   },
+  // vibrace ovladače (Gamepad API); s = síla 0..1, ms = délka
+  rumble(d, s, ms = 120) {
+    if (!d || d.kind !== 'pad' || !window.Settings || Settings.data.rumble === false) return;
+    try {
+      const gp = navigator.getGamepads()[+d.id.slice(3)], act = gp && (gp.vibrationActuator || (gp.hapticActuators && gp.hapticActuators[0]));
+      if (act && act.playEffect) act.playEffect('dual-rumble', { duration: ms, strongMagnitude: clamp(s, 0, 1), weakMagnitude: clamp(s * 0.7 + 0.15, 0, 1) });
+      else if (act && act.pulse) act.pulse(clamp(s, 0, 1), ms);
+    } catch (e) {}
+  },
   activeDevices() { return this.devices.filter((d) => d.connected && d.active); },
 };

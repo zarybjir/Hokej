@@ -413,8 +413,11 @@ const App = {
         { label: 'JMENOVKA NAD HRÁČEM S PUKEM', val: () => onoff(S.tags !== false), set: () => { S.tags = S.tags === false; } },
         { label: 'ZÁZNAM PO GÓLU', val: () => onoff(S.replay), set: () => { S.replay = !S.replay; } },
         { label: 'ZOBRAZIT FPS', val: () => onoff(S.fps), set: () => { S.fps = !S.fps; } },
+        { label: 'OTŘESY OBRAZU PŘI SRÁŽKÁCH', val: () => onoff(S.camShake !== false), set: () => { S.camShake = S.camShake === false; } },
       ] },
-      { name: 'ZVUK', desc: 'Hlasitost a komentář', items: [
+      { name: 'ZVUK', desc: 'Hlasitost, komentář a vibrace ovladače', items: [
+        { label: 'VIBRACE OVLADAČE', val: () => onoff(S.rumble !== false), set: () => { S.rumble = S.rumble === false; if (S.rumble) for (const d of Input.activeDevices()) Input.rumble(d, 0.6, 200); },
+          hint: 'Ovladač zavibruje při bodyčeku, srážce a tyčce (pokud to prohlížeč a ovladač umí).' },
         { label: 'HLASITOST', val: () => '▮'.repeat(S.vol) + '▯'.repeat(10 - S.vol), set: (d) => { if (d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); } } },
         { label: 'KOMENTÁŘ (HLAS)', val: () => onoff(S.comm), set: () => { S.comm = !S.comm; if (S.comm) Voice.say('Komentář zapnut.', true); },
           hint: 'Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.' },

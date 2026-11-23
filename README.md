@@ -42,6 +42,12 @@ výběru ovladačů): *Částečná* přepíná na hráče u puku a zpřesní st
 soupeře s pukem, když hráč nedrží páčku, sama míří do volného rohu, snadněji sebere puk a vyhraje buly.
 Obtížnost *Dětská* (pomalý a mírný soupeř, silnější vlastní brankář) zapne plnou asistenci oběma hráčům.
 
+**Bruslení a souboje:** bruslení má setrvačnost: v rychlosti se zatáčí po oblouku (čím rychleji,
+tím širší), proti směru jízdy hráč brzdí smykem, z místa se rozjíždí přímo; obratnější hráč (rychlost
+a přesnost) brzdí, zrychluje a zatáčí o kousek lépe. Hráči se dostanou do skutečného kontaktu
+(rameno na rameno); srážky a bodyčeky jsou cítit — **vibrace ovladače** (Nastavení → Zvuk) a lehký
+**otřes obrazu** (Nastavení → Obraz), obojí jde vypnout.
+
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
 rozjetý těžký hráč lehčího srazí, lehčí do těžkého často jen narazí (*ustál to*) nebo se sám odrazí,

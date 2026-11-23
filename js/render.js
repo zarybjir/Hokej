@@ -39,7 +39,7 @@ const R = {
   // převod z pixelů WebGL plátna (0..1) do logických souřadnic HUD
   fromNdc(nx, ny) { return [((nx + 1) / 2 * this.cv.width - this.ox) / this.s, ((1 - ny) / 2 * this.cv.height - this.oy) / this.s]; },
   setPreset() { G3.setView(); },
-  updateCam(tx, dt, snap, shake, ty = 0) { G3.follow(tx, ty, dt, snap, shake); },
+  updateCam(tx, dt, snap, shake, ty = 0) { G3.follow(tx, ty, dt, snap, Settings.data.camShake === false ? 0 : shake); },
   drawWorld(g, players, pk, t, dt, opts = {}) {
     G3.render(g, players, pk, t, dt, opts.refs);
     const ctx = this.ctx;

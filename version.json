@@ -1,12 +1,12 @@
 {
-  "build": 30,
-  "version": "1.30",
+  "build": 31,
+  "version": "1.31",
   "date": "2026-11-22",
   "notes": [
+    "Bruslení se setrvačností: oblouky v rychlosti, brzdění smykem, obratnost hráče",
+    "Skutečný kontakt hráčů, vibrace ovladače a otřes obrazu (vypnutelné)",
+    "Počítač už zbytečně nenahrává dozadu",
     "Nová postava hráče s objemnou výstrojí (kalhoty, chrániče)",
-    "Střely a oslavy podle skutečného motion capture",
-    "Komentátor: namluvený český hlas (224 hlášek), funguje i na SteamOS",
-    "Dětský režim, asistence pro každého hráče zvlášť, rychlost hry",
-    "Vlaječky států na soupisce"
+    "Střely a oslavy podle skutečného motion capture"
   ]
 }

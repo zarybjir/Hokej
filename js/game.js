@@ -10,7 +10,7 @@ const DIFF = [
 // rozhodčí: bílo-černé pruhy, hlavní má oranžové pásky
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
   def: { c1: '#111111', c2: '#f2f2f2', c3: '#111111', abbr: '', pants: '#111111' } };
-const PH = { ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.3, GR: 1.7, BE: 0.6 };
+const PH = { GRIP: 72, BRAKE: 58, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.0, GR: 1.6, BE: 0.6 };
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
 const FOULS = { hook: 'HÁKOVÁNÍ', trip: 'PODRÁŽENÍ', slash: 'SEKÁNÍ', back: 'NAPADENÍ ZEZADU', board: 'NARÁŽENÍ NA MANTINEL', interf: 'BRÁNĚNÍ VE HŘE', rough: 'HRUBOST' };
@@ -41,13 +41,15 @@ class Player {
     // atributy (40–99) → herní parametry
     const A = this.at = info.at || {}, n = (v, lo, hi) => lo + ((v || 75) - 55) / 44 * (hi - lo);
     // atributy mají jen mírný vliv: o výsledku má rozhodovat šikovnost hráče, slabší sestava jen ztěžuje
-    if (this.isGoalie) { this.gk = 0.937 + ((A.REF || 78) - 78) * 0.007; this.gkMove = n(A.RYC, 0.94, 1.06); this.spd = 1; this.pow = 1; this.acc = 1; this.pas = 0.95; this.chk = 0.9; }
+    if (this.isGoalie) { this.gk = 0.99 + ((A.REF || 78) - 78) * 0.002; this.gkMove = n(A.RYC, 0.97, 1.03); this.spd = 1; this.pow = 1; this.acc = 1; this.pas = 0.95; this.chk = 0.9; }
     else { this.spd = n(A.RYC, 0.92, 1.07); this.pow = n(A.SIL, 0.92, 1.08); this.chk = n(A.SIL, 0.92, 1.1); this.acc = n(A.PRE, 0.9, 1.08); this.pas = this.acc; }
     this.staMul = 0.8 - ((A.STA || 75) - 75) * 0.008;
     // hmotnost: těžší hráč vyhrává souboje a hůř se mu bere puk, ale pomaleji zrychluje
     if (!info.kg) { let h = 7; for (const ch of String(info.name) + info.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0; Object.assign(info, playerBody(this.role, A.SIL, mulberry32(h))); }
     this.kg = info.kg; this.cm = info.cm; this.mass = this.kg / 88;
     this.reach = 1 + (this.cm - 185) / 185 * 0.9; // vyšší hráč = delší hůl a paže (zhruba ±8 %)
+    // obratnost (rychlost + přesnost): brzdění, zatáčení, rozjezd – mírně (±3 %)
+    this.agil = this.isGoalie ? 1 : n(((A.RYC || 75) + (A.PRE || 75)) / 2, 0.97, 1.03);
     this.pMass = this.isGoalie ? this.mass * 2.5 : this.mass;   // brankář v postoji s betony se nedá odstrčit
     this.onIce = false; this.goBench = false;
     this.x = 0; this.y = 0; this.vx = 0; this.vy = 0; this.dir = 0;
@@ -581,6 +583,8 @@ class Game {
       if (d.pressed('y')) { if (pk.owner === cur) this.saucer(cur, cur.inX, cur.inY); else this.switchPlayer(h); }
     }
   }
+  // vibrace ovladače hráče, který ovládá p
+  feel(p, s, ms) { if (p.ctrl < 0 || this.silent) return; const h = this.humans.find((q) => q.player === p); if (h) Input.rumble(h.dev, s, ms); }
   // ---------- asistence pro lidského hráče (1 = částečná, 2 = plná / děti) ----------
   assistOf(p) { if (p.ctrl < 0) return 0; const h = this.humans.find((q) => q.player === p); return h ? h.assist : 0; }
   assistHuman(h, stick) {
@@ -795,13 +799,14 @@ class Game {
     const stay = clamp((1 / mr - 1.04) * 1.4 + (force < 24 ? 0.05 : -0.15), 0, 0.4);
     if (Math.random() < stay) {
       b.vx += nx * force * 0.25 / b.mass; b.vy += ny * force * 0.25 / b.mass; a.vx -= nx * 6; a.vy -= ny * 6;
-      this.sfx('hit', 0.4); this.pop('USTÁL TO', b.x, b.y, '#cfd8ea');
+      this.sfx('hit', 0.4); this.pop('USTÁL TO', b.x, b.y, '#cfd8ea'); this.feel(b, 0.45, 160); this.feel(a, 0.35, 140);
       return;
     }
     b.downT = 0.9 + Math.min(1.2, force * 0.035 * Math.sqrt(mr)); b.lie = Math.atan2(ny, nx) + rand(-0.5, 0.5);
     b.winding = false; b.windT = 0;
     b.vx += nx * force * 0.45 / Math.sqrt(b.mass); b.vy += ny * force * 0.45 / Math.sqrt(b.mass);
     a.team.hits++; a.stats.h++;
+    this.feel(b, clamp(force / 30, 0.4, 1), 260); this.feel(a, clamp(force / 45, 0.25, 0.7), 180);
     if (this.puck.owner === b) this.loosePuck(b, b.vx * 0.6 + rand(-6, 6), b.vy * 0.6 + rand(-6, 6));
     this.sfx('hit', clamp(force / 30, 0.4, 1));
     this.shake = Math.max(this.shake, clamp(force / 25, 0.2, 1) * 0.6);
@@ -837,10 +842,29 @@ class Game {
       if (p.recoverT > 0) acc *= 0.35;
       if (p.winding) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
       else if (m > 0.12) {
-        let dvx = ix * maxV - p.vx, dvy = iy * maxV - p.vy;
-        const dl = Math.hypot(dvx, dvy), lim = acc * h;
-        if (dl > lim) { dvx *= lim / dl; dvy *= lim / dl; }
-        p.vx += dvx; p.vy += dvy;
+        // bruslení se setrvačností: v rychlosti se zatáčí po oblouku (boční přilnavost brusle),
+        // proti směru jízdy se brzdí smykem, rozjezd z místa je přímý; vše podle obratnosti hráče
+        const sp0 = Math.hypot(p.vx, p.vy), tx = ix / m, ty = iy / m, want = maxV * m, ag = p.agil * (1 - 0.1 * snow);
+        p.braking = false;
+        if (sp0 < 5) {
+          let dvx = tx * want - p.vx, dvy = ty * want - p.vy;
+          const dl = Math.hypot(dvx, dvy), lim = acc * 1.1 * ag * h;
+          if (dl > lim) { dvx *= lim / dl; dvy *= lim / dl; }
+          p.vx += dvx; p.vy += dvy;
+        } else {
+          const ux = p.vx / sp0, uy = p.vy / sp0, cosA = ux * tx + uy * ty, cr = ux * ty - uy * tx;
+          let sp = sp0, dir = Math.atan2(uy, ux);
+          if (cosA < -0.3) { sp = Math.max(0, sp - PH.BRAKE * ag * h); p.braking = true; }
+          else {
+            const grip = PH.GRIP * ag * (p.turbo ? 0.85 : 1) * (p.carry ? 0.94 : 1), wMax = grip / Math.max(sp, 7);
+            const turn = clamp(Math.atan2(cr, cosA), -wMax * h, wMax * h);
+            dir += turn;
+            sp *= 1 - Math.min(0.5, Math.abs(turn) / h / wMax) * 0.35 * h;       // ostrá zatáčka ubírá rychlost
+            const a = acc * ag * (1 - 0.45 * clamp(sp / maxV, 0, 1));            // čím rychleji, tím pomaleji přidává
+            sp += clamp(want - sp, -acc * 0.5 * h, a * h);
+          }
+          p.vx = Math.cos(dir) * sp; p.vy = Math.sin(dir) * sp;
+        }
       } else { const f = 1 - PH.GLIDE * (1 + 0.3 * snow) * h; p.vx *= f; p.vy *= f; }
       // natočení
       const sp = Math.hypot(p.vx, p.vy);
@@ -899,6 +923,8 @@ class Game {
       if (rel > 0) {
         const imp = rel * 0.8;
         a.vx -= imp * nx * mb / mt; a.vy -= imp * ny * mb / mt; b.vx += imp * nx * ma / mt; b.vy += imp * ny * ma / mt;
+        // kontakt je cítit: lidský hráč dostane vibraci, při větší rychlosti se lehce otřese obraz
+        if (rel > 6 && this.state === 'play') { this.feel(a, rel / 40, 90); this.feel(b, rel / 40, 90); if (a.ctrl >= 0 || b.ctrl >= 0) this.shake = Math.max(this.shake, clamp(rel / 60, 0, 0.35)); }
       }
     }
   }
@@ -980,7 +1006,7 @@ class Game {
       }
       const reach = 3.2 + 0.6 * g.gk;
       if ((!onNet && lat > 1.2) || lat > reach) { pk.ignore.set(g, this.time + 0.5); continue; }
-      let sv = 0.93 + (g.gk - 1) * 0.6;
+      let sv = 0.962 + (g.gk - 1) * 0.6;
       if (this.vsHuman) sv += t.cpu ? this.diff.cpuGk : this.diff.myGk;
       sv -= clamp((sp - 60) / 200, 0, 0.22);
       sv -= clamp((lat - 1.4) * 0.11, -0.05, 0.3);
@@ -1096,7 +1122,7 @@ class Game {
           if (zc > RINK.NET_H - 0.2) { pk.vz = -Math.abs(pk.vz) * 0.4 + 2; pk.vx *= -0.4; }
           else { pk.vx = -pk.vx * 0.55; pk.vy += sgn(yc) * rand(3, 10); }
           if (pk.shot && this.state === 'play') {
-            this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say(pick(['Tyčka!', 'Zvoní tyčka!']), true, 0.8); this.sfx('ooh', 1);
+            this.feel(pk.lastTouch || pk, 0.5, 150); this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say(pick(['Tyčka!', 'Zvoní tyčka!']), true, 0.8); this.sfx('ooh', 1);
             pk.shot = null;
           } else this.sfx('stick', 0.6);
           return false;
@@ -1302,7 +1328,7 @@ class Game {
     const dn = Math.hypot(s * RINK.GOAL_X - p.x, p.y);
     let sp = 0;
     if (u > 38 && u < 88) {
-      sp = dn < 20 ? 0.55 : dn < 32 ? 0.3 : dn < 48 ? 0.12 : 0.04;
+      sp = dn < 20 ? 0.5 : dn < 32 ? 0.24 : dn < 48 ? 0.08 : 0.02;
       const a = Math.atan2(Math.abs(v), RINK.GOAL_X - u);
       if (a > 1.15) sp *= 0.15; else if (a > 0.9) sp *= 0.5;
     }
@@ -1315,7 +1341,8 @@ class Game {
     let best = null, bs = -1e9;
     for (const q of t.skaters) { if (q === p || q.downT > 0) continue; const sc = this.openScore(q, p); if (sc > bs) { bs = sc; best = q; } }
     const pressure = td < 9 && front;
-    if (best && ((pressure && bs > my - 4 && Math.random() < 0.55) || (bs > my + 10 && Math.random() < 0.4))) { this.pass(p, best, false); return; }
+    const back = best && s * (best.x - p.x) < -6;
+    if (best && ((pressure && bs > my - (back ? -6 : 4) && Math.random() < (back ? 0.3 : 0.55)) || (bs > my + (back ? 18 : 10) && Math.random() < 0.4))) { this.pass(p, best, false); return; }
     if (pressure && u > -15 && u < 28 && Math.random() < 0.18) { this.dump(p); return; }
     if (t.change && u > -30 && u < 40 && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
@@ -1328,6 +1355,10 @@ class Game {
     if (u > 55 && Math.abs(v) < 22) sc += 12;
     if (q !== from) {
       if (this.laneBlocked(from, q)) sc -= 25;
+      // dopředu je lepší; dozadu jen když to opravdu stojí za to
+      const adv = s * (q.x - from.x);
+      sc += clamp(adv, -40, 40) * 0.35;
+      if (adv < -6) sc -= 8;
       const d = Math.hypot(q.x - from.x, q.y - from.y);
       if (d > 75) sc -= 15; if (d < 10) sc -= 10;
     }
