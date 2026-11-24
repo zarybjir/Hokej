@@ -1,9 +1,9 @@
 {
-  "build": 48,
-  "version": "1.48",
+  "build": 49,
+  "version": "1.49",
   "date": "2026-11-25",
   "notes": [
-    "Hlavní menu → OVLÁDÁNÍ teď vede rovnou na mapování tlačítek (hráč 1 / 2, ovladač / klávesnice)",
-    "Přehled tlačítek je uvnitř jako samostatná položka"
+    "Spoluhráči řízení počítačem faulují o tři čtvrtiny méně",
+    "Rozhodčí stojí při vhazování u puku (dřív byl daleko a puk padal z ničeho)"
   ]
 }

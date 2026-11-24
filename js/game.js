@@ -320,6 +320,8 @@ class Game {
   foul(off, victim, type) {
     if (this.state === 'play' && Math.random() < (INJ_FOUL[type] || 0.05) * (1.6 - victim.stamina * 0.6)) this.hurt(victim, 'foul');
     if (!this.penOn || this.state !== 'play' || this.pending || off.isGoalie || off.inBox) return;
+    // spoluhráči řízení počítačem hrají v týmu člověka opatrně: většinu jejich faulů rozhodčí nechá být
+    if (off.ctrl < 0 && off.team.humans.length && Math.random() < 0.75) return;
     const t = off.team;
     if (this.outRoles(t).length >= 2) return; // víc než 5 na 3 se nehraje
     // trestné střílení: faul zezadu na hráče v samostatném úniku (před ním už jen brankář)
@@ -546,13 +548,13 @@ class Game {
     this.dropRef = Math.abs(fx) < 1 ? this.refs[0] : best;
     this.dropRef.dropSide = fy > 0 ? 1 : -1;
     if (Math.abs(fy) < 1) this.dropRef.dropSide = -1;
-    this.updateRefs(0, true);
     for (const t of this.teams) {
       for (const p of t.roster) p.ctrl = -1;
       const order = ['C', 'RW', 'LW', 'LD', 'RD'];
       t.humans.forEach((h, i) => { const p = t.skaters.find((q) => q.role === order[i % 5] && q.ctrl < 0) || t.skaters.find((q) => q.ctrl < 0); h.player = p; if (p) p.ctrl = h.idx; h.foPress = -9; });
     }
     this.state = 'faceoff'; this.stateT = 0; this.camSnap = true;
+    this.updateRefs(0, true);   // až teď: vhazující rozhodčí se postaví přímo k bodu vhazování
     if (this.practice && this.practice.kind === 'shoot') {
       const t = this.teams[0], h = this.humans[0], p = (h && h.player) || t.skaters[0];
       Object.assign(pk, { z: 0, owner: p, lastTouch: p, history: [p] });
