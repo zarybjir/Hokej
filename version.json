@@ -1,11 +1,9 @@
 {
-  "build": 54,
-  "version": "1.54",
+  "build": 55,
+  "version": "1.55",
   "date": "2026-11-25",
   "notes": [
-    "Obranný postoj: drž LT (čelem k puku) nebo pravou páčku – hráč couvá a líp odebírá puk",
-    "Při střídání ti hráč s pukem zůstane, dokud nepřihraješ; po střele už X nespustí bodyček",
-    "Zlomená hůl při tvrdém příklepu",
-    "Spoluhráči se v útoku víc nabízejí do volných míst"
+    "Odebírání puku je pro tebe snazší: delší dosah hole, vyšší šance při šťouchnutí i při střetu tělem",
+    "Platí jen proti počítači a podle obtížnosti (na Legendu beze změny); tvoje góly to neovlivní"
   ]
 }

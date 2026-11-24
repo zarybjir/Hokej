@@ -125,7 +125,7 @@ gameMixin(class {
         // tělem do soupeře s pukem: zpomalí ho a puk může odskočit
         if (rel > 9 && this.state === 'play' && a.team !== b.team) {
           const pk = this.puck, car = pk.owner === a ? a : pk.owner === b ? b : null;
-          if (car) { const o = car === a ? b : a; if (Math.random() < clamp(0.18 * o.mass / car.mass * (rel / 15), 0, 0.45)) { this.loosePuck(car, car.vx * 0.4 + rand(-5, 5), car.vy * 0.4 + rand(-5, 5)); this.pop('ZTRÁTA!', car.x, car.y, '#cfd8ea'); } }
+          if (car) { const o = car === a ? b : a; if (Math.random() < clamp(0.18 * o.mass / car.mass * (rel / 15) * (1 + 0.7 * this.takeEdge(o)), 0, 0.6)) { this.loosePuck(car, car.vx * 0.4 + rand(-5, 5), car.vy * 0.4 + rand(-5, 5)); this.pop('ZTRÁTA!', car.x, car.y, '#cfd8ea'); } }
         }
         if (rel > 6 && this.state === 'play') { this.feel(a, rel / 40, 90); this.feel(b, rel / 40, 90); if (a.ctrl >= 0 || b.ctrl >= 0) this.shake = Math.max(this.shake, clamp(rel / 60, 0, 0.35)); }
       }

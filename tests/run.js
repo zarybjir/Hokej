@@ -210,6 +210,23 @@ test('obranný postoj: LT otočí hráče čelem k puku a zpomalí ho', (G) => {
   ok(Math.hypot(p.vx, p.vy) > 3, 'hráč při couvání stojí');
 });
 
+test('odebírání puku: člověk má proti počítači větší dosah hole, na Legendu ne', (G) => {
+  const hit = (diff) => {
+    let n = 0;
+    for (let k = 0; k < 40; k++) {
+      const { g, h } = humanGame(G, { diff }), p = h.player, o = g.teams[1].skaters[0], pk = g.puck;
+      g.thinkAll = () => {}; for (const q of g.all) if (q !== p && q !== o && !q.isGoalie) { q.x = -70; q.y = 30; }
+      const far = 2.4, px = 5.7 * p.reach + far;   // puk 2,4 stopy za čepelí: mimo základní dosah (2,0), v dosahu s pomocí
+      Object.assign(p, { x: 0, y: 0, dir: 0, vx: 0, vy: 0, pokeCD: 0 }); Object.assign(o, { x: px + 2, y: 3.2, dir: Math.PI / 2, vx: 0, vy: 0, dekeT: 0 });
+      pk.owner = o; pk.x = px; pk.y = 0; pk.z = 0;
+      g.poke(p); p.pokeHit = true; g.pokeResolve(p);
+      if (pk.owner !== o) n++;
+    }
+    return n;
+  };
+  ok(hit(2) >= 12, 'na Normální člověk puk na okraji dosahu nezíská'); ok(hit(4) === 0, 'na Legendu má dosah zůstat základní');
+});
+
 // ---------- spuštění ----------
 const filter = process.argv[2];
 let fail = 0; const t0 = Date.now();

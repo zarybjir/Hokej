@@ -170,12 +170,15 @@ gameMixin(class {
     p.vx *= 0.4; p.vy *= 0.4;
     this.pop('LEHÁ DO STŘELY', p.x, p.y, '#cfd8ea');
   }
+  // pomoc člověku při odebírání puku počítači (0–1): podle obtížnosti, na Legendu žádná.
+  // Počítači se nepřidává nic, takže jeho obrana a góly člověka zůstávají stejné.
+  takeEdge(p) { return p.ctrl >= 0 && this.vsHuman ? [1, 0.9, 0.7, 0.35, 0][this.cfg.diff == null ? 1 : this.cfg.diff] : 0; }
   // šťouchnutí holí: hůl vyjede směrem k puku a zásah se vyhodnotí, až čepel doopravdy dorazí (pokeResolve)
   poke(p, lift) {
     if (p.pokeCD > 0 || p.downT > 0 || p.noStick > 0) return;
     p.pokeCD = lift ? 0.7 : 0.55; p.pokeA = 1; p.pokeHit = false; p.pokeLift = !!lift;
     const pk = this.puck, a = Math.atan2(pk.y - p.y, pk.x - p.x), d = Math.hypot(pk.x - p.x, pk.y - p.y);
-    const cone = p.ctrl < 0 ? 1.3 : this.assistOf(p) >= 2 ? 1.6 : 1.1;   // hůl dosáhne jen před hráče
+    const cone = p.ctrl < 0 ? 1.3 : this.assistOf(p) >= 2 ? 1.6 : 1.1 + 0.35 * this.takeEdge(p);   // hůl dosáhne jen před hráče
     p.pokeDir = d < 9 && Math.abs(angDiff(p.dir, a)) < cone ? a : p.dir;
   }
   // čepel je vysunutá: co hůl (úsečka hráč → čepel) opravdu zasáhla?
@@ -183,7 +186,8 @@ gameMixin(class {
     const pk = this.puck, o = pk.owner, R = p.reach, b = pokeBlade(p.pokeDir, 0.5, R), bx = p.x + b[0], by = p.y + b[1];
     // zásah puku: čepelí (do 2 stop), nebo dolní polovinou hole těsně u puku
     const sdx = bx - p.x, sdy = by - p.y, along = ((pk.x - p.x) * sdx + (pk.y - p.y) * sdy) / (sdx * sdx + sdy * sdy);
-    const onPuck = pk.z < 1.5 && (Math.hypot(pk.x - bx, pk.y - by) < 2.0 || (along > 0.5 && segDist(pk.x, pk.y, p.x, p.y, bx, by) < 1.1));
+    const te = this.takeEdge(p);
+    const onPuck = pk.z < 1.5 && (Math.hypot(pk.x - bx, pk.y - by) < 2.0 + 0.9 * te || (along > 0.5 - 0.15 * te && segDist(pk.x, pk.y, p.x, p.y, bx, by) < 1.1 + 0.5 * te));
     const touches = (q) => Math.hypot(q.x - p.x, q.y - p.y) > 2 && segDist(q.x, q.y, p.x, p.y, bx, by) < PH.PLR + 0.2;   // hůl o tělo / brusle
     if (o && o.team !== p.team) {
       const behind = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > 1.5; // útočí zezadu
@@ -208,6 +212,7 @@ gameMixin(class {
         if ((p.x - o.x) * (pk.x - o.x) + (p.y - o.y) * (pk.y - o.y) < 0) ch -= 0.08 + 0.25 * (o.chk - 1);   // puk krytý tělem
         if (o.winding) ch += 0.2;
         if (p.stance != null) ch += 0.1;   // obranný postoj: jistější hůl
+        ch += 0.15 * te;
         if (Math.random() < ch) {
           const a = p.pokeDir + rand(-0.9, 0.9), v = rand(9, 17);
           this.loosePuck(o, Math.cos(a) * v + o.vx * 0.3, Math.sin(a) * v + o.vy * 0.3);

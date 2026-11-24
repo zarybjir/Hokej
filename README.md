@@ -90,6 +90,10 @@ odskočí a hráč je 6 s bez hole: nemůže sebrat puk ani šťouchat, bodyček
 **Střídání s pukem:** když se střídá formace a ty vedeš puk, hráč zůstává tvůj, dokud nepřihraješ
 nebo o puk nepřijdeš. Těsně po střele nebo přihrávce se X nepočítá jako bodyček.
 
+**Odebírání puku:** proti počítači má tvoje hůl o něco delší dosah a šťouchnutí i střet tělem vyšší
+šanci na zisk puku — nejvíc na Dětské a Lehké, na Normální znatelně, na Legendu vůbec. Počítač tuhle
+pomoc nemá.
+
 **Statistiky zápasu:** v pauze nebo na konci zápasu (Y) — mapa střel obou týmů, čas na ledě, +/−,
 střely, úspěšnost na buly, zblokované střely, přesilovky.
 
