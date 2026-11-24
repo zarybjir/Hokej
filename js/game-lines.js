@@ -158,6 +158,8 @@ gameMixin(class {
       // lidský hráč přejde na čerstvého spoluhráče, unavený jede sám na střídačku
       for (const hm of t.humans) {
         if (!hm.player || !hm.player.goBench) continue;
+        // s pukem (nebo když mu puk letí) zůstává řízený hráč tvůj, dokud nepřihraješ
+        if (this.puck.owner === hm.player || this.puck.passTarget === hm.player) continue;
         const fresh = t.skaters.filter((q) => !q.goBench && !q.injured && q.ctrl < 0);
         if (fresh.length) {
           const pk = this.puck, best = fresh.reduce((a, b) => (Math.hypot(a.x - pk.x, a.y - pk.y) < Math.hypot(b.x - pk.x, b.y - pk.y) ? a : b));

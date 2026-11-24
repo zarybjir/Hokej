@@ -552,6 +552,7 @@ class HModel {
       bo[0] = lerp(bo[0], fx * 4.6 + fy * p.hand * 0.5, k); bo[1] = lerp(bo[1], fy * 4.6 - fx * p.hand * 0.5, k); bo[2] = lerp(bo[2], hi, k);
       rotAxis(B.Spine1, UPV, -p.hand * k * 0.45);
     }
+    this.stick.visible = this.root.visible && !(p.noStick > 0);   // zlomená hůl: hráč je chvíli bez ní
     const heel = new THREE.Vector3(O.x + bo[0], bo[2] + 0.1, O.z - bo[1]);
     const H = wpos(B.Hips);
     const topSide = -p.hand; // horní ruka je na opačné straně než čepel

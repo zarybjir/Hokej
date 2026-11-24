@@ -1,9 +1,11 @@
 {
-  "build": 53,
-  "version": "1.53",
+  "build": 54,
+  "version": "1.54",
   "date": "2026-11-25",
   "notes": [
-    "Vnitřní úprava: herní kód rozdělen do menších souborů a přidány automatické testy",
-    "Oprava: trestné střílení se nařídí, i když se faulovaný hráč zároveň zraní"
+    "Obranný postoj: drž LT (čelem k puku) nebo pravou páčku – hráč couvá a líp odebírá puk",
+    "Při střídání ti hráč s pukem zůstane, dokud nepřihraješ; po střele už X nespustí bodyček",
+    "Zlomená hůl při tvrdém příklepu",
+    "Spoluhráči se v útoku víc nabízejí do volných míst"
   ]
 }

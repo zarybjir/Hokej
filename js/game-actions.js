@@ -124,6 +124,8 @@ gameMixin(class {
     if (oneTimer) err *= 1.25;
     if (ast) err *= ast >= 2 ? (this.diff.kids ? 0.4 : 0.6) : 0.8;
     const ang = Math.atan2(dy, dx) + gauss() * err;
+    // tvrdý příklep může zlomit hůl: puk jen odskočí a hráč je pár vteřin bez hole
+    if (slap && this.state === 'play' && Math.random() < (0.008 + 0.03 * power * power) * (this.cfg.sticks === false ? 0 : 1)) return this.breakStick(p, ang, speed);
     const t = d / speed, vz = (tz + 0.5 * PH.G * t * t) / t;
     pk.owner = null; pk.vx = Math.cos(ang) * speed; pk.vy = Math.sin(ang) * speed; pk.vz = vz; pk.z = 0.1;
     pk.shot = { by: p, team: p.team, t: this.time, counted: false, dist: d, deke: this.time - (p.dekeAt || -9) < 0.7, sx: pk.x, sy: pk.y, bh, high: opt.z === 'high', snap: !!opt.snap };
@@ -136,6 +138,13 @@ gameMixin(class {
     if (oneTimer) { this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f'); this.say('Z první!', false, 0.6); }
     else if (slap && Math.abs(pk.x - nx) > 45) this.say('Dělovka od modré!', false, 0.35);
     else this.say(pick(['Střela!', 'Pálí!']), false, 0.18);
+  }
+  breakStick(p, ang, speed) {
+    const pk = this.puck, a = ang + rand(-0.5, 0.5), v = speed * rand(0.15, 0.3);
+    pk.owner = null; pk.vx = Math.cos(a) * v; pk.vy = Math.sin(a) * v; pk.vz = 0; pk.z = 0; pk.shot = null; pk.passTarget = null; pk.lastTouch = p;
+    p.noStick = 6; p.winding = false; p.windT = 0; p.swingT = 0; p.pickCD = 0.5; p.relT = this.time; p.shotFT = 0.5; p.shotSlap = true; p.actDir = ang;
+    this.pop('ZLOMENÁ HŮL!', p.x, p.y, '#ff9a5a'); this.sfx('post'); this.sfx('stick', 1); this.sfx('ooh', 0.7); this.feel(p, 0.8, 200);
+    this.say('To nevypadá dobře.', false, 0.6);
   }
   startCheck(p) {
     if (p.checkCD > 0 || p.downT > 0 || p.carry) return;
@@ -163,7 +172,7 @@ gameMixin(class {
   }
   // šťouchnutí holí: hůl vyjede směrem k puku a zásah se vyhodnotí, až čepel doopravdy dorazí (pokeResolve)
   poke(p, lift) {
-    if (p.pokeCD > 0 || p.downT > 0) return;
+    if (p.pokeCD > 0 || p.downT > 0 || p.noStick > 0) return;
     p.pokeCD = lift ? 0.7 : 0.55; p.pokeA = 1; p.pokeHit = false; p.pokeLift = !!lift;
     const pk = this.puck, a = Math.atan2(pk.y - p.y, pk.x - p.x), d = Math.hypot(pk.x - p.x, pk.y - p.y);
     const cone = p.ctrl < 0 ? 1.3 : this.assistOf(p) >= 2 ? 1.6 : 1.1;   // hůl dosáhne jen před hráče
@@ -198,6 +207,7 @@ gameMixin(class {
         if (o.dekeT > 0) ch *= 0.3;
         if ((p.x - o.x) * (pk.x - o.x) + (p.y - o.y) * (pk.y - o.y) < 0) ch -= 0.08 + 0.25 * (o.chk - 1);   // puk krytý tělem
         if (o.winding) ch += 0.2;
+        if (p.stance != null) ch += 0.1;   // obranný postoj: jistější hůl
         if (Math.random() < ch) {
           const a = p.pokeDir + rand(-0.9, 0.9), v = rand(9, 17);
           this.loosePuck(o, Math.cos(a) * v + o.vx * 0.3, Math.sin(a) * v + o.vy * 0.3);

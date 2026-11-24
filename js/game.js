@@ -260,6 +260,12 @@ class Game {
         const k = Math.min(1, dt * 14), o = p.stk || [p.hand * 0.4, 0];
         p.stk = [o[0] + (clamp(-wx * s + wy * c, -1, 1) - o[0]) * k, o[1] + (clamp(wx * c + wy * s, -1, 1) - o[1]) * k];
       } else p.stk = null;
+      // obranný postoj bez puku: LT = čelem k puku, pravá páčka = čelem zvoleným směrem; hráč couvá a líp odebírá puk
+      p.stance = null;
+      if (pk.owner !== p && this.state === 'play') {
+        if (st.rx || st.ry) p.stance = Math.atan2(st.rx * VIEW.ry - st.ry * VIEW.fy, st.rx * VIEW.rx - st.ry * VIEW.fx);
+        else if (st.lt) { const o = pk.owner || pk; p.stance = Math.atan2(o.y - p.y, o.x - p.x); }
+      }
       if (this.state === 'faceoff') {
         // páčka k soupeřově brance při stisku = vyhrát buly dopředu (na střelu), jinak dozadu k obránci
         if (d.pressed('a') || d.pressed('x')) { h.foPress = this.time; h.foFwd = (p.inX * h.team.dir) > 0.5; }
@@ -284,6 +290,7 @@ class Game {
         const q = h.player;
         if (pk.owner === q) { q.winding = true; q.windT = 0; q.snapQ = lt; }
         else if (!pk.owner && pk.passTarget === q) q.oneTimerQ = true;
+        else if (this.time - (q.relT || -9) < 0.6) {}   // těsně po střele nebo přihrávce se X nepočítá jako bodyček
         else if (lt) this.dive(q);
         else this.startCheck(q);
       }
@@ -346,7 +353,7 @@ class Game {
   }
   assign(h, p) {
     if (h.player === p) return;
-    if (h.player) { h.player.ctrl = -1; h.player.winding = false; h.player.windT = 0; h.player.stk = null; }
+    if (h.player) { h.player.ctrl = -1; h.player.winding = false; h.player.windT = 0; h.player.stk = null; h.player.stance = null; }
     h.player = p; p.ctrl = h.idx; p.oneTimerQ = false;
   }
 }

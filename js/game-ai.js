@@ -196,7 +196,7 @@ gameMixin(class {
     } else [tx, ty] = this.spotFor(p);
     const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
     if (d < 1.2) { p.inX = 0; p.inY = 0; }
-    else { const m = urg ? 1 : clamp(d / 10, 0.25, 1); p.inX = (dx / d) * m; p.inY = (dy / d) * m; }
+    else { const m = urg ? 1 : p.ai.offer > this.time ? clamp(d / 6, 0.45, 1) : clamp(d / 10, 0.25, 1); p.inX = (dx / d) * m; p.inY = (dy / d) * m; }   // při nabízení se hýbe svižněji
     if (d < 4 && !urg) p.faceDir = Math.atan2(pk.y - p.y, pk.x - p.x);
     p.turbo = turbo;
   }
@@ -222,19 +222,23 @@ gameMixin(class {
       else if (owner && owner.team === t && owner !== p) {
         const ai = p.ai;
         if (!ai.spotT || this.time > ai.spotT) {
-          ai.spotT = this.time + rand(0.35, 0.6);
+          ai.spotT = this.time + rand(0.25, 0.45);
           const opp = this.other(t).skaters.filter((o) => o.downT <= 0);
           let bd = [0, 0], bs = -1e9;
-          for (const [du, dv] of [[0, 0], [6, 0], [-6, 0], [0, 7], [0, -7], [5, 5], [5, -5], [-5, 5], [-5, -5]]) {
-            const wx = s * (u + du), wy = s * (v + dv);
+          // útočníci hledají v širším okolí: volné místo, průchozí přihrávka, v pásmu blíž k brance a ke středu
+          const R = D ? [[0, 0], [6, 0], [-6, 0], [0, 7], [0, -7]] : [0, 6, -6, 12, -12].flatMap((a) => [0, 6, -6, 12, -12].map((b) => [a, b]));
+          for (const [du, dv] of R) {
+            const cu = u + du, cv = v + dv, wx = s * cu, wy = s * cv;
+            if (Math.abs(cv) > 38 || cu > 86 || Math.hypot(wx - owner.x, wy - owner.y) < 12) continue;
             let open = 30; for (const o of opp) open = Math.min(open, Math.hypot(o.x - wx, o.y - wy));
-            let sc = Math.min(open, 16) - Math.hypot(du, dv) * 0.25;
-            if (opp.some((o) => segDist(o.x, o.y, owner.x, owner.y, wx, wy) < 3)) sc -= 6;
+            let sc = Math.min(open, 18) - Math.hypot(du, dv) * 0.2;
+            sc += opp.some((o) => segDist(o.x, o.y, owner.x, owner.y, wx, wy) < 3) ? -8 : 5;
+            if (!D && pu > RINK.BLUE_X) sc += clamp((cu - 55) * 0.15, 0, 4) - Math.abs(cv) * 0.08;
             if (sc > bs) { bs = sc; bd = [du, dv]; }
           }
           ai.sdu = bd[0]; ai.sdv = bd[1];
         }
-        u += ai.sdu || 0; v += ai.sdv || 0;
+        u += ai.sdu || 0; v += ai.sdv || 0; p.ai.offer = this.time + 0.2;
       }
       // ofsajd: dokud puk není v útočném pásmu, nikdo nesmí být za modrou čárou
       if (this.cfg.offside !== false && pu < RINK.BLUE_X) u = Math.min(u, RINK.BLUE_X - 1.5);

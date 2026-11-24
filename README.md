@@ -84,6 +84,12 @@ se vyhodnotí až ve chvíli, kdy čepel doopravdy dorazí — puk vypíchneš, 
 Hákování, podražení a sekání se pískají jen tehdy, když hůl zasáhne tělo soupeře. Při příklepu puk
 leží na místě a odletí až při úderu hole.
 
+**Zlomená hůl:** při tvrdém příklepu může prasknout hokejka (asi jednou za tři zápasy). Puk jen
+odskočí a hráč je 6 s bez hole: nemůže sebrat puk ani šťouchat, bodyček mu zůstává.
+
+**Střídání s pukem:** když se střídá formace a ty vedeš puk, hráč zůstává tvůj, dokud nepřihraješ
+nebo o puk nepřijdeš. Těsně po střele nebo přihrávce se X nepočítá jako bodyček.
+
 **Statistiky zápasu:** v pauze nebo na konci zápasu (Y) — mapa střel obou týmů, čas na ledě, +/−,
 střely, úspěšnost na buly, zblokované střely, přesilovky.
 
@@ -193,6 +199,8 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 | LT + B | | zvednout soupeři hokejku |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
 | Pravá páčka | vedení puku: do strany, před sebe, k tělu (soupeř na krytý puk hůř dosáhne) | |
+| drž LT | | obranný postoj: hráč se otočí čelem k puku, couvá (pomaleji) a jistěji odebírá puk |
+| Pravá páčka bez puku | | obranný postoj čelem zvoleným směrem |
 | LB | střídání formace | střídání formace |
 | View (Back) | zoom kamery | zoom kamery |
 | Menu | pauza | pauza |

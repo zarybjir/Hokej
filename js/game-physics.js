@@ -12,6 +12,7 @@ gameMixin(class {
       if (p.pokeA > 0 && p.pokeA <= 0.55 && !p.pokeHit) { p.pokeHit = true; if (p.downT <= 0 && this.state === 'play') this.pokeResolve(p); } p.checkCD -= h; p.pickCD -= h;
       if (p.checkT > 0) { p.checkT -= h; if (p.checkT <= 0 && !p.checkHit) p.recoverT = 0.3; }
       if (p.blockT > 0) p.blockT -= h;
+      if (p.noStick > 0) { p.noStick -= h; if (p.noStick <= 0) this.pop('NOVÁ HŮL', p.x, p.y, '#cfd8ea'); }
       p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h); if (p.shotFT > 0) p.shotFT -= h; if (p.passFT > 0) p.passFT -= h; if (p.foSwipe > 0) p.foSwipe -= h; if (p.celebT > 0) p.celebT -= h;
       p.carry = pk.owner === p;
       if (p.downT > 0) {
@@ -32,6 +33,7 @@ gameMixin(class {
       let maxV = PH.MAXV * p.spd * p.team.spdMod * ft * Math.pow(1 / p.mass, 0.04) * (1 - 0.04 * snow),
         acc = PH.ACC * (0.8 + 0.2 * p.spd) * (0.8 + 0.2 * ft) * mf * (1 - 0.06 * snow);
       if (p.carry) maxV *= 0.94;
+      if (p.stance != null) maxV *= 0.8;   // v obranném postoji (couvání) pomaleji
       if (p.turbo && m > 0.3 && p.stamina > 0.08 && !p.winding) { maxV *= PH.TURBO; acc *= 1.3; p.stamina = Math.max(0, p.stamina - h * 0.024 * p.staMul); }
       if (p.recoverT > 0) acc *= 0.35;
       if (p.winding || p.swingT > 0) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
@@ -64,6 +66,7 @@ gameMixin(class {
       const sp = Math.hypot(p.vx, p.vy);
       let fd = null;
       if (p.winding || p.swingT > 0) fd = Math.atan2(-p.y, p.team.dir * RINK.GOAL_X - p.x);
+      else if (p.stance != null && !p.carry) fd = p.stance;
       else if (m > 0.2) fd = Math.atan2(iy, ix);
       else if (p.faceDir != null) fd = p.faceDir;
       else if (sp > 3) fd = Math.atan2(p.vy, p.vx);
@@ -394,7 +397,7 @@ gameMixin(class {
     const sp = Math.hypot(pk.vx, pk.vy);
     let best = null, bd = 2.0;
     for (const p of this.all) {
-      if (p.isGoalie || (p.downT > 0 && !(p.blockT > 0)) || p.pickCD > 0) continue;
+      if (p.isGoalie || (p.downT > 0 && !(p.blockT > 0)) || p.pickCD > 0 || p.noStick > 0) continue;
       if (p.blockT > 0) { const d = Math.hypot(p.x - pk.x, p.y - pk.y) - 2.4; if (d < bd) { bd = d; best = p; } continue; }
       const off = bladeOffset(p.dir, p.hand, false, this.time, p.winding ? p.windT : 0, p.pokeA, p.reach);
       let d = Math.hypot(p.x + off[0] - pk.x, p.y + off[1] - pk.y) - (p.reach - 1) * 2.5 - (p.ctrl >= 0 && this.assistOf(p) >= 2 ? 0.8 : 0);

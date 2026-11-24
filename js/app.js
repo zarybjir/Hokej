@@ -706,6 +706,7 @@ const App = {
       ['PRAVÁ PÁČKA', 'vést puk do strany, před sebe nebo k tělu (krytí puku)'],
       ['BEZ PUKU', ''],
       ['A', 'přepnout na hráče nejblíž puku'], ['X / LT + X', 'bodyček (vestoje bokem) / lehnout do střely'], ['B / LT + B', 'šťouchnutí holí / zvednout hokejku'],
+      ['drž LT / pravá páčka', 'obranný postoj: čelem k puku / zvoleným směrem, couvání'],
       ['BULY', 'A/X přesně při dopadu, páčkou k soupeři = vyhrát dopředu'],
       ['LB', 'střídání formace (při ručním střídání)'], ['VIEW (BACK)', 'zoom kamery'], ['MENU / START', 'pauza'],
     ];

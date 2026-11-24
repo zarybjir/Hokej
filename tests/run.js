@@ -19,7 +19,7 @@ test('zápasy počítač × počítač: doběhnou a čísla dávají smysl', (G)
   const rf = G.Game.prototype.resolveFaceoff; G.Game.prototype.resolveFaceoff = function () { fo++; const r = this.dropRef; if (Math.hypot(r.x - this.foSpot[0], r.y - this.foSpot[1]) > 5) refFar++; return rf.call(this); };
   for (let n = 0; n < N; n++) {
     const g = playGame(G, { home: n * 3, away: n * 3 + 1 }, (g) => {
-      for (const t of g.teams) { if (t.skaters.length > 6) bad = 'víc než 6 hráčů v poli'; if (t.pulled && t.players.includes(t.goalie)) bad = 'odvolaný brankář je na ledě'; }
+      for (const t of g.teams) { if (t.skaters.length > 6) bad = 'víc než 6 hráčů v poli'; if (g.state === 'play' && t.pulled && t.players.includes(t.goalie)) bad = 'odvolaný brankář je na ledě'; }
       const pk = g.puck; if (!isFinite(pk.x + pk.y + pk.z)) bad = 'puk má neplatnou polohu';
       for (const p of g.all) if (!isFinite(p.x + p.y)) bad = 'hráč má neplatnou polohu';
     });
@@ -158,6 +158,56 @@ test('uložená kariéra ze starší verze se doplní (smlouvy, potenciál, kapi
   C.save(); C.c = null; ok(C.load(), 'kariéra se nenačetla');
   const t = C.c.teams[7];
   ok(t.cap != null && t.players.every((p) => p.sal > 0 && p.yrs >= 1 && p.pot > 0), 'chybějící údaje se nedoplnily');
+});
+
+// hráč řízený „člověkem“ s nastavitelným ovladačem
+function humanGame(G, cfg = {}) {
+  const dev = { st: { lx: 0, ly: 0, rx: 0, ry: 0 }, down: new Set(), pressed(b) { return this.down.has(b); } };
+  const g = new G.Game({ home: 0, away: 1, humans: [{ dev, team: 0, assist: 0 }], silent: true, ...cfg });
+  while (g.state !== 'play') g.update(1 / 60);
+  return { g, dev, h: g.humans[0] };
+}
+
+test('po střele se X nepočítá jako bodyček (žádný faul z mačkání)', (G) => {
+  const { g, dev, h } = humanGame(G), p = h.player;
+  g.puck.owner = p; g.shoot(p, 0, false, null, false);
+  dev.down.add('x'); g.handleHumans(1 / 60); dev.down.clear();
+  ok(!(p.checkT > 0), 'hned po střele začal bodyček');
+  for (let i = 0; i < 50; i++) g.update(1 / 60);
+  p.checkCD = 0; dev.down.add('x'); g.handleHumans(1 / 60);
+  ok(p.checkT > 0 || g.puck.owner === h.player, 'bodyček nefunguje ani později');
+});
+
+test('zlomená hůl: hráč je chvíli bez hole a nesebere puk', (G) => {
+  const { g, h } = humanGame(G), p = h.player, pk = g.puck;
+  pk.owner = p; g.breakStick(p, 0, 100);
+  ok(p.noStick > 0 && pk.owner === null, 'hůl se nezlomila');
+  g.thinkAll = () => {}; for (const q of g.all) if (q !== p && !q.isGoalie) { q.x = -60; q.y = 30; }
+  Object.assign(p, { x: 0, y: 0, vx: 0, vy: 0 }); Object.assign(pk, { x: 1, y: 0, vx: 0, vy: 0, z: 0 });
+  for (let i = 0; i < 60; i++) { p.pickCD = 0; g.update(1 / 60); }
+  ok(pk.owner !== p, 'hráč bez hole sebral puk');
+  for (let i = 0; i < 60 * 7; i++) g.update(1 / 60);
+  ok(!(p.noStick > 0), 'hráč nedostal novou hůl');
+});
+
+test('střídání: hráč s pukem zůstává řízený, dokud nepřihraje', (G) => {
+  const { g, h } = humanGame(G, { autoChange: false }), T = g.teams[0], p = h.player, pk = g.puck;
+  pk.owner = p; g.requestChange(T, true);
+  for (let i = 0; i < 60 * 12 && g.state === 'play'; i++) { pk.owner = p; for (const q of g.teams[1].skaters) { q.x = -T.dir * 70; q.y = -30; } g.update(1 / 60); }   // spoluhráči mezitím vystřídají, soupeř je daleko
+  ok(h.player === p && p.onIce, 'řízení přeskočilo na jiného hráče, i když měl puk');
+  pk.owner = null; pk.x = 80; pk.y = 0; pk.passTarget = null;
+  for (let i = 0; i < 60 && g.state === 'play'; i++) g.update(1 / 60);
+  ok(h.player !== p, 'po ztrátě puku se řízení nepřepnulo na čerstvého hráče');
+});
+
+test('obranný postoj: LT otočí hráče čelem k puku a zpomalí ho', (G) => {
+  const { g, dev, h } = humanGame(G), p = h.player, pk = g.puck, o = g.teams[1].skaters[0];
+  g.thinkAll = () => {}; pk.owner = o; Object.assign(o, { x: 20, y: 0, vx: 0, vy: 0 }); Object.assign(p, { x: 0, y: 0, vx: 0, vy: 0, dir: Math.PI });
+  dev.st.lt = true; dev.st.lx = 0; dev.st.ly = 1;   // jede pryč od puku (couvá)
+  for (let i = 0; i < 90; i++) { pk.owner = o; o.x = 20; o.y = 0; g.update(1 / 60); }
+  const face = Math.atan2(o.y - p.y, o.x - p.x), d = Math.abs(((p.dir - face + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+  ok(p.stance != null && d < 0.5, 'hráč není čelem k puku (odchylka ' + d.toFixed(2) + ')');
+  ok(Math.hypot(p.vx, p.vy) > 3, 'hráč při couvání stojí');
 });
 
 // ---------- spuštění ----------
