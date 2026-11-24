@@ -60,7 +60,28 @@ a nenahrává do pásma na hráče, kteří tam už stojí) a **zakázané uvoln
 čáry přes brankovou čáru soupeře → čárový rozhodčí zvedne ruku („ICING?") a píská se, až když se puku
 dotkne bránící hráč v poli; dotkne-li se ho dřív útočník provinilého týmu nebo brankář, icing se ruší.
 Pak vhazování u vlastní branky a provinilý tým nesmí střídat; v oslabení je vyhození povolené; počítač
-z vlastní poloviny nenahazuje).
+z vlastní poloviny nenahazuje). Icing jde přepnout na **okamžitý** (píská se hned) nebo vypnout.
+
+**Prodloužení a nájezdy:** při remíze po 3. třetině se hraje prodloužení na první gól — **3 na 3**
+(vyloučení soupeře = 4 na 3), 5 na 5, nebo žádné. Když nerozhodne, jedou se **nájezdy** (3 série, pak
+náhlá smrt). Při nájezdu řídíš střelce (páčka, X střela, B klička); když bráníš, řídíš brankáře
+(páčka = postavení, vyjetí proti střelci, X = vypíchnutí puku). Vše v Nastavení → Hra.
+
+**Odvolání brankáře:** počítač odvolá brankáře na konci zápasu, když prohrává o 1–2 góly, a při
+odloženém vyloučení soupeře. Ty v pauze zvolíš *ODVOLAT BRANKÁŘE* (a *VRÁTIT BRANKÁŘE*): brankář dojede
+na střídačku a naskočí šestý hráč. Hráč s volnou dráhou střílí do prázdné branky i z dálky.
+
+**Hra u branky a u mantinelu:** po střele najíždí centr na dorážku, spoluhráč před brankou může střelu
+**tečovat**, hráči v dráze střely dělají brankáři **clonu**. Volný puk u mantinelu znamená **souboj**
+(rozhoduje síla, hmotnost a únava; mačkáním X/B pomůžeš). Hráč s pukem ho kryje tělem. Počítač
+nahazuje puk po mantinelu a předvídá, kam puk objede (obránce mu jede naproti za branku).
+Spoluhráči se nabízejí do volných míst, kam vede průchozí přihrávka. **Přihrávky** podle atributu
+PŘE: šikovnější hráč přesněji nahraje do běhu, naslepo za záda a na dálku. **Tlak v pásmu:** když
+tým dlouho drží puk v útočném pásmu, bránící hráči se rychleji unavují.
+
+**Režimy:** *Exhibice* (5 na 5 nebo **3 na 3**), *Kariéra*, *Trénink* (střelba a přihrávky bez soupeřů,
+přesilovka 5 na 4, nájezdy jako střelec nebo brankář) a *Výzvy* — 24 úspěchů (hattrick, čisté konto,
+obrat, gól v oslabení, nájezdy, mistr ligy…), ukládají se v zařízení.
 
 **Fyzika:** každý hráč má výšku a hmotnost (72–107 kg podle síly, obránci a brankáři jsou těžší;
 vidíš je na soupisce). Těžší hráč pomaleji zrychluje, ale v soubojích rozhoduje hybnost —
@@ -195,7 +216,15 @@ do prohlížeče, rozehranou kariéru jde kdykoli načíst).
 - **Pohár:** vyřazovací pohár 8 týmů, kola se hrají mezi ligovými koly (po 10., 20. a 30. kole); losuje se z celé soutěže, i z druhé konference.
 - **Zápasy** odehraješ sám (všechny připojené ovladače hrají za tvůj tým, soupeř je počítač)
   nebo je necháš **simulovat**; jde i „simulovat do konce sezóny“.
-- **Soupiska a sestava:** přeskládání formací (A prohodí dva hráče, Y seřadí automaticky).
+- **Soupiska a sestava:** přeskládání formací (A prohodí dva hráče, Y seřadí automaticky), X zvolí
+  **kapitána** (na ledě mírně pomáhá při vhazování). Náhradníci a draftovaní hráči jsou na **farmě**.
+- **Smlouvy a platy:** každý hráč má plat a smlouvu na 1–3 roky; výplaty týmu musí zůstat pod
+  **platovým stropem 55 mil. Kč** (hlídá se i při přestupech). Hráči v posledním roce smlouvy
+  prodloužíš (X o rok, Y o 3 roky), jinak v létě odejdou mezi volné hráče.
+- **Draft:** po sezóně si vybereš jednoho z mladíků (18–19 let) s potenciálem A–D; slabší tým
+  vybírá dřív.
+- **Vývoj během sezóny:** třikrát za sezónu se mladí hráči zlepšují (víc ti, kdo hrají v 1.–2. formaci,
+  a jen do svého potenciálu), veteráni nad 32 let pomalu ztrácejí.
 - **Přestupy:** přestupní okno je otevřené do 23. kola, kupovat jde od všech 31 klubů. Hráče koupíš výměnou za svého hráče
   na stejném postu plus doplatek z rozpočtu; počítačové týmy přestupují mezi sebou, nabízejí
   se i volní hráči. Rozpočet roste z diváků na domácích zápasech a z prémií za umístění.

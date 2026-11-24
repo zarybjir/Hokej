@@ -37,7 +37,7 @@ function lightness(hex) {
 class Player {
   constructor(team, info) {
     Object.assign(this, { team, id: info.id, role: info.role, name: info.name, first: info.first, num: info.num, hand: info.hand, line: info.line || 0 });
-    this.isGoalie = info.role === 'G';
+    this.isGoalie = info.role === 'G'; this.cap = !!info.cap;
     // atributy (40–99) → herní parametry
     const A = this.at = info.at || {}, n = (v, lo, hi) => lo + ((v || 75) - 55) / 44 * (hi - lo);
     // atributy mají jen mírný vliv: o výsledku má rozhodovat šikovnost hráče, slabší sestava jen ztěžuje
@@ -547,6 +547,7 @@ class Game {
       const h = this.humans.find((q) => q.player === c[i]);
       if (h) { const d = this.time - h.foPress; if (d >= 0 && d < 0.4) bonus = 0.3; else if (d < 1.0) bonus = 0.08; }
       else if (t.cpu && this.vsHuman) bonus = this.diff.fo;
+      if (t.skaters.some((q) => q.cap)) bonus += 0.03;   // kapitán na ledě
       pr0 += i === 0 ? bonus : -bonus;
     }
     const win = Math.random() < clamp(pr0, 0.08, 0.92) ? 0 : 1;

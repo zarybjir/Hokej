@@ -21,13 +21,16 @@ function poisson(l) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= M
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function wpick(arr, wf) { const w = arr.map(wf), s = w.reduce((a, b) => a + b, 0); let r = Math.random() * s; for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; } return arr[arr.length - 1]; }
 const blankSt = () => ({ gp: 0, g: 0, a: 0, pim: 0, sv: 0, sa: 0 });
+const SAL_CAP = 55; // platový strop (mil. Kč za sezónu)
+const salOf = (p) => r1(0.4 + plValue(p) * 0.5);
+const potName = (v) => (v >= 86 ? 'A' : v >= 80 ? 'B' : v >= 74 ? 'C' : 'D');
 
 const Career = {
   c: null, view: 'start', sel: 0, scroll: 0, pick: 0, msg: '', msgT: 0,
 
   // ---------- ukládání ----------
   exists() { try { return !!localStorage.getItem(CAREER_KEY); } catch (e) { return false; } },
-  load() { try { this.c = JSON.parse(localStorage.getItem(CAREER_KEY)); } catch (e) { this.c = null; } return !!this.c; },
+  load() { try { this.c = JSON.parse(localStorage.getItem(CAREER_KEY)); } catch (e) { this.c = null; } if (this.c) this.migrate(); return !!this.c; },
   save() { try { localStorage.setItem(CAREER_KEY, JSON.stringify(this.c)); } catch (e) {} },
 
   // ---------- založení ----------
@@ -36,6 +39,37 @@ const Career = {
     const at = role === 'G' ? { REF: j(14), RYC: j(18), STA: j(18) } : { SIL: j(18), RYC: j(18), PRE: j(18), STA: j(22) };
     return { id: c.nextId++, role, line: 2, num: 2 + Math.floor(rnd() * 96), name: SURNAMES[Math.floor(rnd() * SURNAMES.length)],
       first: INITIALS[Math.floor(rnd() * INITIALS.length)] + '.', hand: rnd() < 0.6 ? 1 : -1, age, at, st: blankSt(), ...playerBody(role, at.SIL, rnd) };
+  },
+  // doplní smlouvy, potenciál a kapitány (i do starších uložených kariér)
+  migrate() {
+    const c = this.c;
+    if (c.teams[c.user]) this.normLines(c.user);
+    for (const t of c.teams) {
+      for (const p of t.players) this.ensureContract(p);
+      if (t.cap == null || !t.players.some((p) => p.id === t.cap)) {
+        const v = t.players.filter((p) => p.role !== 'G').sort((a, b) => (b.age >= 26) - (a.age >= 26) || plOvr(b) - plOvr(a))[0];
+        t.cap = v ? v.id : null;
+      }
+    }
+    for (const p of c.fa) this.ensureContract(p);
+  },
+  ensureContract(p) {
+    if (p.sal == null) { p.sal = salOf(p); p.yrs = 1 + Math.floor(Math.random() * 3); }
+    if (p.pot == null) p.pot = Math.round(clamp(plOvr(p) + (p.age < 24 ? (24 - p.age) * rand(0.8, 2.2) : 0), 50, 95));
+  },
+  payroll(ti) { return r1(this.c.teams[ti].players.reduce((a, p) => a + (p.sal || 0), 0)); },
+  // vývoj během sezóny: mladí se zlepšují (víc ti, kdo hrají v 1.–2. formaci), veteráni pomalu ztrácejí
+  develop() {
+    const c = this.c, up = [];
+    for (const t of c.teams) for (const p of t.players) {
+      this.ensureContract(p);
+      const ks = Object.keys(p.at), k = pick(ks);
+      if (p.age <= 23 && plOvr(p) < p.pot && Math.random() < (p.line <= 1 ? 0.65 : 0.45)) {
+        const d = 1 + (Math.random() < 0.35 ? 1 : 0); p.at[k] = Math.min(99, p.at[k] + d);
+        if (t.idx === c.user) up.push(`${p.first} ${p.name} (${{ SIL: 'síla', RYC: 'rychlost', PRE: 'přesnost', STA: 'stamina', REF: 'reflexy' }[k]} +${d})`);
+      } else if (p.age >= 32 && Math.random() < 0.35) p.at[k] = Math.max(40, p.at[k] - 1);
+    }
+    if (up.length) this.news('Vývoj hráčů: ' + up.slice(0, 4).join(', ') + (up.length > 4 ? ` a další (${up.length - 4})` : '') + '.');
   },
   newCareer(user) {
     const c = this.c = { v: 2, season: 1, year: 1998, user, nextId: 1, teams: [], budget: [], fa: [], news: [], history: [], results: [], lastDay: null };
@@ -49,13 +83,14 @@ const Career = {
       c.budget.push(r1(4 + (teamRatings(i).OVR - 74) * 0.7));
     }
     this.refreshFA();
+    this.migrate();
     this.newSeason();
     this.news(`Vítej v klubu ${TEAMS[user].city} ${TEAMS[user].name}! Rozpočet na přestupy: ${money(c.budget[user])}.`);
     this.save();
   },
   refreshFA() {
     const c = this.c; c.fa = [];
-    for (const role of ['C', 'LW', 'RW', 'LD', 'RD', 'G', 'C', 'LW', 'RW', 'LD', 'RD', 'G']) c.fa.push(this.genPlayer(role, 20 + Math.floor(Math.random() * 14), 58 + Math.random() * 16));
+    for (const role of ['C', 'LW', 'RW', 'LD', 'RD', 'G', 'C', 'LW', 'RW', 'LD', 'RD', 'G']) { const p = this.genPlayer(role, 20 + Math.floor(Math.random() * 14), 58 + Math.random() * 16); this.ensureContract(p); c.fa.push(p); }
   },
   newSeason() {
     const c = this.c, n = c.league.length;
@@ -98,7 +133,8 @@ const Career = {
       for (let k = 0; out.length < n; k++) out.push(this.junior(ti, role, k, used));
       return out;
     };
-    for (const role of ROLES) fill(role, 3).forEach((p, i) => lines[i].push({ ...p, line: i }));
+    const cap = this.c.teams[ti].cap;
+    for (const role of ROLES) fill(role, 3).forEach((p, i) => lines[i].push({ ...p, line: i, cap: p.id != null && p.id === cap }));
     const goalies = fill('G', 2).map((p, i) => ({ ...p, line: i }));
     return { lines, goalies };
   },
@@ -247,6 +283,7 @@ const Career = {
     }
     c.lastDay = { label, results: this.day, inj: this.dayInj };
     if (ev.k === 'C') {
+      this.develop();
       const rd = c.cup.rounds[ev.s];
       if (ev.s < 2) c.cup.rounds.push([0, 1].slice(0, rd.length / 2).map((i) => ({ a: rd[i * 2].w, b: rd[i * 2 + 1].w, w: null, s: '' })));
       else { c.cup.winner = rd[0].w; c.budget[rd[0].w] = r1(c.budget[rd[0].w] + 3); this.news(`Pohár vyhrál tým ${this.teamName(rd[0].w)}!`); if (rd[0].w === c.user && typeof Ach !== 'undefined') Ach.unlock('cup'); }
@@ -299,28 +336,113 @@ const Career = {
   },
   // nová sezóna: stárnutí, vývoj, konec kariér, odchovanci
   nextSeason() {
-    const c = this.c; let retired = 0;
+    const c = this.c; let retired = 0; const left = [];
     for (const t of c.teams) {
       t.players = t.players.map((p) => {
-        p.age++; p.inj = 0; delete p.injName;
-        const d = p.age <= 22 ? [1, 5] : p.age <= 26 ? [0, 3] : p.age <= 30 ? [-1, 1] : p.age <= 33 ? [-3, 0] : [-5, -1];
+        p.age++; p.inj = 0; delete p.injName; this.ensureContract(p);
+        let d = p.age <= 22 ? [1, 5] : p.age <= 26 ? [0, 3] : p.age <= 30 ? [-1, 1] : p.age <= 33 ? [-3, 0] : [-5, -1];
+        if (p.age <= 25) d = plOvr(p) < p.pot ? [d[0] + 1, d[1] + 1] : [d[0] - 1, Math.max(0, d[1] - 2)];   // růst k potenciálu
         for (const k in p.at) p.at[k] = Math.round(clamp(p.at[k] + d[0] + Math.random() * (d[1] - d[0] + 1), 40, 99));
         if (p.age >= 35 && Math.random() < 0.35 + (p.age - 35) * 0.2) {
           retired++;
           const y = this.genPlayer(p.role, 18 + Math.floor(Math.random() * 3), 56 + Math.random() * 12);
           if (t.idx === c.user) this.news(`${p.first} ${p.name} ukončil kariéru, místo něj přichází odchovanec ${y.first} ${y.name}.`);
-          y.line = p.line; return y;
+          y.line = p.line; this.ensureContract(y); return y;
         }
         return p;
       });
+      // smlouvy: počítač prodlužuje sám, tvoji hráči bez prodloužení odcházejí
+      const keep = [];
+      for (const p of t.players) {
+        p.yrs = (p.yrs || 1) - 1;
+        if (p.yrs > 0) { keep.push(p); continue; }
+        if (t.idx !== c.user) { p.yrs = 1 + Math.floor(Math.random() * 3); p.sal = salOf(p); keep.push(p); continue; }
+        this.news(`${p.first} ${p.name} neprodloužil smlouvu a odchází mezi volné hráče.`);
+        left.push(p);
+      }
+      t.players = keep;
       if (t.idx !== c.user) this.sortLines(t.idx);
       this.fixNumbers(t.idx);
     }
     this.refreshFA();
-    c.season++; c.year++;
+    for (const p of left) { p.yrs = 1 + Math.floor(Math.random() * 2); c.fa.push(p); }
+    this.fillRoster(c.user);
+    const capWas = c.teams[c.user].cap; this.migrate();
+    if (c.teams[c.user].cap !== capWas) { const k = this.byId(c.user, c.teams[c.user].cap); if (k) this.news(`Novým kapitánem je ${k.first} ${k.name} (změníš na soupisce tlačítkem X).`); }
+    c.season++; c.year++; c.drafted = false;
     this.newSeason();
     this.news(`Začíná sezóna ${c.year}/${String((c.year + 1) % 100).padStart(2, '0')}. Kariéru ukončilo ${retired} hráčů ligy.`);
     this.save();
+  },
+  // formace bez děr: na každém postu pořadí 0, 1, 2, … (zachová tvé pořadí, nováčci na konec)
+  normLines(ti) {
+    const ps = this.c.teams[ti].players;
+    for (const role of POS_ORDER) ps.filter((p) => p.role === role).sort((a, b) => (a.line ?? 9) - (b.line ?? 9) || plOvr(b) - plOvr(a)).forEach((p, i) => (p.line = i));
+  },
+  // chybí-li na postu hráči (odchody), doplní se odchovanci z farmy
+  fillRoster(ti) {
+    const t = this.c.teams[ti];
+    for (const role of POS_ORDER) {
+      const need = role === 'G' ? 2 : 3;
+      while (t.players.filter((p) => p.role === role).length < need) {
+        const y = this.genPlayer(role, 18 + Math.floor(Math.random() * 3), 55 + Math.random() * 8); this.ensureContract(y); y.sal = Math.min(y.sal, 0.8); y.yrs = 2;
+        y.line = 2; t.players.push(y);
+        if (ti === this.c.user) this.news(`Na post ${ROLE_NAMES[role]} nastupuje odchovanec ${y.first} ${y.name}.`);
+      }
+    }
+    this.fixNumbers(ti); this.normLines(ti);
+  },
+  // ---------- draft (v létě, 1 kolo; slabší tým vybírá dřív) ----------
+  draftSetup() {
+    const c = this.c;
+    if (c.draft) return;
+    const pool = [];
+    for (let i = 0; i < 40; i++) {
+      const role = POS_ORDER[i % 6], p = this.genPlayer(role, 18 + Math.floor(Math.random() * 2), 52 + Math.random() * 12);
+      p.pot = Math.round(clamp(plOvr(p) + rand(6, 26), 60, 95)); p.sal = 0.6; p.yrs = 3; p.line = 3;
+      pool.push(p);
+    }
+    // pořadí: tým s nejméně body vybírá první (týmy mimo ligu náhodně mezi nimi)
+    const T = c.table, order = [...Array(TEAMS.length).keys()].sort((a, b) => (T[a].gp ? T[a].pts / T[a].gp : 1 + Math.random()) - (T[b].gp ? T[b].pts / T[b].gp : 1 + Math.random()));
+    c.draft = { pool, order, pos: 0, picks: [] };
+    this.draftRun();
+  },
+  // počítač vybírá, dokud nepřijde na řadu tvůj tým
+  draftRun() {
+    const c = this.c, D = c.draft;
+    while (D.pos < D.order.length && D.order[D.pos] !== c.user) {
+      const ti = D.order[D.pos], best = D.pool.reduce((a, b) => (b.pot + plOvr(b) * 0.3 > a.pot + plOvr(a) * 0.3 ? b : a));
+      this.draftTake(ti, best);
+    }
+  },
+  draftTake(ti, p) {
+    const c = this.c, D = c.draft, t = c.teams[ti];
+    D.pool.splice(D.pool.indexOf(p), 1); D.picks.push({ ti, name: p.first + ' ' + p.name, role: p.role, pos: D.pos + 1 });
+    p.line = 9; t.players.push(p); D.pos++;
+    // víc než 5 hráčů na postu (2 brankáři + 1): nejslabší z farmy odchází
+    const same = t.players.filter((q) => q.role === p.role), cap = p.role === 'G' ? 3 : 5;
+    if (same.length > cap) {
+      const out = same.filter((q) => q !== p).sort((a, b) => plValue(a) - plValue(b))[0];
+      t.players.splice(t.players.indexOf(out), 1); c.fa.push(out);
+      if (ti === c.user) this.news(`${out.first} ${out.name} uvolněn mezi volné hráče (plná soupiska).`);
+    }
+    if (ti === c.user) this.news(`DRAFT: s ${D.pos}. volbou vybíráme ${p.first} ${p.name} (${ROLE_NAMES[p.role]}, ${p.age} let, potenciál ${potName(p.pot)}).`);
+    this.fixNumbers(ti); this.normLines(ti);
+  },
+  draftFinish(p) {
+    const c = this.c, D = c.draft;
+    if (D) { if (p) this.draftTake(c.user, p); else D.pos++; this.draftRunRest(); }
+    c.draft = null; c.drafted = true; this.save();
+  },
+  draftRunRest() { const c = this.c, D = c.draft; while (D.pos < D.order.length && D.pool.length) { const ti = D.order[D.pos]; if (ti === c.user) { D.pos++; continue; } this.draftTake(ti, D.pool.reduce((a, b) => (b.pot > a.pot ? b : a))); } },
+  // ---------- smlouvy ----------
+  askSal(p) { return r1(salOf(p) * (1.05 + (p.age < 25 ? 0.15 : 0)) + 0.1); },
+  extend(p, yrs) {
+    const c = this.c, ask = this.askSal(p), pay = this.payroll(c.user) - (p.sal || 0) + ask;
+    if (pay > SAL_CAP) return `Překročil bys platový strop (${money(SAL_CAP)}).`;
+    p.sal = ask; p.yrs = (p.yrs || 0) + yrs;
+    this.news(`SMLOUVA: ${p.first} ${p.name} prodloužil o ${yrs} ${yrs === 1 ? 'rok' : 'roky'} za ${money(ask)} ročně.`);
+    this.save(); return null;
   },
   fixNumbers(ti) {
     const seen = new Set();
@@ -347,6 +469,8 @@ const Career = {
   doTransfer(target, ti, mine) {
     const c = this.c, fee = this.fee(target, ti, mine);
     if (fee > c.budget[c.user]) return 'Na tento přestup nemáš peníze.';
+    this.ensureContract(target); this.ensureContract(mine);
+    if (this.payroll(c.user) - mine.sal + target.sal > SAL_CAP) return `Přestup by překročil platový strop ${money(SAL_CAP)} (plat ${money(target.sal)}).`;
     const myT = c.teams[c.user], mi = myT.players.indexOf(mine);
     const ln = mine.line; mine.line = target.line; target.line = ln;
     myT.players[mi] = target;
@@ -431,7 +555,7 @@ Object.assign(Career, {
     else it.push(['next', 'POKRAČOVAT (NEHRAJEME)']);
     it.push(['table', 'TABULKA'], ['cup', 'POHÁR']);
     if (c.po) it.push(['po', 'PLAY-OFF']);
-    it.push(['roster', 'SOUPISKA A SESTAVA'], ['market', 'PŘESTUPY'], ['stats', 'STATISTIKY'], ['news', 'ZPRÁVY']);
+    it.push(['roster', 'SOUPISKA A SESTAVA'], ['contracts', 'SMLOUVY A PLATY'], ['market', 'PŘESTUPY'], ['stats', 'STATISTIKY'], ['news', 'ZPRÁVY']);
     if (c.phase !== 'offseason') it.push(['simall', 'SIMULOVAT DO KONCE SEZÓNY']);
     it.push(['quit', 'ULOŽIT A ODEJÍT']);
     return it;
@@ -473,7 +597,24 @@ Object.assign(Career, {
       }
       case 'confirmSim': if (ok) this.simToEnd(); if (back) this.go('hub'); break;
       case 'result': if (ok || back) this.go(this.c.phase === 'offseason' ? 'summary' : 'hub'); break;
-      case 'summary': if (ok) { this.nextSeason(); this.go('hub'); } if (back) this.go('hub'); break;
+      case 'summary':
+        if (ok) { if (!c.drafted) { this.draftSetup(); this.go('draft'); } else { this.nextSeason(); this.go('hub'); } }
+        if (back) this.go('hub'); break;
+      case 'draft': {
+        const pool = c.draft ? c.draft.pool.slice().sort((a, b) => b.pot - a.pot) : [];
+        this.navN(Math.max(1, Math.min(14, pool.length)), dt);
+        if (ok && pool[this.sel]) { this.draftFinish(pool[this.sel]); this.nextSeason(); this.go('hub'); this.flash('Draft hotový, začíná nová sezóna!'); }
+        if (M.pressed('y')) { this.draftFinish(null); this.nextSeason(); this.go('hub'); }
+        if (back) this.go('summary');
+        break;
+      }
+      case 'contracts': {
+        const rows = this.contractRows();
+        this.navN(rows.length, dt);
+        if (M.pressed('x') || M.pressed('y')) { const p = rows[this.sel], yrs = M.pressed('x') ? 1 : 3; const err = this.extend(p, yrs); this.flash(err || `Smlouva prodloužena o ${yrs} ${yrs === 1 ? 'rok' : 'roky'}.`); }
+        if (ok || back) this.go('hub', this.hubItems().findIndex((i) => i[0] === 'contracts'));
+        break;
+      }
       case 'table': case 'cup': case 'po': case 'stats': case 'news': if (ok || back) this.go('hub'); break;
       case 'roster': {
         const rows = this.rosterRows();
@@ -486,6 +627,7 @@ Object.assign(Career, {
           else { const l = this.mark.line; this.mark.line = p.line; p.line = l; this.mark = null; this.save(); Sfx.stick(0.8); }
         }
         if (M.pressed('y')) { this.sortLines(c.user); this.save(); this.flash('Formace seřazeny podle síly.'); }
+        if (M.pressed('x')) { const p = rows[this.sel]; if (p.role === 'G') this.flash('Kapitánem nemůže být brankář.'); else { c.teams[c.user].cap = p.id; this.save(); this.flash(`Kapitánem je ${p.first} ${p.name}.`); } }
         if (back) { if (this.mark) this.mark = null; else this.go('hub'); }
         break;
       }
@@ -522,8 +664,12 @@ Object.assign(Career, {
   rosterRows() {
     const ps = this.c.teams[this.c.user].players, out = [];
     for (const L of [0, 1, 2]) for (const role of ROLES) { const p = ps.find((q) => q.role === role && q.line === L); if (p) out.push(p); }
-    return out.concat(ps.filter((p) => p.role === 'G').sort((a, b) => a.line - b.line));
+    const gs = ps.filter((p) => p.role === 'G').sort((a, b) => a.line - b.line);
+    this.farmFrom = out.length + gs.length;
+    // farma: hráči mimo tři formace (draft, náhradníci) – prohozením je dostaneš do sestavy
+    return out.concat(gs, ps.filter((p) => p.role !== 'G' && !out.includes(p)).sort((a, b) => POS_ORDER.indexOf(a.role) - POS_ORDER.indexOf(b.role)));
   },
+  contractRows() { return this.c.teams[this.c.user].players.slice().sort((a, b) => (a.yrs || 0) - (b.yrs || 0) || b.sal - a.sal); },
 
   // ---------- kreslení ----------
   T(s, x, y, size = 15, col = '#fff', align = 'left', st = 'bold') {
@@ -538,7 +684,7 @@ Object.assign(Career, {
     else if (v === 'confirmSim') this.drawConfirm('SIMULOVAT SEZÓNU', 'Všechny zbývající zápasy včetně tvých se nasimulují.');
     else if (v === 'pick') this.drawPick();
     else this[{ hub: 'drawHub', table: 'drawTable', cup: 'drawCup', po: 'drawPo', roster: 'drawRosterC', market: 'drawMarket', swap: 'drawSwap',
-      stats: 'drawStats', news: 'drawNews', result: 'drawResult', summary: 'drawSummary' }[v]]();
+      stats: 'drawStats', news: 'drawNews', result: 'drawResult', summary: 'drawSummary', draft: 'drawDraft', contracts: 'drawContracts' }[v]]();
     if (this.msgT > 0 && this.msg) { const w = Math.max(420, R.ctx.measureText(this.msg).width + 60); R.panel(R.W / 2 - w / 2, 700, w, 44, 0.95); this.T(this.msg, R.W / 2, 722, 16, '#ffd21f', 'center'); }
   },
   drawStart() {
@@ -567,7 +713,7 @@ Object.assign(Career, {
   drawHub() {
     const c = this.c, u = c.user, x0 = R.W / 2 - 610, x1 = R.W / 2 + 20;
     R.chromeText(this.teamName(u).toUpperCase(), R.W / 2, 40, 36);
-    this.T(`SEZÓNA ${this.seasonStr()}   •   ${this.myPos()}. MÍSTO V LIZE (${c.table[u].pts} b.)   •   ROZPOČET ${money(c.budget[u])}`, R.W / 2, 80, 15, '#9fe3ff', 'center');
+    this.T(`SEZÓNA ${this.seasonStr()}   •   ${this.myPos()}. MÍSTO V LIZE (${c.table[u].pts} b.)   •   ROZPOČET ${money(c.budget[u])}   •   VÝPLATY ${money(this.payroll(u))} / ${money(SAL_CAP)}`, R.W / 2, 80, 15, '#9fe3ff', 'center');
     // příští zápas
     R.panel(x0, 104, 600, 330, 0.9);
     const ev = this.event(), m = this.userMatch(ev);
@@ -709,19 +855,21 @@ Object.assign(Career, {
     const cols = [40, 85, 120, 382, 448, 520, 580, 640, 700, 770, 855];
     ['POZ', '#', 'JMÉNO', 'VĚK', 'CM / KG', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK', 'CENA'].forEach((h, k) => this.T(h, x0 + cols[k], 96, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
     ['Z', 'G', 'A', 'B'].forEach((h, k) => this.T(h, x0 + 950 + k * 58, 96, 12, '#9fe3ff', 'center'));
-    let y = 118;
+    let y = 118; const rh = rows.length > 17 ? 23 : 27, capId = c.teams[c.user].cap;
     rows.forEach((p, i) => {
-      if (i % 5 === 0 && i < 15) { this.T(`${i / 5 + 1}. FORMACE`, x0 + 14, y + 2, 12, '#ffd21f'); y += 20; }
-      if (i === 15) { this.T('BRANKÁŘI', x0 + 14, y + 2, 12, '#ffd21f'); y += 20; }
-      if (i === this.sel) this.hl(x0 + 8, y - 13, 1184, 26);
-      if (this.mark === p) { R.ctx.strokeStyle = '#7dff8a'; R.ctx.lineWidth = 3; R.ctx.strokeRect(x0 + 8, y - 13, 1184, 26); }
+      if (i % 5 === 0 && i < 15) { this.T(`${i / 5 + 1}. FORMACE`, x0 + 14, y + 2, 12, '#ffd21f'); y += rh > 23 ? 20 : 16; }
+      if (i === 15) { this.T('BRANKÁŘI', x0 + 14, y + 2, 12, '#ffd21f'); y += rh > 23 ? 20 : 16; }
+      if (i === this.farmFrom) { this.T('FARMA (draft, náhradníci) – prohoď s hráčem ve formaci', x0 + 14, y + 2, 12, '#9fe3ff'); y += 16; }
+      if (i === this.sel) this.hl(x0 + 8, y - rh / 2, 1184, rh);
+      if (this.mark === p) { R.ctx.strokeStyle = '#7dff8a'; R.ctx.lineWidth = 3; R.ctx.strokeRect(x0 + 8, y - rh / 2, 1184, rh); }
       const st = p.st, G = p.role === 'G';
       this.playerRow(p, y, x0, cols, false, G ? [[st.gp, 950], [st.sa ? (st.sv / st.sa * 100).toFixed(1) + '%' : '–', 1037]] : [[st.gp, 950], [st.g, 1008], [st.a, 1066], [st.g + st.a, 1124]]);
-      y += 27;
+      if (p.id === capId) this.T('C', x0 + 106, y, 13, '#ffd21f', 'center', 'italic 900');
+      y += rh;
     });
     const inj = this.injured(c.user);
     if (inj.length) this.T('Zraněné hráče v zápase nahradí hráč z nižší formace, chybějící místo zaplní junior z farmy.', R.W / 2, 754, 12, '#ff9a7a', 'center');
-    this.footer(this.mark ? 'Vyber druhého hráče na stejném postu → prohodí se formace   B zrušit' : 'A vybrat hráče a prohodit formace   Y seřadit formace podle síly   B zpět');
+    this.footer(this.mark ? 'Vyber druhého hráče na stejném postu → prohodí se formace   B zrušit' : 'A vybrat hráče a prohodit formace   X kapitán   Y seřadit formace podle síly   B zpět');
   },
   drawMarket() {
     const c = this.c, role = POS_ORDER[this.role || 0], list = this.market(role), x0 = R.W / 2 - 600;
@@ -810,6 +958,49 @@ Object.assign(Career, {
     (ld && ld.inj || []).forEach((q, i) => this.T(`ZRANĚNÍ: #${q.num} ${q.name} – ${q.injName}, mimo ${q.games} ${gamesWord(q.games)}`, R.W / 2, 640 + i * 28, 16, '#ff9a7a', 'center'));
     this.footer('A pokračovat');
   },
+  drawDraft() {
+    const c = this.c, D = c.draft, x0 = R.W / 2 - 600;
+    R.chromeText('DRAFT ' + this.seasonStr(), R.W / 2, 36, 38);
+    if (!D) return;
+    this.T(`Vybíráš ${D.pos + 1}. volbou (slabší tým vybírá dřív). Vybraný hráč jde na farmu, do sestavy ho dostaneš prohozením na soupisce.`, R.W / 2, 72, 14, '#9fe3ff', 'center');
+    R.panel(x0, 88, 820, 672, 0.9);
+    const cols = [40, 85, 120, 382, 448, 520, 580, 640, 700, 770];
+    ['POZ', '#', 'JMÉNO', 'VĚK', 'CM / KG', 'SÍL/REF', 'RYC', 'PŘE', 'STA', 'CELK'].forEach((h, k) => this.T(h, x0 + cols[k], 106, 12, '#9fe3ff', k === 2 ? 'left' : 'center'));
+    this.T('POT.', x0 + 808, 106, 12, '#9fe3ff', 'right');
+    const pool = D.pool.slice().sort((a, b) => b.pot - a.pot).slice(0, 14);
+    pool.forEach((p, i) => {
+      const y = 134 + i * 44;
+      if (i === this.sel) this.hl(x0 + 8, y - 19, 804, 38);
+      const a = p.at, G = p.role === 'G'; this.ensureBody(p);
+      drawFlag(R.ctx, natOf(p), x0 + cols[2], y - 7, 20, 13);
+      [p.role, p.num, p.first + ' ' + p.name, p.age, p.cm + ' / ' + p.kg, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p)].forEach((v, k) => this.T(v, x0 + cols[k] + (k === 2 ? 26 : 0), y, k === 4 ? 13 : 15, k === 9 ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
+      this.T(potName(p.pot), x0 + 806, y, 20, { A: '#4cff7a', B: '#b6ff5a', C: '#ffd21f', D: '#ff9a3a' }[potName(p.pot)], 'right', 'italic 900');
+    });
+    R.panel(x0 + 840, 88, 360, 672, 0.85);
+    this.T('JIŽ VYBRÁNO', x0 + 860, 112, 15, '#ffd21f');
+    D.picks.slice(-18).forEach((q, i) => this.T(`${q.pos}. ${TEAMS[q.ti].abbr}  ${q.name} (${q.role})`, x0 + 860, 144 + i * 33, 14, q.ti === c.user ? '#ffd21f' : '#fff'));
+    this.footer('↑↓ hráč   A vybrat   Y nevybírat nikoho   B zpět   •   Potenciál A–D: kam až může hráč vyrůst');
+  },
+  drawContracts() {
+    const c = this.c, rows = this.contractRows(), x0 = R.W / 2 - 560, pay = this.payroll(c.user);
+    R.chromeText('SMLOUVY A PLATY', R.W / 2, 36, 36);
+    this.T(`Výplaty ${money(pay)} z platového stropu ${money(SAL_CAP)}   •   volné místo ${money(r1(SAL_CAP - pay))}`, R.W / 2, 70, 15, pay > SAL_CAP ? '#ff7a5a' : '#9fe3ff', 'center');
+    R.panel(x0, 86, 1120, 674, 0.9);
+    ['POZ', 'JMÉNO', 'VĚK', 'CELK', 'POT.', 'PLAT / ROK', 'SMLOUVA', 'POŽADUJE'].forEach((h, k) => this.T(h, x0 + [30, 80, 420, 500, 570, 700, 840, 1000][k], 104, 12, '#9fe3ff', k === 1 ? 'left' : 'center'));
+    const top = Math.max(0, Math.min(this.sel - 10, rows.length - 22));
+    rows.slice(top, top + 22).forEach((p, j) => {
+      const i = top + j, y = 128 + j * 28;
+      if (i === this.sel) this.hl(x0 + 8, y - 13, 1104, 26);
+      const last = (p.yrs || 0) <= 1;
+      this.T(p.role, x0 + 30, y, 14, '#cfd8ea', 'center');
+      this.T(`${p.first} ${p.name}${p.id === c.teams[c.user].cap ? '  (C)' : ''}`, x0 + 80, y, 14, '#fff');
+      this.T(p.age, x0 + 420, y, 14, '#fff', 'center'); this.T(plOvr(p), x0 + 500, y, 14, '#ffd21f', 'center'); this.T(potName(p.pot || 0), x0 + 570, y, 14, '#cfd8ea', 'center');
+      this.T(money(p.sal || 0), x0 + 700, y, 14, '#fff', 'center');
+      this.T(last ? 'POSLEDNÍ ROK' : `${p.yrs} roky`, x0 + 840, y, 14, last ? '#ff9a7a' : '#fff', 'center');
+      this.T(money(this.askSal(p)), x0 + 1000, y, 14, '#cfd8ea', 'center');
+    });
+    this.footer('↑↓ hráč   X prodloužit o 1 rok   Y prodloužit o 3 roky   A/B zpět   •   Hráč s posledním rokem bez prodloužení v létě odejde.');
+  },
   drawSummary() {
     const c = this.c, S = c.summary;
     R.chromeText('KONEC SEZÓNY ' + this.seasonStr(), R.W / 2, 60, 42);
@@ -825,7 +1016,7 @@ Object.assign(Career, {
       `Rozpočet na příští sezónu: ${money(c.budget[c.user])}`,
     ];
     lines.forEach((l, i) => this.T(l, R.W / 2, 376 + i * 40, 18, i === 2 ? '#7dff8a' : '#fff', 'center'));
-    R.chromeText('A = DALŠÍ SEZÓNA', R.W / 2, 700, 32, '#fff8d0', '#ffcc33');
+    R.chromeText(c.drafted ? 'A = DALŠÍ SEZÓNA' : 'A = DRAFT A DALŠÍ SEZÓNA', R.W / 2, 700, 32, '#fff8d0', '#ffcc33');
     this.footer('Hráči zestárnou o rok: mladí se zlepší, starší zpomalí, nejstarší mohou ukončit kariéru.   B zpět');
   },
 });
