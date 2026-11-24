@@ -144,6 +144,11 @@ const R = {
       this.chip(pn.team, x + 8, py + 7, 16);
       LED.text(ctx, txt, x + 26, py + 15, 2.5, { color: '#ff7a5a' }); py += 34;
     }
+    for (const T of g.teams) if (T.pulled || T.goalie.leaving) {
+      const txt = 'PRÁZDNÁ BRANKA ' + T.def.abbr;
+      LED.panel(ctx, x, py, LED.width(txt, 2.5) + 40, 30, 2.5); this.chip(T, x + 8, py + 7, 16);
+      LED.text(ctx, txt, x + 26, py + 15, 2.5, { color: '#ffe066' }); py += 34;
+    }
     if (g.pending && Math.floor(t * 3) % 2 === 0) {
       const txt = 'ODLOŽENÉ VYLOUČENÍ ' + g.pending.team.def.abbr;
       LED.panel(ctx, x, py, LED.width(txt, 2.5) + 24, 30, 2.5); LED.text(ctx, txt, x + 12, py + 15, 2.5, { color: '#ff5a46' });

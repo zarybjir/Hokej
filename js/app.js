@@ -148,12 +148,15 @@ const App = {
           break;
         }
         if (g.paused) {
-          this.menuMove(0, 4, dt);
+          const pit = this.pauseItems(g);
+          this.menuMove(0, pit.length, dt);
           if (M.pressed('start') || M.pressed('b')) g.paused = false;
           else if (M.pressed('a')) {
-            if (this.sel === 0) g.paused = false;
-            else if (this.sel === 1) { this.tacView = true; this.sel = 0; }
-            else if (this.sel === 2) { this.helpFrom = 'pause'; this.screen = 'help'; }
+            const k = pit[this.sel][0];
+            if (k === 'go') g.paused = false;
+            else if (k === 'tac') { this.tacView = true; this.sel = 0; }
+            else if (k === 'help') { this.helpFrom = 'pause'; this.screen = 'help'; }
+            else if (k.t) { k.t.wantPull = !k.t.wantPull; g.paused = false; }
             else {
               this.game = null; this.newDemo(); try { speechSynthesis.cancel(); } catch (e) {}
               if (this.careerMatch) { this.careerMatch = null; this.screen = 'career'; Career.go('hub'); } else this.go('title');
@@ -592,8 +595,16 @@ const App = {
   drawPause() {
     this.dim(this.tacView ? 0.75 : 0.6);
     if (this.tacView) return this.drawTactics(this.game);
-    R.chromeText('PAUZA', R.W / 2, 220, 64);
-    this.drawList(['POKRAČOVAT', 'TAKTIKA FORMACÍ', 'OVLÁDÁNÍ', 'UKONČIT ZÁPAS'], 340);
+    const it = this.pauseItems(this.game);
+    R.chromeText('PAUZA', R.W / 2, 340 - it.length * 28, 64);
+    this.drawList(it.map((q) => q[1]), 460 - it.length * 28);
+  },
+  pauseItems(g) {
+    const it = [['go', 'POKRAČOVAT'], ['tac', 'TAKTIKA FORMACÍ']];
+    const hum = g.teams.filter((t) => t.humans.length);
+    if (!g.shootout) for (const t of hum) it.push([{ t }, (t.wantPull ? 'VRÁTIT BRANKÁŘE' : 'ODVOLAT BRANKÁŘE') + (hum.length > 1 ? ' ' + t.def.abbr : '')]);
+    it.push(['help', 'OVLÁDÁNÍ'], ['quit', 'UKONČIT ZÁPAS']);
+    return it;
   },
   tacRows(g) {
     const rows = [];

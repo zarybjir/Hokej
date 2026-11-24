@@ -1,9 +1,10 @@
 {
-  "build": 38,
-  "version": "1.38",
+  "build": 39,
+  "version": "1.39",
   "date": "2026-11-24",
   "notes": [
-    "Odraz puku od mantinelu podle úhlu: šikmo puk sjede po mantinelu a objede roh za brankou, zpříma se odrazí",
-    "Puk už v rozích nezastavuje každý dotyk mantinelu"
+    "Odvolání brankáře: počítač na konci zápasu při prohře a při odloženém vyloučení soupeře",
+    "Ty v pauze: ODVOLAT / VRÁTIT BRANKÁŘE; brankář dojede na střídačku, naskočí šestý hráč",
+    "Střely do prázdné branky, ukazatel PRÁZDNÁ BRANKA"
   ]
 }

@@ -114,10 +114,69 @@ class Game {
     t.goalie = t.goalies[0]; t.goalie.onIce = true;
     t.roster = [...t.lines.flat(), ...t.goalies];
     t.skaters = t.lines[0].slice(); t.skaters.forEach((p) => (p.onIce = true));
-    t.players = [...t.skaters, t.goalie];
+    this.setPlayers(t);
     return t;
   }
   rebuildAll() { this.all = [...this.teams[0].players, ...this.teams[1].players]; }
+  setPlayers(t) { t.players = t.pulled ? t.skaters.slice() : [...t.skaters, t.goalie]; }
+  // ---------- odvolání brankáře (šestý hráč do pole) ----------
+  // počítač: na konci 3. třetiny při prohře o 1–2 góly, a při odloženém vyloučení soupeře; člověk: z pauzy
+  wantsPull(t, atFaceoff) {
+    if (this.shootout) return false;
+    if (!t.cpu) return !!t.wantPull;
+    const opp = this.other(t), diff = opp.score - t.score;
+    if (!atFaceoff && this.pending && this.pending.team === opp) return true;
+    if (this.period !== 3 || diff < 1 || diff > 2) return false;
+    return this.clock < Math.max(10, this.periodLen * (diff === 2 ? 0.15 : 0.1));
+  }
+  goalieOff(t) { return t.pulled || t.goalie.leaving; }
+  startPull(t) {
+    const g = t.goalie;
+    if (t.pulled || g.leaving || this.puck.held === g || this.state !== 'play') return;
+    g.leaving = true;
+    if (t.humans.length || this.other(t).humans.length) this.toast = { text: 'BRANKÁŘ ' + t.def.abbr + ' JEDE NA STŘÍDAČKU', t: 0, dur: 1.8 };
+    this.say(pick(['Brankář jede na střídačku!', 'Odvolávají brankáře!']), false, 0.8);
+  }
+  // brankář je venku: z lavice naskočí šestý hráč
+  completePull(t, atFaceoff) {
+    const g = t.goalie; g.leaving = false; t.pulled = true; g.onIce = false; g.ctrl = -1;
+    if (this.puck.held === g) this.puck.held = null;
+    this.setPlayers(t); this.ensureExtra(t, atFaceoff); this.rebuildAll();
+    if (!atFaceoff) this.pop('PRÁZDNÁ BRANKA', g.x, g.y, '#ffe066');
+  }
+  pickExtra(t) {
+    const L = t.change ? t.change.to : t.line, soon = this.lineup(t, L);
+    const c = t.lines.flat().filter((q) => !q.onIce && !q.inBox && !q.injured && !soon.includes(q));
+    if (!c.length) return null;
+    return c.reduce((a, b) => (b.stamina + (b.role[1] !== 'D' ? 0.15 : 0) > a.stamina + (a.role[1] !== 'D' ? 0.15 : 0) ? b : a));
+  }
+  ensureExtra(t, atFaceoff) {
+    if (!t.pulled || t.skaters.some((q) => q.extra)) return;
+    const nw = this.pickExtra(t); if (!nw) return;
+    const door = this.benchDoor(t);
+    t.skaters.push(nw); nw.extra = true;
+    Object.assign(nw, { x: door.x + rand(-3, 3), y: door.y - 1.5, vx: rand(-4, 4), vy: -10, dir: -Math.PI / 2, downT: 0, checkT: 0, pokeA: 0,
+      winding: false, windT: 0, dekeT: 0, recoverT: 0, inX: 0, inY: 0, turbo: false, oneTimerQ: false, pickCD: 0, faceDir: null, ctrl: -1, onIce: true, goBench: false });
+    this.setPlayers(t); this.rebuildAll();
+  }
+  // brankář se vrací během hry: šestý hráč jede na střídačku, brankář vyjíždí ze dveří
+  returnGoalie(t) {
+    const g = t.goalie;
+    if (g.leaving) { g.leaving = false; return; }
+    if (!t.pulled) return;
+    t.pulled = false; g.onIce = true;
+    const door = this.benchDoor(t);
+    Object.assign(g, { x: door.x, y: door.y - 1.5, vx: 0, vy: -6, holdT: 0, saveT: 0, downT: 0, returning: true });
+    g.ai.tx = g.x; g.ai.ty = g.y;
+    for (const p of t.skaters) if (p.extra) { p.extra = false; p.extraOut = true; p.goBench = true; if (p.ctrl >= 0) { const hm = this.humans.find((q) => q.player === p); if (hm) { p.ctrl = -1; hm.player = null; this.switchPlayer(hm); } } }
+    this.setPlayers(t); this.rebuildAll();
+  }
+  // při přerušení: brankář zpět do branky, šestý hráč pryč
+  resetPull(t) {
+    const g = t.goalie; g.leaving = false; g.returning = false; g.onIce = true;
+    for (const p of t.roster) { p.extra = false; p.extraOut = false; }
+    t.pulled = false;
+  }
   // únava: 1 = odpočatý; pod 60 % energie výkon klesá
   fat(p) { return p.isGoalie ? 1 : 0.7 + 0.3 * clamp(p.stamina / 0.6, 0, 1); }
   lineEnergy(t, L) { const l = t.lines[L]; return l.reduce((a, p) => a + p.stamina, 0) / l.length; }
@@ -152,9 +211,9 @@ class Game {
   }
   inBox(t) { return t.roster.filter((p) => p.inBox); }
   instantChange(t, L) {
-    for (const p of t.skaters) { p.onIce = false; p.goBench = false; p.ctrl = -1; }
+    for (const p of t.skaters) { p.onIce = false; p.goBench = false; p.ctrl = -1; p.extra = false; p.extraOut = false; }
     t.skaters = this.lineup(t, L); t.skaters.forEach((p) => { p.onIce = true; p.goBench = false; });
-    t.players = [...t.skaters, t.goalie]; t.line = L; t.change = null;
+    this.setPlayers(t); t.line = L; t.change = null;
     this.rebuildAll();
   }
   requestChange(t, manual) {
@@ -186,12 +245,13 @@ class Game {
       ch.t += h;
       const door = this.benchDoor(t);
       for (const p of t.skaters.slice()) {
-        if (!p.goBench) continue;
+        if (!p.goBench || p.extraOut) continue;
         const d = Math.hypot(p.x - door.x, p.y - door.y);
         if ((d < 10 || (ch.t > 14 && p.ctrl < 0)) && this.puck.owner !== p && this.puck.held !== p && p.downT <= 0) {
-          const nw = this.lineup(t, ch.to).find((q) => q.role === p.role);
+          let nw = p.extra ? this.pickExtra(t) : this.lineup(t, ch.to).find((q) => q.role === p.role);
+          if (nw && nw.onIce) { nw.extra = false; nw.goBench = false; nw = null; } // nový hráč už je na ledě jako šestý
           if (nw) this.swapIn(t, p, nw, door);
-          else { t.skaters.splice(t.skaters.indexOf(p), 1); p.onIce = false; p.goBench = false; t.players = [...t.skaters, t.goalie]; this.rebuildAll(); }
+          else { t.skaters.splice(t.skaters.indexOf(p), 1); p.onIce = false; p.goBench = false; this.setPlayers(t); this.rebuildAll(); }
         }
       }
       // lidský hráč přejde na čerstvého spoluhráče, unavený jede sám na střídačku
@@ -210,12 +270,12 @@ class Game {
     const i = t.skaters.indexOf(old);
     if (i < 0 || !nw) return;
     t.skaters[i] = nw;
-    old.onIce = false; old.goBench = false; old.carry = false;
+    old.onIce = false; old.goBench = false; old.carry = false; nw.extra = !!old.extra; old.extra = false;
     Object.assign(nw, { x: door.x + rand(-3, 3), y: door.y - 1.5, vx: rand(-4, 4), vy: -10, dir: -Math.PI / 2, downT: 0, checkT: 0, pokeA: 0,
       winding: false, windT: 0, dekeT: 0, recoverT: 0, inX: 0, inY: 0, turbo: false, oneTimerQ: false, pickCD: 0, faceDir: null, ctrl: -1, onIce: true, goBench: false });
     if (old.ctrl >= 0) { const hm = this.humans.find((q) => q.player === old); old.ctrl = -1; if (hm) { hm.player = nw; nw.ctrl = hm.idx; } }
     if (this.puck.passTarget === old) this.puck.passTarget = null;
-    t.players = [...t.skaters, t.goalie];
+    this.setPlayers(t);
     this.rebuildAll();
   }
   // ---------- fauly a vyloučení ----------
@@ -244,7 +304,7 @@ class Game {
     p.inBox = true; p.onIce = false; p.goBench = false; p.stats.pim = (p.stats.pim || 0) + 2;
     if (p.ctrl >= 0) { const hm = this.humans.find((q) => q.player === p); p.ctrl = -1; if (hm) { const q = t.skaters.find((x) => x !== p && x.ctrl < 0); hm.player = q || null; if (q) q.ctrl = hm.idx; } }
     const i = t.skaters.indexOf(p);
-    if (i >= 0) { t.skaters.splice(i, 1); t.players = [...t.skaters, t.goalie]; this.rebuildAll(); }
+    if (i >= 0) { t.skaters.splice(i, 1); this.setPlayers(t); this.rebuildAll(); }
     if (this.puck.owner === p) this.puck.owner = null;
     const k = this.penalties.filter((pn) => pn.team === t).length;
     Object.assign(p, { x: box.x + k * 2.6, y: box.y, vx: 0, vy: 0, dir: Math.PI / 2, spdN: 0, downT: 0, winding: false, windT: 0, pokeA: 0, carry: false });
@@ -308,7 +368,7 @@ class Game {
       Object.assign(nw, { x: box.x, y: -RINK.HW + 2.5, vx: 0, vy: 10, dir: Math.PI / 2, downT: 0, checkT: 0, pokeA: 0, winding: false, windT: 0,
         dekeT: 0, recoverT: 0, inX: 0, inY: 0, turbo: false, oneTimerQ: false, pickCD: 0, faceDir: null, ctrl: -1, onIce: true, goBench: false });
     }
-    t.players = [...t.skaters, t.goalie]; this.rebuildAll();
+    this.setPlayers(t); this.rebuildAll();
     if (t.humans.length || this.other(t).humans.length) this.toast = { text: 'KONEC VYLOUČENÍ: ' + t.def.abbr, t: 0, dur: 1.8 };
   }
   updatePenalties(h) {
@@ -403,6 +463,7 @@ class Game {
     this.foSpot = [fx, fy];
     if (this.injWait) { if (this.injWait.p.onIce && !this.toast) this.announceInjury(this.injWait.p); this.injWait = null; }
     for (const t of this.teams) {
+      this.resetPull(t);
       // střídání při přerušení
       const auto = t.cpu || this.autoChange;
       if (t.iced) { t.iced = false; t.change = null; for (const p of t.skaters) p.goBench = false; this.instantChange(t, t.line); continue; } // po icingu se nestřídá
@@ -410,13 +471,15 @@ class Game {
       else if (auto && this.lineEnergy(t, t.line) < 0.72) { const nx = this.pickLine(t); if (this.lineEnergy(t, nx) > this.lineEnergy(t, t.line) + 0.1) this.instantChange(t, nx); }
       this.instantChange(t, t.line); // sestava podle vyloučení
       for (const p of t.skaters) p.goBench = false;
+      // šestý hráč: počítač ne při vhazování ve vlastním pásmu
+      if (this.wantsPull(t, true) && (!t.cpu || t.dir * fx > -30)) this.completePull(t, true);
     }
     for (const t of this.teams) {
       const s = t.dir;
-      const pos = { C: [fx - s * 2.4, fy], LW: [fx - s * 4, fy + s * 15], RW: [fx - s * 4, fy - s * 15], LD: [fx - s * 17, fy + s * 10], RD: [fx - s * 17, fy - s * 10] };
+      const pos = { C: [fx - s * 2.4, fy], LW: [fx - s * 4, fy + s * 15], RW: [fx - s * 4, fy - s * 15], LD: [fx - s * 17, fy + s * 10], RD: [fx - s * 17, fy - s * 10], X: [fx - s * 9, fy + (fy >= 0 ? -1 : 1) * 7] };
       for (const p of t.skaters) {
-        p.foTake = p.role === 'C'; p.foReady = true; p.foSwipe = 0;
-        let [x, y] = pos[p.role];
+        p.foTake = p.role === 'C' && !p.extra; p.foReady = true; p.foSwipe = 0;
+        let [x, y] = pos[p.extra ? 'X' : p.role];
         x = clamp(x, -85, 85); const hw = rinkHalfWidthAt(x) - 3; y = clamp(y, -hw, hw);
         Object.assign(p, { x, y, vx: 0, vy: 0, dir: s > 0 ? 0 : Math.PI, downT: 0, checkT: 0, pokeA: 0, winding: false, windT: 0,
           dekeT: 0, recoverT: 0, inX: 0, inY: 0, turbo: false, oneTimerQ: false, pickCD: 0, faceDir: null });
@@ -718,13 +781,15 @@ class Game {
     let ty;
     const ast = this.assistOf(p);
     if (ast >= 2 && aimY == null) aimY = null; // plná asistence: bez míření páčkou střílí sám do volného rohu
-    if (aimY != null) ty = aimY * 2.45;
+    const empty = this.goalieOff(this.other(p.team));
+    if (empty) ty = (aimY != null ? aimY * 1.2 : 0) + rand(-0.8, 0.8);
+    else if (aimY != null) ty = aimY * 2.45;
     else {
       const off = g.y;
       ty = (Math.abs(off) > 0.4 ? -sgn(off) : pick([-1, 1])) * 2.45;
       if (Math.random() < 0.25) ty *= rand(0, 0.6);
     }
-    const tz = slap ? rand(0.15, 3.6) : rand(0.25, 3.3);
+    const tz = empty ? rand(0.1, 1.2) : slap ? rand(0.15, 3.6) : rand(0.25, 3.3);
     const dx = nx - pk.x, dy = ty - pk.y, d = Math.hypot(dx, dy);
     const ft = this.fat(p);
     const speed = slap ? (80 + 38 * power) * p.pow * (0.85 + 0.15 * ft) : (58 + 16 * p.pow) * (0.9 + 0.1 * ft);
@@ -963,10 +1028,21 @@ class Game {
   }
 
   // ---------- brankáři ----------
-  goalieMoveAll(h) { for (const t of this.teams) this.goalieMove(t.goalie, h); }
+  goalieMoveAll(h) { for (const t of this.teams) if (!t.pulled) this.goalieMove(t.goalie, h); }
   goalieMove(g, h) {
     const sN = -g.team.dir, gl = RINK.GOAL_X, gx = sN * gl, pk = this.puck;
     g.saveT = Math.max(0, g.saveT - h); g.carry = false;
+    if (g.leaving) {
+      // odvolaný brankář jede k lavici
+      const dr = this.benchDoor(g.team), dx = dr.x - g.x, dy = dr.y - g.y, d = Math.hypot(dx, dy) || 1, v = 21;
+      let dvx = dx / d * v - g.vx, dvy = dy / d * v - g.vy; const dl = Math.hypot(dvx, dvy), lim = 60 * h;
+      if (dl > lim) { dvx *= lim / dl; dvy *= lim / dl; }
+      g.vx += dvx; g.vy += dvy; g.dir += clamp(angDiff(g.dir, Math.atan2(g.vy, g.vx)), -6 * h, 6 * h);
+      g.spdN = Math.hypot(g.vx, g.vy); g.stride += h * g.spdN * 0.3;
+      this.integrate(g, h);
+      if (d < 7) this.completePull(g.team, false);
+      return;
+    }
     if (pk.held === g && this.state === 'play') {
       g.holdT += h;
       if (g.holdT > 0.9) {
@@ -995,7 +1071,8 @@ class Game {
     const k = Math.min(1, h * 7 * g.gk);
     g.ai.tx = lerp(g.ai.tx, tx, k); g.ai.ty = lerp(g.ai.ty, ty, k);
     if (this.state === 'intro' || this.state === 'faceoff') { g.ai.tx = tx; g.ai.ty = ty; }
-    const maxV = 15 * (g.gkMove || g.gk);
+    if (g.returning && Math.hypot(g.x - gx, g.y) < 6) g.returning = false;
+    const maxV = (g.returning ? 22 : 15) * (g.gkMove || g.gk);
     let tvx = (g.ai.tx - g.x) * 7, tvy = (g.ai.ty - g.y) * 7;
     const tl = Math.hypot(tvx, tvy); if (tl > maxV) { tvx *= maxV / tl; tvy *= maxV / tl; }
     let dvx = tvx - g.vx, dvy = tvy - g.vy; const dl = Math.hypot(dvx, dvy), lim = 80 * h;
@@ -1018,6 +1095,7 @@ class Game {
     const pk = this.puck, sp = Math.hypot(pk.vx, pk.vy);
     for (const t of this.teams) {
       const g = t.goalie, sN = -t.dir;
+      if (t.pulled || g.leaving || (g.returning && Math.hypot(g.x + t.dir * RINK.GOAL_X, g.y) > 8)) continue;
       if ((pk.ignore.get(g) || 0) > this.time) continue;
       const d = segDist(g.x, g.y, px, py, pk.x, pk.y);
       if (sp < 16) {
@@ -1260,6 +1338,21 @@ class Game {
       const dr = this.benchDoor(t);
       for (const p of t.skaters) if (p.goBench && p.ctrl < 0 && Math.hypot(p.x - dr.x, p.y - dr.y) > 28) p.goBench = false;
     }
+    if (this.state === 'play') {
+      const want = this.wantsPull(t, false), g = t.goalie;
+      if (want && !t.pulled && !g.leaving) {
+        const ours = owner && owner.team === t;
+        if (!t.cpu || (ours && (t.dir * pk.x > -25 || (this.pending && this.pending.team === opp)))) this.startPull(t);
+      } else if (!want && (t.pulled || g.leaving)) this.returnGoalie(t);
+      // počítač: soupeř získal puk u naší branky dřív, než brankář odjel → zpátky do branky
+      if (t.cpu && g.leaving && owner && owner.team === opp && t.dir * owner.x < -20 && !(this.pending && this.pending.team === opp)) g.leaving = false;
+      if (t.pulled && !t.change) this.ensureExtra(t);
+      // šestý hráč, který jel na lavici, u dveří zmizí
+      const dr = this.benchDoor(t);
+      for (const p of t.skaters.slice()) if (p.extraOut && pk.owner !== p && Math.hypot(p.x - dr.x, p.y - dr.y) < 10) {
+        t.skaters.splice(t.skaters.indexOf(p), 1); p.onIce = false; p.goBench = false; p.extraOut = false; p.ctrl = -1; this.setPlayers(t); this.rebuildAll();
+      }
+    }
     t.chaser = null; t.presser = null; t.marks = new Map();
     const near = (list, x, y) => { let b = null, bd = 1e9; for (const p of list) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; b = p; } } return [b, bd]; };
     if (!owner) {
@@ -1355,11 +1448,11 @@ class Game {
     if (off) {
       if (pu > 18) {
         const tac = this.tacOf(t), dU = [27, 33, 42][tac];   // obránci: obranná taktika vzadu, útočná až k modré
-        const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [dU, 16], RD: [dU, -16] }[p.role];
+        const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [dU, 16], RD: [dU, -16], X: [80, Math.sin(ph) > 0 ? 7 : -7] }[p.extra ? 'X' : p.role];
         u = S[0] + Math.sin(tm * 0.6 + ph) * (D ? 3 : 7); v = S[1] + Math.cos(tm * 0.45 + ph * 1.3) * (D ? 6 : 7);
         if (p.role === 'C' && Math.sin(tm * 0.4 + ph) > 0.5) { u = 78; v = Math.sin(ph) > 0 ? 4 : -4; }
       } else {
-        const S = { C: [pu + 14, -pv * 0.3], LW: [pu + 24, 22], RW: [pu + 24, -22], LD: [pu - 16, 15], RD: [pu - 16, -15] }[p.role];
+        const S = { C: [pu + 14, -pv * 0.3], LW: [pu + 24, 22], RW: [pu + 24, -22], LD: [pu - 16, 15], RD: [pu - 16, -15], X: [pu + 20, pv > 0 ? -8 : 8] }[p.extra ? 'X' : p.role];
         u = S[0]; v = S[1];
         if (!D) u = Math.min(u, 70);
       }
@@ -1367,7 +1460,7 @@ class Game {
       if (this.cfg.offside !== false && pu < RINK.BLUE_X) u = Math.min(u, RINK.BLUE_X - 1.5);
     } else {
       const tac = this.tacOf(t), fb = [-21, -13, -7][tac], db = [-32, -28, -24][tac], dmax = [44, 50, 56][tac];
-      const S = { C: [pu + fb + 1, pv * 0.5], LW: [pu + fb, 18 * (tac ? 1 : 0.7)], RW: [pu + fb, -18 * (tac ? 1 : 0.7)], LD: [Math.min(pu + db, dmax), 12], RD: [Math.min(pu + db, dmax), -12] }[p.role];
+      const S = { C: [pu + fb + 1, pv * 0.5], LW: [pu + fb, 18 * (tac ? 1 : 0.7)], RW: [pu + fb, -18 * (tac ? 1 : 0.7)], LD: [Math.min(pu + db, dmax), 12], RD: [Math.min(pu + db, dmax), -12], X: [pu + fb - 6, 0] }[p.extra ? 'X' : p.role];
       u = S[0]; v = S[1];
       // ve vlastním pásmu nikdy za branku: útočníci hlídají slot a modrou, obránci brankoviště
       u = Math.max(u, D ? -80 : [-62, -66, -70][tac]);
@@ -1403,6 +1496,10 @@ class Game {
     if (p.ai.t > 0) return;
     p.ai.t = this.thinkFor(t) * rand(0.7, 1.3);
     const dn = Math.hypot(s * RINK.GOAL_X - p.x, p.y);
+    if (this.goalieOff(opp) && u > -70) {
+      const gx = s * RINK.GOAL_X, clear = !opp.skaters.some((o) => o.downT <= 0 && segDist(o.x, o.y, p.x, p.y, gx, 0) < 3.5);
+      if (clear && Math.abs(v) < 34 && Math.random() < (u > 30 ? 0.8 : 0.45)) { this.shoot(p, 0, false, null, false); return; }
+    }
     let sp = 0;
     if (u > 38 && u < 88) {
       sp = dn < 20 ? 0.5 : dn < 32 ? 0.24 : dn < 48 ? 0.08 : 0.02;
@@ -1458,14 +1555,15 @@ class Game {
     const pk = this.puck, team = this.teams.find((t) => t.dir === sN), opp = this.other(team);
     team.score++;
     pk.inNet = sN;
-    if (pk.shot && !pk.shot.counted && pk.shot.team === team) { pk.shot.counted = true; team.shots++; pk.shot.by.stats.s++; opp.goalie.stats.sa++; }
+    const en = this.goalieOff(opp);
+    if (pk.shot && !pk.shot.counted && pk.shot.team === team) { pk.shot.counted = true; team.shots++; pk.shot.by.stats.s++; if (!en) opp.goalie.stats.sa++; }
     const hist = pk.history.filter((p) => p.team === team && !p.isGoalie);
     const scorer = hist.length ? hist[hist.length - 1] : null;
     const assists = [];
     for (let i = hist.length - 2; i >= 0 && assists.length < 2; i--) if (hist[i] !== scorer && !assists.includes(hist[i])) assists.push(hist[i]);
     if (scorer) { scorer.stats.g++; scorer.celebT = 3; }
     for (const a of assists) a.stats.a++;
-    let ppNote = '';
+    let ppNote = en ? 'Do prázdné branky' : '';
     if (this.pending && this.pending.team !== team) { ppNote = 'Vyloučení se ruší'; this.pending = null; }
     else if (this.pending) { this.assess(this.pending); this.pending = null; }
     const oppPen = this.penalties.filter((pn) => pn.team === opp), ownPen = this.penalties.filter((pn) => pn.team === team);
@@ -1474,14 +1572,14 @@ class Game {
       const pn = oppPen.reduce((a, b) => (a.left < b.left ? a : b));
       this.endPenalty(pn, false);
     }
-    this.goals.push({ team, scorer, assists, period: this.period, clock: this.clock, pp: !!ppNote && ppNote !== 'Vyloučení se ruší' });
+    this.goals.push({ team, scorer, assists, period: this.period, clock: this.clock, pp: ppNote === 'Gól v přesilovce', en });
     this.state = 'goal'; this.stateT = 0; this.goalLight = sN; this.goalLightT = 4;
     this.showBanner('GÓÓÓL!', team.def.city + ' ' + team.def.name, 3.4, team.jersey);
     const who = scorer ? '#' + scorer.num + ' ' + scorer.name.toUpperCase() : 'VLASTNÍ GÓL';
     const ast = (assists.length ? 'Asistence: ' + assists.map((a) => a.name).join(', ') : 'Bez asistence') + (ppNote ? '  •  ' + ppNote : '');
     this.lower = { title: who, sub: ast, team, t: 0, dur: 3.6 };
     this.sfx('horn'); this.sfx('cheer', 1);
-    this.say([pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!', 'Góóól!']), ppNote === 'Gól v přesilovce' ? 'Gól v přesilovce!' : null, scorer ? 'Skóroval' : null, scorer ? scorer.name : null], true);
+    this.say([pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!', 'Góóól!']), ppNote === 'Gól v přesilovce' ? 'Gól v přesilovce!' : en ? 'Do prázdné branky!' : null, scorer ? 'Skóroval' : null, scorer ? scorer.name : null], true);
     for (const p of team.skaters) { p.inX = 0; p.inY = 0; }
   }
   afterGoal() {
