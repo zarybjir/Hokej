@@ -202,8 +202,15 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1, assist });
     });
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans, autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] });
+    this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg() });
     this.screen = 'game'; this.sel = 0;
+  },
+  // pravidla a volby zápasu z Nastavení (exhibice i kariéra)
+  ruleCfg() {
+    const S = Settings.data;
+    return { periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), autoChange: S.autoChange !== false, penalties: S.penalties !== false,
+      injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, icingMode: S.icingMode || 'touch',
+      ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
   },
   toggleFull() {
     try {
@@ -466,8 +473,13 @@ const App = {
         { label: 'FAULY A VYLOUČENÍ', val: () => onoff(S.penalties !== false), set: () => { S.penalties = S.penalties === false; } },
         { label: 'OFSAJD', val: () => onoff(S.offside !== false), set: () => { S.offside = S.offside === false; },
           hint: 'Puk musí do útočného pásma před hráči; počítač pravidlo dodržuje.' },
-        { label: 'ZAKÁZANÉ UVOLNĚNÍ (ICING)', val: () => onoff(S.icing !== false), set: () => { S.icing = S.icing === false; },
-          hint: 'Puk vyhozený zpoza červené čáry přes brankovou čáru = vhazování u vlastní branky a nestřídá se. V oslabení povoleno.' },
+        { label: 'ZAKÁZANÉ UVOLNĚNÍ (ICING)', val: () => '◄ ' + (S.icing === false ? 'VYP' : S.icingMode === 'instant' ? 'OKAMŽITÝ' : 'ODLOŽENÝ') + ' ►',
+          set: (d) => { const o = ['off', 'touch', 'instant'], c = S.icing === false ? 'off' : S.icingMode || 'touch', n = cyc(o, c, d); S.icing = n !== 'off'; if (n !== 'off') S.icingMode = n; },
+          hint: 'ODLOŽENÝ: píská se, až se puku dotkne bránící hráč. OKAMŽITÝ: hned po přejetí brankové čáry. V oslabení je vyhození povolené.' },
+        { label: 'PRODLOUŽENÍ', val: () => '◄ ' + { '3v3': '3 NA 3', '5v5': '5 NA 5', off: 'BEZ PRODLOUŽENÍ' }[S.ot || '3v3'] + ' ►', set: (d) => { S.ot = cyc(['3v3', '5v5', 'off'], S.ot || '3v3', d); },
+          hint: 'Při remíze po 3. třetině: prodloužení na první gól (třetina délky třetiny, 1–5 min).' },
+        { label: 'NÁJEZDY', val: () => onoff(S.shootout !== false), set: () => { S.shootout = S.shootout === false; },
+          hint: 'Když nerozhodne ani prodloužení: 3 série nájezdů, pak náhlá smrt. Bráníš-li, řídíš brankáře (páčka, X = vypíchnout).' },
         { label: 'ZRANĚNÍ', val: () => onoff(S.injuries !== false), set: () => { S.injuries = S.injuries === false; } },
         { label: 'ROLBA O PŘESTÁVCE', val: () => '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►', set: (d) => { S.zamboni = cyc(['auto', 'manual', 'off'], S.zamboni || 'auto', d); },
           hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },

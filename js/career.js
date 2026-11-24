@@ -375,13 +375,13 @@ const Career = {
     let devs = Input.activeDevices(); if (!devs.length) devs = [Input.merged];
     const humans = devs.slice(0, 4).map((d, i) => ({ dev: d, team: side, assist: App.assistFor(d, i) }));
     Sfx.init(); Sfx.resume();
-    App.game = new Game({ home: m.h, away: m.a, periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), humans,
-      autoChange: S.autoChange !== false, penalties: S.penalties !== false, injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics], rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
+    // kariéra: zápas vždy končí vítězstvím (prodloužení, nájezdy)
+    App.game = new Game({ home: m.h, away: m.a, humans, ...App.ruleCfg(), shootout: true, rosters: [this.rosterFor(m.h), this.rosterFor(m.a)], career: true });
     App.careerMatch = m; App.screen = 'game'; App.sel = 0;
   },
   finishPlayed(g) {
     const c = this.c, m = App.careerMatch;
-    const res = { hg: g.teams[0].score, ag: g.teams[1].score, ot: g.period > 3, so: false, inj: [] };
+    const res = { hg: g.teams[0].score, ag: g.teams[1].score, ot: g.period > 3 && !g.soWinner, so: !!g.soWinner, inj: [] };
     for (const q of g.injuries || []) if (q.player.id != null) res.inj.push({ ti: q.team === g.teams[0] ? m.h : m.a, id: q.player.id, name: q.name, games: q.games });
     if (res.hg === res.ag) {
       res.so = true; const H = this.strength(m.h), A = this.strength(m.a);
