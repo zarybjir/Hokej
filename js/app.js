@@ -58,7 +58,7 @@ const App = {
           else if (this.sel === 2) this.go('practice');
           else if (this.sel === 3) this.go('ach');
           else if (this.sel === 4) { this.setCat = 0; this.go('settings'); }
-          else if (this.sel === 5) { this.helpFrom = 'title'; this.go('help'); }
+          else if (this.sel === 5) { this.go('settings'); this.setCat = this.settingsCats().findIndex((c) => c.name === 'OVLÁDÁNÍ'); }   // mapování tlačítek + přehled
           else if (this.sel === 6) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
         if (this.quitMsg) this.quitMsg = Math.max(0, this.quitMsg - dt);
@@ -160,7 +160,7 @@ const App = {
       case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
       case 'help':
         if (M.pressed('a') || M.pressed('b') || M.pressed('start')) {
-          if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 5);
+          if (this.helpFrom === 'pause') { this.screen = 'game'; } else { this.go('settings', 4); this.setCat = this.settingsCats().findIndex((c) => c.name === 'OVLÁDÁNÍ'); }
         }
         break;
       case 'game': {
@@ -557,11 +557,12 @@ const App = {
         { label: 'ROLBA O PŘESTÁVCE', val: () => '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►', set: (d) => { S.zamboni = cyc(['auto', 'manual', 'off'], S.zamboni || 'auto', d); },
           hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },
       ] },
-      { name: 'OVLÁDÁNÍ', desc: 'Přemapování tlačítek (ovladač i klávesnice) a test ovladačů', items: [
-        ...[0, 1].map((i) => ({ label: 'HRÁČ ' + (i + 1) + ' – OVLADAČ', val: () => { const d = this.padSlot(i); return d ? d.gp.id.replace(/\s*\(.*$/, '').slice(0, 22).toUpperCase() + ' ►' : 'NEPŘIPOJEN'; },
+      { name: 'OVLÁDÁNÍ', desc: 'Vyber zařízení (A) a nastav si vlastní tlačítka', items: [
+        ...[0, 1].map((i) => ({ label: 'ZMĚNIT TLAČÍTKA: HRÁČ ' + (i + 1) + ' – OVLADAČ', val: () => { const d = this.padSlot(i); return d ? d.gp.id.replace(/\s*\(.*$/, '').slice(0, 22).toUpperCase() + ' ►' : 'NEPŘIPOJEN'; },
           set: (d, a) => { if (a && this.padSlot(i)) { this.bindDev = { kind: 'pad', i }; this.sel = 0; } },
           hint: 'Hráč ' + (i + 1) + ' = ' + (i + 1) + '. připojený ovladač (vestavěný bývá první). NEPŘIPOJEN: stiskni na něm tlačítko; když nic, Steam ho nejspíš posílá jako klávesnici – zvol šablonu Gamepad.' })),
-        ...[0, 1].map((i) => ({ label: 'HRÁČ ' + (i + 1) + ' – KLÁVESNICE', val: () => (i ? 'ŠIPKY + NUMERICKÁ' : 'WASD + JKLI') + ' ►', set: (d, a) => { if (a) { this.bindDev = { kind: 'kb', i }; this.sel = 0; } } })),
+        ...[0, 1].map((i) => ({ label: 'ZMĚNIT TLAČÍTKA: HRÁČ ' + (i + 1) + ' – KLÁVESNICE', val: () => (i ? 'ŠIPKY + NUMERICKÁ' : 'WASD + JKLI') + ' ►', set: (d, a) => { if (a) { this.bindDev = { kind: 'kb', i }; this.sel = 0; } } })),
+        { label: 'PŘEHLED OVLÁDÁNÍ (CO KTERÉ TLAČÍTKO DĚLÁ)', val: () => '►', set: (d, a) => { if (a) { this.helpFrom = 'settings'; this.go('help'); } } },
         { label: 'TEST OVLADAČŮ', val: () => '►', set: (d, a) => { if (a) this.padTest = true; }, hint: 'Ukáže, které ovladače hra vidí a co hlásí – pomůže, když ovladač nefunguje.' },
         { label: 'OBNOVIT VÝCHOZÍ TLAČÍTKA', val: () => '►', set: (d, a) => { if (a) { S.padMaps = {}; S.kbMaps = [{}, {}]; Input.applyKb(); } } },
       ] },

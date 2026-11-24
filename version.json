@@ -1,10 +1,9 @@
 {
-  "build": 47,
-  "version": "1.47",
+  "build": 48,
+  "version": "1.48",
   "date": "2026-11-25",
   "notes": [
-    "Nový vzhled menu: čisté písmo, zaoblené karty, přehlednější výběr",
-    "Pravá páčka vede puk: do strany, před sebe nebo k tělu (krytí puku)",
-    "Komentátor mluví rychleji a zvolání mají víc důrazu"
+    "Hlavní menu → OVLÁDÁNÍ teď vede rovnou na mapování tlačítek (hráč 1 / 2, ovladač / klávesnice)",
+    "Přehled tlačítek je uvnitř jako samostatná položka"
   ]
 }
