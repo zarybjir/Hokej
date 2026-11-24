@@ -1,11 +1,10 @@
 {
-  "build": 46,
-  "version": "1.46",
+  "build": 47,
+  "version": "1.47",
   "date": "2026-11-25",
   "notes": [
-    "Příklep: puk odletí až při úderu hole, čepel jde přesně přes puk",
-    "Šťouchnutí a zvednutí hole míří na puk a počítají se z čepele, kterou vidíš",
-    "Fauly holí (hákování, podražení, sekání) jen při skutečném zásahu soupeře",
-    "Přihrávka a střela švihnou tam, kam puk letí; bodyček má vlastní pohyb"
+    "Nový vzhled menu: čisté písmo, zaoblené karty, přehlednější výběr",
+    "Pravá páčka vede puk: do strany, před sebe nebo k tělu (krytí puku)",
+    "Komentátor mluví rychleji a zvolání mají víc důrazu"
   ]
 }

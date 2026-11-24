@@ -655,15 +655,15 @@ const App = {
     });
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText(cat.desc.toUpperCase(), R.W / 2, ty + 66);
     const row = (y, label, val, on) => {
-      R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
-      if (on) { R.sel(R.W / 2 - 329, y - 19, 658, 38); }
-      ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
+      R.panel(R.W / 2 - 330, y - 18, 660, 36, on ? 0.95 : 0.6);
+      if (on) { R.sel(R.W / 2 - 329, y - 17, 658, 34); }
+      ctx.font = font(17); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(val, R.W / 2 + 305, y);
     };
     const foot = (t, y) => { ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText(t, R.W / 2, y); };
-    const y0 = 196;
-    cat.items.forEach((it, i) => row(y0 + i * 48, it.label, it.val(), this.sel === i));
-    const yb = y0 + cat.items.length * 48;
+    const y0 = 196, st = cat.items.length > 11 ? 41 : 48;   // dlouhá karta: hustší řádky
+    cat.items.forEach((it, i) => row(y0 + i * st, it.label, it.val(), this.sel === i));
+    const yb = y0 + cat.items.length * st;
     row(yb, 'ZPĚT DO MENU', '', this.sel === cat.items.length);
     const it = cat.items[this.sel];
     if (it && it.hint) foot(it.hint, yb + 52);

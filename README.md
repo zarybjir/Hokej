@@ -192,6 +192,7 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 | B | klička | šťouchnutí holí |
 | LT + B | | zvednout soupeři hokejku |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
+| Pravá páčka | vedení puku: do strany, před sebe, k tělu (soupeř na krytý puk hůř dosáhne) | |
 | LB | střídání formace | střídání formace |
 | View (Back) | zoom kamery | zoom kamery |
 | Menu | pauza | pauza |
