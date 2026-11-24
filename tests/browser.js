@@ -62,6 +62,35 @@ try { ({ chromium } = require('playwright')); } catch (e) { console.log('Playwri
     });
     await p.waitForTimeout(1200);
     step('fotbalový zápas doběhl a vykreslil se', fb.startsWith('final') && errs.length === 0, fb + (errs[0] ? '  ' + errs[0] : ''));
+    // vodní pólo a curling: zápas s náhodným ovládáním
+    const wp = await p.evaluate(() => {
+      const d = Input.pads[0];
+      __app.sport = 'polo'; __app.game = new WaterPolo({ home: 3, away: 8, humans: [{ dev: d, team: 0, assist: 0 }], ...__app.ruleCfg(), periodLen: 40 }); __app.screen = 'game';
+      const g = __app.game;
+      for (let i = 0; i < 60 * 500 && g.state !== 'final'; i++) {
+        if (i % 30 === 0) { for (const a of [0, 1, 2, 3]) __pad.axes[a] = Math.random() * 2 - 1; for (const k of [0, 1, 2, 3, 6]) { const on = Math.random() < 0.2; __pad.buttons[k].pressed = on; __pad.buttons[k].value = on ? 1 : 0; } }
+        Input.poll(1 / 60); g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay();
+      }
+      return g.state + ' ' + g.teams.map((t) => t.score).join(':');
+    });
+    await p.waitForTimeout(1200);
+    step('zápas vodního póla doběhl a vykreslil se', wp.startsWith('final') && errs.length === 0, wp + (errs[0] ? '  ' + errs[0] : ''));
+    const cu = await p.evaluate(() => {
+      const d = Input.pads[0];
+      __app.sport = 'curling'; __app.game = new Curling({ home: 3, away: 8, humans: [{ dev: d, team: 0, assist: 0 }], diff: 2, ends: 2 }); __app.screen = 'game';
+      const g = __app.game;
+      for (let i = 0; i < 60 * 1500 && g.state !== 'final'; i++) {
+        if (i % 20 === 0) { for (const a of [0, 1, 2, 3]) __pad.axes[a] = Math.random() * 2 - 1; for (const k of [0, 2, 3]) { const on = Math.random() < 0.4; __pad.buttons[k].pressed = on; __pad.buttons[k].value = on ? 1 : 0; } }
+        Input.poll(1 / 60); g.update(1 / 60);
+      }
+      return g.state + ' ' + g.teams.map((t) => t.score).join(':');
+    });
+    await p.waitForTimeout(1200);
+    step('curling doběhl a vykreslil se', cu.startsWith('final') && errs.length === 0, cu + (errs[0] ? '  ' + errs[0] : ''));
+    await p.evaluate(() => { __app.screen = 'pause'; __app.sel = 0; }); await p.waitForTimeout(500);
+    await p.evaluate(() => { __app.helpFrom = 'pause'; __app.screen = 'help'; }); await p.waitForTimeout(500);
+    step('pauza a nápověda curlingu se vykreslí', errs.length === 0, errs[0] || '');
+    await p.evaluate(() => { const d = Input.pads[0]; __app.sport = 'football'; __app.game = new Football({ home: 3, away: 8, humans: [{ dev: d, team: 0, assist: 0 }], ...__app.ruleCfg() }); __app.screen = 'game'; }); await p.waitForTimeout(600);
     await p.evaluate(() => { __app.helpFrom = 'pause'; __app.screen = 'help'; }); await p.waitForTimeout(400); await p.evaluate(() => { __app.screen = 'game'; });
     await p.evaluate(() => { __app.statView = true; __app.statTeam = 0; }); await p.waitForTimeout(500);
     step('statistiky zápasu se vykreslí', errs.length === 0, errs[0] || '');

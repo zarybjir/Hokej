@@ -165,6 +165,29 @@ uvnitř mantinelů: 5 hráčů v poli a brankář, dva poločasy, stejné týmy 
   LT obranný postoj.
 - Kariéra, trénink a výzvy jsou zatím jen hokejové.
 
+## Vodní pólo
+
+Třetí položka menu. Hraje se v bazénu ve stejné hale, 5 hráčů v poli a brankář (zjednodušeně – skutečné
+pólo má 6+1), čtyři čtvrtiny, při remíze pětimetrové hody.
+
+- **Útočný čas 30 s** (ukazatel ÚTOK pod skóre) – kdo do té doby nevystřelí, ztrácí míč.
+- **Fauly:** běžný faul = volný hod, hrubý nebo zezadu = vyloučení na 20 s, faul na hráče s míčem
+  před brankou může být pětimetrový hod.
+- **Ovládání** jako ve fotbale, jen přihrávky jdou vždy vzduchem a místo skluzu je výpad po míči (X/B).
+
+## Curling
+
+Čtvrtá položka menu. Každý tým má v endu 8 kamenů, hází se střídavě; bod za každý kámen blíž středu
+kruhů, než je nejlepší kámen soupeře. Kdo end prohraje, má v dalším výhodu posledního kamene (tečka
+u názvu týmu). Počet endů se řídí položkou POČET ENDŮ, při remíze se hraje dodatečný end.
+
+1. **Míření:** levou páčkou posouváš koště skipa (kam má kámen dojet), Y / LB / RB mění rotaci –
+   kámen se ke konci dráhy stáčí. Čárkovaná čára ukazuje dráhu při síle „do domu“.
+2. **Síla:** A zastaví běžící ukazatel – STRÁŽ (před kruhy), DO DOMU, VYRAŽENÍ.
+3. **Zametání:** po odhodu drž X – kámen dojede dál a méně zatáčí.
+
+Při hodu počítače můžeš držet A a čekání zrychlit.
+
 ## Legion Go S / Steam Deck (SteamOS)
 
 1. Přepni do **plochy** (Steam → Napájení → Přepnout na plochu).

@@ -321,6 +321,62 @@ test('fotbal: faul ve vápně je penalta, mimo vápno volný kop, červená kart
   ok(B.skaters.length === 4, 'tým po červené kartě nehraje ve čtyřech (hraje v ' + B.skaters.length + ')');
 });
 
+// ---------- vodní pólo ----------
+test('vodní pólo: čtyři čtvrtiny, útočný čas, vyloučení na 20 s', (G) => {
+  const N = 4; let goals = 0, bad = '', scMin = 99; const qs = new Set();
+  for (let n = 0; n < N; n++) {
+    const g = new G.WaterPolo({ humans: [], silent: true, periodLen: 120, home: n * 5, away: n * 5 + 3 });
+    for (let t = 0; g.state !== 'final' && t < 5000; t += 1 / 60) {
+      g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay();
+      qs.add(g.q); scMin = Math.min(scMin, g.sc);
+      if (!isFinite(g.puck.x + g.puck.y + g.puck.z)) bad = 'míč má neplatnou polohu';
+      if (g.sc > 30.01 || g.sc < -0.1) bad = 'útočný čas mimo rozsah: ' + g.sc;
+    }
+    ok(g.state === 'final' && g.winner, 'zápas ' + n + ' neskončil vítězem (stav ' + g.state + ')');
+    goals += g.teams[0].score + g.teams[1].score;
+  }
+  ok(!bad, bad); ok([1, 2, 3, 4].every((q) => qs.has(q)), 'neodehrály se čtyři čtvrtiny: ' + [...qs]);
+  between(goals / N, 1, 12, 'góly na zápas'); ok(scMin < 25, 'útočný čas neběží');
+  ok(G.RINK.NET_W === 5 && G.RINK.NET_H === 3, 'branka nemá rozměr pro pólo');
+  // útočný čas: po vypršení dostane míč soupeř
+  const g = new G.WaterPolo({ humans: [], silent: true, home: 0, away: 1 }); while (g.state !== 'play') g.update(1 / 60);
+  const A = g.teams[0], B = g.teams[1], p = A.skaters[0]; g.thinkAll = () => {}; g.puck.owner = p; p.x = 0; p.y = 0; g.scTeam = A; g.sc = 0.05;
+  for (let i = 0; i < 30 && g.state === 'play'; i++) g.update(1 / 60);
+  ok(g.state !== 'play' && g.rs && g.rs.team === B, 'po vypršení útočného času nehraje soupeř');
+  // faul zezadu mimo pětku = vyloučení na 20 s
+  const h = new G.WaterPolo({ humans: [], silent: true, home: 0, away: 1 }); while (h.state !== 'play') h.update(1 / 60);
+  const off = h.teams[1].skaters[0], v = h.teams[0].skaters[0]; v.x = 0; v.y = 0; h.foul(off, v, 'back');
+  const pn = h.penalties.find((q) => q.player === off);
+  ok(pn && Math.abs(pn.left - 20) < 0.5, 'vyloučení netrvá 20 s: ' + (pn && pn.left));
+});
+
+// ---------- curling ----------
+test('curling: zápas doběhne, bodování endu, síla „do domu“ dojede do kruhů', (G) => {
+  const C = G.CURL;
+  const g = new G.Curling({ home: 0, away: 1, humans: [], silent: true, ends: 2 }); let bad = '', maxSt = 0, t = 0;
+  for (; g.state !== 'final' && t < 3000; t += 1 / 60) {
+    g.update(1 / 60); if (g.state === 'endScore' && g.stateT > 0.5) g.confirm();
+    maxSt = Math.max(maxSt, g.stones.length);
+    for (const s of g.stones) if (!isFinite(s.x + s.y)) bad = 'kámen má neplatnou polohu';
+  }
+  ok(g.state === 'final' && g.winner, 'zápas neskončil vítězem (stav ' + g.state + ', čas ' + Math.round(t) + ')'); ok(!bad, bad);
+  ok(maxSt === 16, 'v endu nebylo 16 kamenů: ' + maxSt);
+  for (const T of g.teams) ok(T.byEnd.length >= 2 && T.byEnd.reduce((a, b) => a + b, 0) === T.score, 'skóre nesedí se součtem endů');
+  ok(g.teams[0].score !== g.teams[1].score, 'curling skončil remízou');
+  // bodování: dva kameny blíž než nejlepší soupeřův = 2 body, kámen mimo kruhy se nepočítá
+  const c = new G.Curling({ home: 0, away: 1, humans: [], silent: true, ends: 1 }), A = c.teams[0], B = c.teams[1];
+  const st = (team, d) => ({ team, x: C.TEE + d, y: 0, vx: 0, vy: 0, moving: false, out: false });
+  c.stones = [st(A, 0.5), st(A, -2), st(B, 3), st(A, 4), st(B, C.HOUSE + 2)];
+  let r = c.countEnd(); ok(r.team === A && r.pts === 2, 'bodování endu: ' + (r.team && r.team.def.abbr) + ' ' + r.pts);
+  c.stones = [st(B, C.HOUSE + 2)]; r = c.countEnd(); ok(!r.team && r.pts === 0, 'kámen mimo kruhy boduje');
+  // odhod se silou „do domu“ bez zametání skončí v kruzích
+  const d = new G.Curling({ home: 0, away: 1, humans: [], silent: true, ends: 1 }); d.stones = [];
+  d.aim = { y: 0, spin: 1, w: d.wDraw }; d.teams.forEach((T) => { T.cpu = false; }); d.release(); d.state = 'slide'; d.stateT = 0;
+  const s = d.cur; s.x = C.HOG1; s.vx = d.v0 * Math.cos(d.ang); s.vy = d.v0 * Math.sin(d.ang); s.moving = true;
+  for (let i = 0; i < 4000 && s.moving; i++) d.stepStones(1 / 60);
+  ok(!s.out && d.inHouse(s), 'kámen se silou do domu skončil mimo kruhy: x ' + s.x.toFixed(1) + ' y ' + s.y.toFixed(1));
+});
+
 // ---------- spuštění ----------
 const filter = process.argv[2];
 let fail = 0; const t0 = Date.now();

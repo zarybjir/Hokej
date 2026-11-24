@@ -15,11 +15,12 @@ const PH = { GRIP: 112, BRAKE: 85, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, 
 // Fotbal používá stejné jádro: mění jen fyziku pohybu a míče a velikost branky (viz football.js).
 const PH_HOCKEY = { ...PH, BZ: 0.3 };
 const PH_FOOTBALL = { GRIP: 300, BRAKE: 150, ACC: 62, MAXV: 21, TURBO: 1.28, GLIDE: 7, PF: 0.6, PR: 0.36, PLR: 1.0, GR: 1.3, BE: 0.5, BZ: 0.55 };
+const PH_POLO = { GRIP: 70, BRAKE: 34, ACC: 20, MAXV: 9.5, TURBO: 1.3, GLIDE: 2.4, PF: 2.2, PR: 0.36, PLR: 1.1, GR: 1.3, BE: 0.4, BZ: 0.15 };   // plavání, míč na vodě
 let SPORT = 'hockey';
 function applySport(s) {
-  SPORT = s === 'football' ? 'football' : 'hockey';
-  Object.assign(PH, PH_HOCKEY, SPORT === 'football' ? PH_FOOTBALL : {});
-  Object.assign(RINK, SPORT === 'football' ? { NET_W: 5, NET_H: 6.5 } : { NET_W: 3, NET_H: 4 });
+  SPORT = ['football', 'polo', 'curling'].includes(s) ? s : 'hockey';
+  Object.assign(PH, PH_HOCKEY, SPORT === 'football' ? PH_FOOTBALL : SPORT === 'polo' ? PH_POLO : {});
+  Object.assign(RINK, SPORT === 'football' ? { NET_W: 5, NET_H: 6.5 } : SPORT === 'polo' ? { NET_W: 5, NET_H: 3 } : { NET_W: 3, NET_H: 4 });
 }
 const SWING_T = 0.13; // doba švihu od nápřahu k úderu do puku
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
@@ -89,7 +90,7 @@ class Player {
 class Game {
   constructor(cfg) {
     this.cfg = cfg; this.silent = !!cfg.silent; this.demo = !!cfg.demo;
-    this.fb = cfg.sport === 'football'; applySport(cfg.sport);
+    applySport(cfg.sport); this.sport = SPORT; this.fb = SPORT === 'football' || SPORT === 'polo';   // fb = míčová hra nad společným jádrem
     this.diff = DIFF[cfg.diff == null ? 1 : cfg.diff];
     this.periodLen = cfg.periodLen || 180;
     this.otMode = cfg.ot || '3v3';   // '3v3' | '5v5' | 'off'

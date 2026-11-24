@@ -23,7 +23,7 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 - `index.html` – jen canvasy a importmap; `js/boot.js` načte Three.js (ES moduly → `window.THREE`,
   `window.PP`…) a pak **klasické skripty v pořadí**:
   `util, data, audio, input, game, game-lines, game-rules, game-actions, game-physics, game-ai, game-flow,
-  football, led, render, touch, render3d, players3d, career, ach, update, app`.
+  football, waterpolo, curling, led, render, touch, render3d, players3d, career, ach, update, app`.
   Skripty nejsou moduly: všechno je globální (`'use strict'`, top-level `const`/`function`).
   Nový soubor = přidat ho do pole `files` v `boot.js` na správné místo.
 - `js/game.js` – jádro hry: konstanty (`DIFF`, `PH`), `class Player`, `class Game` (konstruktor, hlavní
@@ -40,7 +40,12 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
   místo buly, auty/rohy/kopy od branky, skluzy, fauly a karty, penalty, poločasy). Sport nastavuje
   `applySport()` v `game.js` (fyzika `PH`, rozměr branky v `RINK`); v jádře je odlišné chování za `this.fb`.
   Ve 3D přepíná `G3.setSport()` (trávník, branky, míč) a `HModel` podle `SPORT` (dres, běh `poseFoot`).
-  Změna společného jádra se musí ověřit pro oba sporty (testy pokrývají hokej i fotbal).
+  Změna společného jádra se musí ověřit pro všechny sporty (testy pokrývají hokej, fotbal i pólo).
+- `js/waterpolo.js` – `class WaterPolo extends Football`: čtvrtiny (`q`), útočný čas (`sc`), vyloučení na 20 s,
+  přihrávky vzduchem. `this.fb` je pravda i pro pólo; rozdíly jsou za `this.sport === 'polo'`.
+- `js/curling.js` – `class Curling` stojí samostatně (není to `Game`), pro `App`, `R` a `G3` jen nabízí stejné
+  rozhraní (`teams`, `all`, `puck` jako cíl kamery, `state`, `update`, `confirm`); pozná se podle `g.curl`.
+  Fyzika kamene je v `curlStep`, konstanty v `CURL`. Kreslí ho `R.drawCurling` a `G3.paintCurl`/`buildStones`.
 - `js/app.js` – objekt `App`: obrazovky, menu, nastavení, hlavní smyčka (start na konci souboru).
 - `js/career.js` – objekt `Career`: liga, pohár, play-off, přestupy, smlouvy, draft, vývoj; obrazovky kariéry od sekce „obrazovky kariéry“.
 - `js/render3d.js` – `G3`: Three.js scéna, kluziště, kamera (`ZOOMS`), grafika (`GFX`).

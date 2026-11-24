@@ -1,8 +1,10 @@
 {
-  "build": 58,
-  "version": "1.58",
-  "date": "2026-11-25",
+  "build": 59,
+  "version": "1.59",
+  "date": "2026-11-24",
   "notes": [
-    "Fotbal: nový trávník – přirozené barvy, pruhy po sekání, struktura stébel, ošlapaná místa u branek, matné čáry"
+    "Vodní pólo: bazén, čtyři čtvrtiny, útočný čas 30 s, vyloučení na 20 s, pětimetrové hody",
+    "Curling: míření na koště skipa, rotace, ukazatel síly, zametání, bodování po endech",
+    "Hlavní menu nabízí čtyři sporty: fotbal, hokej, vodní pólo a curling"
   ]
 }

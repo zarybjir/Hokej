@@ -89,7 +89,58 @@ const R = {
       G3.toast.t -= dt;
     }
   },
+  // ---------- curling: vlastní pohled a ukazatele ----------
+  drawCurling(g, t, dt) {
+    const ctx = this.ctx, C = CURL, [A, B] = g.teams, hum = g.T.humans.length > 0;
+    this.updateCam(g.puck.x, dt, g.camSnap, g.shake, g.puck.y); g.camSnap = false; g.shake = Math.max(0, g.shake - dt * 2);
+    this.drawWorld(g, g.all, g.puck, g.time, dt, { refs: [] });
+    // míření: předpokládaná dráha a koště skipa
+    if (g.state === 'aim' || g.state === 'power') {
+      const pts = g.aimPath().map(([x, y]) => G3.toScreen(x, y, 0.05)).filter(Boolean);
+      ctx.strokeStyle = 'rgba(255,210,31,0.8)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke(); ctx.setLineDash([]);
+      const q = G3.toScreen(C.TEE, g.aim.y, 0.05);
+      if (q) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1], 13 + Math.sin(t * 6) * 2, 0, TAU); ctx.stroke(); }
+    }
+    // tabule: skóre po endech, kdo má poslední kámen (●), zbývající kameny
+    const P = 3, x = 16, y = 12, n = Math.max(g.ends, A.byEnd.length + (g.state === 'final' ? 0 : 1)), cw = 30, w = 150 + n * cw + 70;
+    LED.panel(ctx, x, y, w, 88, P);
+    LED.text(ctx, g.state === 'final' ? 'KONEC' : 'END ' + g.end + '/' + Math.max(g.ends, g.end), x + 12, y + 14, 2, { color: '#9fe3ff' });
+    for (let k = 0; k < n; k++) LED.text(ctx, String(k + 1), x + 150 + k * cw + cw / 2, y + 14, 2, { align: 'center', color: '#8a93a6' });
+    g.teams.forEach((T, i) => {
+      const yy = y + 40 + i * 28;
+      this.chip(T, x + 10, yy - 9, 18); LED.text(ctx, T.def.abbr, x + 28, yy, P);
+      if (g.teams[g.hammer] === T && g.state !== 'final') LED.text(ctx, '●', x + 122, yy, 2, { color: '#ffd21f' });
+      for (let k = 0; k < T.byEnd.length; k++) LED.text(ctx, String(T.byEnd[k]), x + 150 + k * cw + cw / 2, yy, P, { align: 'center' });
+      LED.text(ctx, String(T.score), x + w - 14, yy, P, { align: 'right', color: '#ffd21f' });
+    });
+    if (g.state !== 'final') g.teams.forEach((T, i) => {
+      const used = g.stones.filter((s) => s.team === T).length, yy = y + 104 + i * 22;
+      for (let k = 0; k < 8; k++) { ctx.beginPath(); ctx.arc(x + 14 + k * 20, yy, 7, 0, TAU); if (k < 8 - used) { ctx.fillStyle = T.jersey; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.5; ctx.stroke(); } else { ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5; ctx.stroke(); } }
+    });
+    // kdo hraje a co dělat
+    const who = g.T.def.abbr + (hum ? '' : ' (POČÍTAČ)');
+    let tip = '';
+    if (g.state === 'aim') tip = hum ? 'PÁČKA = MÍŘENÍ   Y = ROTACE ' + (g.aim.spin > 0 ? '↶' : '↷') + '   A = SÍLA' : 'HRAJE ' + who + '   (DRŽ A = ZRYCHLIT)';
+    else if (g.state === 'power') tip = 'A = ODHODIT   B = ZPĚT K MÍŘENÍ';
+    else if (g.state === 'slide' || g.state === 'run') tip = hum ? (g.sweep ? 'ZAMETÁŠ!' : 'DRŽ X = ZAMETAT (KÁMEN DOJEDE DÁL A ROVNĚJI)') : 'HRAJE ' + who + '   (DRŽ A = ZRYCHLIT)';
+    if (tip) { const tw = LED.width(tip, 2.5) + 30; LED.panel(ctx, this.W / 2 - tw / 2, this.H - 48, tw, 36, 2.5); LED.text(ctx, tip, this.W / 2, this.H - 30, 2.5, { align: 'center', color: g.sweep ? '#7dff8a' : '#ffd21f' }); }
+    // ukazatel síly: stráž / do domu / vyražení
+    if (g.state === 'power') {
+      const mw = 420, mx = this.W / 2 - mw / 2, my = this.H - 110;
+      LED.panel(ctx, mx - 12, my - 30, mw + 24, 62, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(mx, my, mw, 16);
+      ctx.fillStyle = 'rgba(125,255,138,0.45)'; ctx.fillRect(mx + mw * (g.wDraw - 0.035), my, mw * 0.07, 16);
+      ctx.fillStyle = '#ffd21f'; ctx.fillRect(mx + mw * g.meter - 3, my - 5, 6, 26);
+      LED.text(ctx, 'STRÁŽ', mx + mw * 0.1, my - 16, 2, { align: 'center', color: '#aeb6c8' }); LED.text(ctx, 'DO DOMU', mx + mw * g.wDraw, my - 16, 2, { align: 'center', color: '#7dff8a' }); LED.text(ctx, 'VYRAŽENÍ', mx + mw * 0.75, my - 16, 2, { align: 'center', color: '#ff8a6a' });
+    }
+    const big = (title, sub, extra) => { const bw = 640; LED.panel(ctx, this.W / 2 - bw / 2, 250, bw, extra ? 190 : 130, 4, 0.94); LED.text(ctx, title, this.W / 2, 292, 5, { align: 'center' }); LED.text(ctx, sub, this.W / 2, 342, 3, { align: 'center', color: '#ffd21f' }); if (extra && Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, extra, this.W / 2, 404, 2.5, { align: 'center', color: '#9fe3ff' }); };
+    if (g.msg) big(g.msg.text, g.msg.sub);
+    if (g.state === 'endScore') { const r = g.lastEnd; big('KONEC ' + g.end + '. ENDU', r.team ? r.team.def.city.toUpperCase() + ' +' + r.pts : 'BEZ BODU', 'A - POKRAČOVAT'); }
+    if (g.state === 'final') big('KONEC ZÁPASU', 'VÍTĚZ: ' + g.winner.def.city.toUpperCase() + '  ' + A.score + ':' + B.score, 'A - ZPĚT DO MENU');
+    if (Settings.data.fps) LED.text(ctx, Math.round(App.fps) + ' FPS', this.W - 12, 18, 2, { align: 'right', color: '#7dff8a' });
+  },
   drawGame(g, t, dt) {
+    if (g.curl) return this.drawCurling(g, t, dt);
     let players = g.penalties.length ? g.all.concat(g.boxPlayers()) : g.all, pk = g.puck, refs = g.refs;
     if (g.state === 'replay' && g.replay) {
       const fr = g.replay.frames[Math.min(g.replay.frames.length - 1, Math.floor(g.replay.f))];
@@ -100,6 +151,7 @@ const R = {
     if (g.state === 'zamboni' && g.zam) { players = []; refs = []; this.updateCam(g.zam.x + Math.cos(g.zam.dir) * 6, dt, false, 0, g.zam.y); }
     else this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
     g.camSnap = false;
+    if (g.sport === 'polo') refs = [];   // rozhodčí vodního póla stojí na břehu
     this.drawWorld(g, players, pk, g.time, dt, { rings: g.state !== 'replay', refs });
     this.drawHUD(g, t);
   },
@@ -191,10 +243,10 @@ const R = {
       LED.text(ctx, T.score, ax + LED.width(T.def.abbr, P) + 14 + W2, cy, P, { align: 'right', color: '#ffd21f' });
     }
     ctx.fillStyle = 'rgba(150,155,170,0.4)'; ctx.fillRect(sep, y + 9, 2, H - 18);
-    LED.text(ctx, g.period > 3 ? 'PP' : g.period + '.', perX, cy, P);
+    LED.text(ctx, g.perLabel || (g.period > 3 ? 'PP' : g.period + '.'), perX, cy, P);
     const low = g.clock < 30 && g.state === 'play';
     LED.text(ctx, this.clockStr(g.clock), clockR, cy, P, { align: 'right', color: low ? '#ff5a46' : LED.WHITE });
-    const st = `STŘELY ${A.shots}-${B.shots}`;
+    const st = `STŘELY ${A.shots}-${B.shots}` + (g.sc != null && g.state === 'play' ? '   ÚTOK ' + Math.max(0, Math.ceil(g.sc)) : '');
     LED.panel(ctx, x, y + H + 5, LED.width(st, 2.5) + 24, 30, 2.5);
     LED.text(ctx, st, x + 12, y + H + 20, 2.5);
     // vyloučení a přesilovka

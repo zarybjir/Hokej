@@ -124,7 +124,7 @@ vPos = position; vArm = aArm;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
-uniform float uRef, uStyle, uYoke, uHasMap, uFoot;
+uniform float uRef, uStyle, uYoke, uHasMap, uKit;
 varying vec3 vPos;
 varying float vArm;
 // pruhy (lem dresu, rukávy, štulpny): t = vzdálenost od okraje v metrech
@@ -211,7 +211,10 @@ const BODY_FRAG = `
     // štulpny: stejné pruhy jako dres
     c = band(uSock, y - 0.29);
   } else c = vec3(0.03);
-  if (uFoot > 0.5 && uRef < 0.5) {
+  if (uKit > 1.5 && uRef < 0.5) {
+    // vodní pólo: plavky, jinak holá kůže
+    if (vArm > 0.5 || y > 0.99 || y <= 0.6) { c = uSkin; fab = 1.0; } else c = uPants;
+  } else if (uKit > 0.5 && uRef < 0.5) {
     // fotbalový dres: krátký rukáv, trenýrky nad kolena, podkolenky
     if (vArm > 0.5) { if (ax > 0.66) c = uGlove; else if (ax > 0.42) c = uSkin; }
     else if (y > 1.5 && y <= 1.535 && ax < 0.08) c = uSkin;
@@ -252,9 +255,9 @@ function bodyMaterialFinish(T, p, c, ref) {
   const idx = TEAMS.indexOf(T.def);
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
-    uInfl: { value: p.isGoalie && SPORT !== 'football' ? 1.55 : 1 }, uFoot: { value: SPORT === 'football' ? 1 : 0 },
+    uInfl: { value: p.isGoalie && SPORT === 'hockey' ? 1.55 : 1 }, uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
-    uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
+    uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : SPORT === 'polo' || SPORT === 'curling' ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
     uHasMap: { value: 0 },
@@ -265,7 +268,7 @@ function bodyMaterialFinish(T, p, c, ref) {
     sh.vertexShader = BODY_VERT_HEAD + LEG_FN + sh.vertexShader.replace('#include <beginnormal_vertex>', BODY_NORMAL).replace('#include <begin_vertex>', BODY_VERT);
     sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + BODY_FRAG);
   };
-  m.customProgramCacheKey = () => 'hokej-body6';
+  m.customProgramCacheKey = () => 'hokej-body7';
   m.userData.tex = tex;
   return m;
 }
@@ -372,7 +375,8 @@ class HModel {
       this.root.add(m); m.updateMatrixWorld(true); bone.attach(m); return m;
     };
     const blk = G.mat.boot, steel = G.mat.steel, white = G.mat.whitePlastic;
-    const foot = this.foot = SPORT === 'football';   // fotbal: kopačky bez nožů, žádná helma, rukavice ani hůl
+    const foot = this.foot = SPORT !== 'hockey';   // ostatní sporty: žádné brusle s noži, helma, rukavice (hůl jen jako koště v curlingu)
+    this.kit = SPORT;
     for (const s of [1, -1]) {
       const F = s > 0 ? B.LeftFoot : B.RightFoot, x = s * 0.082;
       add(F, G.hgeo.boot, blk, x, 0.06, 0.04);
@@ -385,7 +389,7 @@ class HModel {
     if (foot) {
       // vlasy: přiléhavá čepička v přirozené barvě (podle jména, ať je hráč pořád stejný)
       let hh = 5; for (const ch of String(p.name) + p.num) hh = (hh * 31 + ch.charCodeAt(0)) >>> 0;
-      const hair = add(B.Head, G.hgeo.helmet, new THREE.MeshStandardMaterial({ color: [0x2a1d14, 0x4a3320, 0x7a5a32, 0xc9a45a, 0x1a1a1c, 0x8a4a22][hh % 6], roughness: 0.95 }), 0, 1.675, -0.012);
+      const hair = add(B.Head, G.hgeo.helmet, new THREE.MeshStandardMaterial({ color: SPORT === 'polo' ? new THREE.Color(p.isGoalie ? '#d0101a' : T.jersey) : [0x2a1d14, 0x4a3320, 0x7a5a32, 0xc9a45a, 0x1a1a1c, 0x8a4a22][hh % 6], roughness: SPORT === 'polo' ? 0.5 : 0.95 }), 0, 1.675, -0.012);   // vlasy / čepička
       hair.scale.multiplyScalar(0.9);
     } else if (p.isRef) {
       add(B.Head, G.hgeo.helmet, this.helmetMat, 0, 1.69, -0.006);
@@ -428,7 +432,7 @@ class HModel {
     else { this.blade = sm(G.geo.blade, G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); }
     G.scene.add(this.root, this.stick);
   }
-  setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef && !this.foot; }
+  setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef && (!this.foot || this.kit === 'curling'); }
   dispose() {
     this.helmetMat.map.dispose(); this.helmetMat.dispose();
     this.G.scene.remove(this.root, this.stick);
@@ -470,10 +474,11 @@ class HModel {
     this.stick.position.set(0, 0, 0); this.stick.quaternion.identity();
     const down = p.downT > 0;
     if (this.isRef) return this.poseRef(p, t, O, F, Lv, J);
-    if (this.foot) this.poseFoot(down ? { ...p, spdN: 0, windT: 0, stride: 0 } : p, t, O, F, Lv, J);
+    if (this.kit === 'polo') this.posePolo(p, t, O, F, Lv, J);
+    else if (this.foot) this.poseFoot(down ? { ...p, spdN: 0, windT: 0, stride: 0 } : p, t, O, F, Lv, J);
     else if (this.goalie) this.poseGoalie(p, t, O, F, Lv, J);
     else this.poseSkater(down ? { ...p, spdN: 0, windT: 0, pokeA: 0, carry: false, stride: 0 } : p, t, O, F, Lv, J, down);
-    if (down && !(this.foot && p.slideT > 0)) {
+    if (down && !(this.foot && p.slideT > 0) && this.kit !== 'polo') {
       // pád: tělo se překlopí kolem bodu na ledě, hůl leží vedle
       const dl = [Math.cos(p.lie), Math.sin(p.lie)], k3 = new THREE.Vector3(-dl[1], 0, -dl[0]);
       const q = new THREE.Quaternion().setFromAxisAngle(k3, 1.5), pivot = O.clone();
@@ -600,13 +605,36 @@ class HModel {
     const ta = p.dir + p.hand * 0.7, toe = new THREE.Vector3(Math.cos(ta), 0, -Math.sin(ta));
     this.placeStick(heel, top, toe, F);
   }
+  // ---------- vodní pólo: tělo pod hladinou, kraul, šlapání vody, hod ----------
+  posePolo(p, t, O, F, Lv, J) {
+    const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 9), ph = (p.stride || 0) * 2.2, wind = Math.min(1, p.windT || 0);
+    const thr = Math.max(wind, p.shotFT > 0 ? p.shotFT / 0.5 : 0, p.passFT > 0 ? p.passFT / 0.3 : 0), sv = G && p.saveT > 0 ? 1 : 0;
+    // při plavání leží tělo na vodě, jinak je venku jen hlava a ramena (při hodu a zákroku se vynoří)
+    const up = Math.max(thr, sv) * 1.5 + (p.carry ? 0.25 : 0) + Math.sin(t * 2.4 + this.phase) * 0.12;
+    this.root.position.set(O.x, -4.25 + up + 0.7 * spd, O.z); this.root.updateMatrixWorld(true);
+    const lie = 1.15 * spd * (1 - Math.max(thr, sv));
+    rotAxis(B.Hips, Lv, lie); rotAxis(B.Neck, Lv, -lie * 0.8);
+    rotAxis(B.Hips, F, Math.sin(ph) * 0.25 * spd);
+    const dn = new THREE.Vector3(0, -1, 0);
+    for (const sd of [1, -1]) {
+      const [A, Fa, Hd] = sd > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand] : [B.RightArm, B.RightForeArm, B.RightHand];
+      const sh = wpos(A), a = ph + (sd > 0 ? 0 : Math.PI), thrower = (p.hand >= 0) === (sd > 0);
+      // kraul: paže krouží přes hladinu; v klidu hrabou pod vodou do stran
+      let tgt = sh.clone().addScaledVector(F, Math.cos(a) * 2.0 * spd + 0.4).addScaledVector(Lv, sd * (0.5 + 0.9 * (1 - spd))).add(new THREE.Vector3(0, Math.max(-0.2, Math.sin(a)) * 1.3 * spd - 0.5 * (1 - spd) + Math.sin(t * 3 + sd) * 0.15, 0));
+      if (thr > 0 && thrower) tgt = sh.clone().addScaledVector(F, wind > 0 ? -1.1 * wind : 1.6).addScaledVector(Lv, sd * 0.6).add(new THREE.Vector3(0, wind > 0 ? 1.9 : 0.9, 0));   // nápřah nad hlavu, pak švih
+      if (sv) tgt = sh.clone().addScaledVector(Lv, sd * 1.5).addScaledVector(F, 0.4).add(new THREE.Vector3(0, 2.1, 0));
+      else if (G && spd < 0.3 && !thr) tgt = sh.clone().addScaledVector(Lv, sd * 1.4).addScaledVector(F, 0.6).add(new THREE.Vector3(0, 0.5, 0));
+      ik2(A, Fa, Hd, tgt, dn.clone().addScaledVector(F, -0.5).addScaledVector(Lv, sd * 0.6), this.L.upper, this.L.fore);
+    }
+  }
   // ---------- fotbal: běh, kop, skluz, brankář ----------
   poseFoot(p, t, O, F, Lv, J) {
     const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 24), ph = (p.stride || 0) * 1.6, wind = Math.min(1, p.windT || 0);
     const slide = p.slideT > 0, sv = G && p.saveT > 0 ? p.saveKind : 0, ready = G ? 1 - spd : 0;
     const kick = Math.max(p.shotFT > 0 ? p.shotFT / (p.shotSlap ? 0.5 : 0.32) : 0, p.passFT > 0 ? p.passFT / 0.3 : 0), kk = Math.sin(clamp(kick, 0, 1) * Math.PI);
     const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;
-    this.root.position.set(O.x, 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd + 0.32 * ready + 0.15 * wind), O.z);
+    const lunge = p.lunge || 0;   // curling: výpad při odhodu kamene
+    this.root.position.set(O.x, 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd * (1 - lunge) + 0.32 * ready + 0.15 * wind + 1.75 * lunge), O.z);
     this.root.updateMatrixWorld(true);
     const lean = slide ? -0.95 : 0.06 + 0.32 * spd + 0.14 * ready + 0.1 * tired - 0.25 * kk;
     rotAxis(B.Hips, Lv, lean * 0.55);
@@ -623,6 +651,7 @@ class HModel {
     const kf = wind > 0 ? J(-1.7 * wind, p.hand * 0.5, 1.3 * wind) : kk > 0 ? J(0.5 + 2.2 * kk, p.hand * 0.5, 1.5 * kk) : null;
     if (kf) { if (p.hand >= 0) fL = kf; else fR = kf; }
     if (slide) { fL = J(2.7, 0.4, 0.3); fR = J(1.3, -0.55, 0.1); }
+    if (lunge > 0.3) { fL = J(1.5, 0.4, 0); fR = J(-2.5, -0.35, 0.05); }
     if (sv === 1) { fL = J(-0.2, 1.7, 0); fR = J(-0.2, -1.7, 0); }
     this.legs(fL, fR, F.clone().addScaledVector(Lv, 0.2), F.clone().addScaledVector(Lv, -0.2), 0.12, -0.12, F);
     if (cs && cs.w > 0.5) return;   // oslava gólu
@@ -634,7 +663,20 @@ class HModel {
       let tgt = sh.clone().addScaledVector(Lv, sd * 0.3).addScaledVector(F, 0.3 + 1.0 * a).add(new THREE.Vector3(0, -1.35 + 0.55 * Math.abs(a), 0));
       if (G) tgt = sh.clone().addScaledVector(Lv, sd * (0.9 + 0.3 * ready)).addScaledVector(F, 0.9).add(new THREE.Vector3(0, -0.7 + ((sv === 2 && sd > 0) || (sv === 3 && sd < 0) ? 1.9 : sv === 1 ? -0.9 : 0), 0));
       if (slide) tgt = sh.clone().addScaledVector(Lv, sd * 0.9).addScaledVector(F, -0.8).add(new THREE.Vector3(0, -0.9, 0));
+      if (lunge > 0.3) tgt = sd < 0 ? J(2.5, 0, 0.7) : sh.clone().addScaledVector(Lv, 1.2).add(new THREE.Vector3(0, -0.6, 0));   // pravá ruka drží kámen
+      if (this.kit === 'curling' && !p.noBroom && !lunge) continue;   // ruce na koštěti (níže)
       ik2(A, Fa, Hd, tgt, dn.clone().addScaledVector(F, -0.6).addScaledVector(Lv, sd * 0.5), this.L.upper, this.L.fore);
+    }
+    if (this.kit === 'curling') {
+      // koště: hlavice na ledě (před hráčem, nebo tam, kam ukazuje / kde zametá), obě ruce na násadě
+      const show = !p.noBroom && !lunge; this.stick.visible = this.root.visible && show;
+      if (show) {
+        const heel = p.broomAt ? new THREE.Vector3(p.broomAt[0], 0.08, -p.broomAt[1]) : J(2.3, -0.5, 0.08);
+        const top = wpos(B.Spine2).addScaledVector(F, 1.0).add(new THREE.Vector3(0, -0.2, 0)), mid = top.clone().lerp(heel, 0.35);
+        ik2(B.LeftArm, B.LeftForeArm, B.LeftHand, top, dn.clone().addScaledVector(Lv, 0.7), this.L.upper, this.L.fore);
+        ik2(B.RightArm, B.RightForeArm, B.RightHand, mid, dn.clone().addScaledVector(Lv, -0.7), this.L.upper, this.L.fore);
+        this.placeStick(heel, top, F.clone(), F);
+      }
     }
   }
   poseRef(p, t, O, F, Lv, J) {

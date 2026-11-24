@@ -239,7 +239,7 @@ gameMixin(class {
       }
       const reach = (this.fb ? 5.2 : 3.2) + 0.6 * g.gk;   // fotbalová branka je širší
       if ((!onNet && lat > 1.2) || lat > reach) { pk.ignore.set(g, this.time + 0.5); continue; }
-      let sv = (this.fb ? 0.965 : 0.974) + (g.gk - 1) * 0.6;
+      let sv = (this.sport === 'polo' ? 0.925 : this.fb ? 0.965 : 0.974) + (g.gk - 1) * 0.6;
       if (this.vsHuman) sv += t.cpu ? this.diff.cpuGk : this.diff.myGk;
       sv += [0.025, 0, -0.02][this.tacOf(t)];   // obranná taktika = horší šance soupeře, útočná = víc protiútoků
       sv -= clamp((sp - 60) / 200, 0, 0.22);

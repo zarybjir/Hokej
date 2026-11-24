@@ -8,7 +8,7 @@ const FB_KO = { C: [-1.5, 0], LW: [-10, 20], RW: [-10, -20], LD: [-42, 12], RD: 
 
 class Football extends Game {
   constructor(cfg) {
-    super({ ...cfg, sport: 'football', offside: false, icing: false, zamboni: 'off', sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
+    super({ ...cfg, sport: cfg.sport === 'polo' ? 'polo' : 'football', offside: false, icing: false, zamboni: 'off', sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
     for (const t of this.teams) for (const p of t.roster) p.reach *= 0.6;   // míč u nohy, dosah nohy místo hole
     this.iceWear = 0;
     this.setupFaceoff(0, 0); this.state = 'intro';
