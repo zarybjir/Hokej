@@ -26,7 +26,7 @@ const R = {
     let s = h / 800, W = w / s;
     if (W < 1280) { s = w / 1280; W = 1280; }
     this.s = s; this.W = W; this.ox = 0; this.oy = (h - 800 * s) / 2; this.cx = W / 2;
-    if (window.G3 && G3.r) G3.resize();
+    if (typeof G3 !== 'undefined' && G3.r) G3.resize();
   },
   begin() {
     const ctx = this.ctx;

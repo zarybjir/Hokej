@@ -32,7 +32,7 @@ const Touch = {
     };
     const start = (e) => {
       update(e);
-      if (window.Sfx) { Sfx.init(); Sfx.resume(); }
+      if (typeof Sfx !== 'undefined') { Sfx.init(); Sfx.resume(); }
       if (!this.fsTried) {
         this.fsTried = true;
         try {

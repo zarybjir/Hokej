@@ -1,11 +1,11 @@
 {
-  "build": 44,
-  "version": "1.44",
+  "build": 45,
+  "version": "1.45",
   "date": "2026-11-25",
   "notes": [
-    "Trestné střílení, bekhend, švihovka a placka k ledu, buly dopředu i vázání",
-    "LT: přihrávka o mantinel, lehnout do střely, zvednout hokejku; přihrávka z první a nechání puku",
-    "X-faktory a forma hráčů, poslední střídání domácích",
-    "Statistiky zápasu: mapa střel, čas na ledě, +/−, buly"
+    "Oprava: vlastní tlačítka se ukládala, ale hra je nepoužila – teď fungují (a s nimi i vibrace)",
+    "Nastavení → Ovládání: zvlášť Hráč 1 / Hráč 2, ovladač / klávesnice, i směry kříže",
+    "Podpora spouští a kříže hlášených jako osy u externích ovladačů",
+    "Sekání se píská, jen když hůl opravdu zasáhne soupeře"
   ]
 }

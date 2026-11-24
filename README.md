@@ -211,8 +211,9 @@ O přestávce mezi třetinami vyjíždí rolba. V Nastavení → *Rolba o přest
 
 Nastavení je rozdělené do karet (přepínání **LB / RB**, na klávesnici Q / E): **Obraz** (kamera, zoom, grafika, celá obrazovka, jmenovka,
 záznam po gólu, FPS), **Zvuk** (hlasitost, komentář), **Hra** (obtížnost, střídání, fauly, zranění,
-rolba), **Ovládání** (přemapování tlačítek pro každý ovladač zvlášť i pro klávesnici, *Test ovladačů* –
-ukáže, co hra z ovladače čte; nestandardní ovladače bez mapování dostanou výchozí linuxové rozložení),
+rolba), **Ovládání** (podmenu *Hráč 1 / Hráč 2 – ovladač* a *– klávesnice*: přemapování všech akcí i směrů,
+zachytává se jen tlačítko z vybraného ovladače; *Test ovladačů* ukáže, co hra z ovladače čte;
+nestandardní ovladače dostanou výchozí linuxové rozložení),
 **Týmy** (vlastní názvy) a **Aktualizace** (verze, kontrola, instalace, automatika).
 
 V menu *Exhibice*: domácí a hosté (karty s hodnocením týmu, **Y = soupiska** se statistikami všech

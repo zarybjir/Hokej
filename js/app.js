@@ -119,18 +119,33 @@ const App = {
         const cats = this.settingsCats();
         if (this.setCat == null) this.setCat = 0;
         if (this.capture) {
-          // čekáme na nové tlačítko / klávesu pro akci this.capture
-          const c = Input.capture();
+          // čekáme na nové tlačítko / klávesu pro akci this.capture (jen z vybraného zařízení)
+          const B = this.bindDev, pad = B.kind === 'pad' ? this.padSlot(B.i) : null, c = Input.capture(pad);
+          this.capT = (this.capT || 0) + dt;
+          if (this.capT > 10 || (B.kind === 'pad' && !pad)) { this.capture = null; break; }
           if (c) {
             const S = Settings.data, act = this.capture;
             if (c.key === 'Escape') { this.capture = null; break; }
-            if (c.key) { S.kbMaps = S.kbMaps || [{}, {}]; S.kbMaps[0][act] = [c.key]; Input.applyKb(); }
+            if (c.foreign) { this.capMsg = 'Ovladač posílá klávesu ' + c.key + ' – ve Steamu (tlačítko Steam → Ovladač) zvol šablonu Gamepad.'; break; }
+            if (c.key) { S.kbMaps = S.kbMaps || [{}, {}]; S.kbMaps[B.i] = S.kbMaps[B.i] || {}; S.kbMaps[B.i][act] = [c.key]; Input.applyKb(); }
             else { S.padMaps = S.padMaps || {}; S.padMaps[c.dev.gp.id] = Object.assign(S.padMaps[c.dev.gp.id] || {}, { [act]: c.spec }); }
-            Settings.save(); this.capture = null; this.capWait = 0.3; Sfx.stick(0.8);
+            Settings.save(); this.capture = null; this.capMsg = ''; this.capWait = 0.3; Sfx.stick(0.8);
           }
           break;
         }
         if (this.capWait > 0) { this.capWait -= dt; break; }
+        if (this.bindDev) {
+          // podmenu přemapování jednoho zařízení: akce, výchozí, zpět
+          const B = this.bindDev, acts = this.bindActs(), n = acts.length + 2;
+          this.menuMove(0, n, dt);
+          if (M.pressed('a')) {
+            if (this.sel < acts.length) { this.capture = acts[this.sel][0]; this.capT = 0; this.capMsg = ''; Input.capStart(); }
+            else if (this.sel === acts.length) { const S = Settings.data, pad = this.padSlot(B.i); if (B.kind === 'pad') { if (pad && S.padMaps) delete S.padMaps[pad.gp.id]; } else { S.kbMaps = S.kbMaps || [{}, {}]; S.kbMaps[B.i] = {}; Input.applyKb(); } Settings.save(); Sfx.stick(0.8); }
+            else { this.bindDev = null; this.sel = 0; }
+          }
+          if (M.pressed('b')) { this.bindDev = null; this.sel = 0; }
+          break;
+        }
         if (this.padTest) { if (Input.keys.has('Escape') || M.pressed('b') || M.pressed('start')) this.padTest = false; break; }
         const tab = (M.pressed('rb') ? 1 : 0) - (M.pressed('lb') ? 1 : 0);
         if (tab) { this.setCat = (this.setCat + tab + cats.length) % cats.length; this.sel = 0; Sfx.stick(0.6); Settings.save(); break; }
@@ -493,10 +508,10 @@ const App = {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
       if (a === 'save') {
         el.querySelectorAll('input').forEach((x) => { const v = x.value.trim(); if (v) TEAMS[+x.dataset.i][x.dataset.k] = x.dataset.k === 'abbr' ? v.toUpperCase().slice(0, 3) : v; });
-        TeamNames.save(); if (window.G3 && G3.refreshTeams) G3.refreshTeams(); close();
+        TeamNames.save(); if (typeof G3 !== 'undefined' && G3.refreshTeams) G3.refreshTeams(); close();
       } else if (a === 'reset') {
         try { localStorage.removeItem(TeamNames.KEY); } catch (err) {}
-        TeamNames.load(); if (window.G3 && G3.refreshTeams) G3.refreshTeams(); close();
+        TeamNames.load(); if (typeof G3 !== 'undefined' && G3.refreshTeams) G3.refreshTeams(); close();
       } else close();
     });
     // klávesy z formuláře nepouštět do hry
@@ -550,8 +565,10 @@ const App = {
           hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },
       ] },
       { name: 'OVLÁDÁNÍ', desc: 'Přemapování tlačítek (ovladač i klávesnice) a test ovladačů', items: [
-        ...BIND_ACTIONS.map(([k, label]) => ({ label, val: () => this.bindName(k), set: (d, a) => { if (a) { this.capture = k; Input.lastKey = null; } },
-          hint: 'A = změnit: pak stiskni nové tlačítko na ovladači (platí pro ten ovladač) nebo klávesu (klávesnice 1). Esc = zrušit.' })),
+        ...[0, 1].map((i) => ({ label: 'HRÁČ ' + (i + 1) + ' – OVLADAČ', val: () => { const d = this.padSlot(i); return d ? d.gp.id.replace(/\s*\(.*$/, '').slice(0, 22).toUpperCase() + ' ►' : 'NEPŘIPOJEN'; },
+          set: (d, a) => { if (a && this.padSlot(i)) { this.bindDev = { kind: 'pad', i }; this.sel = 0; } },
+          hint: 'Hráč ' + (i + 1) + ' = ' + (i + 1) + '. připojený ovladač (vestavěný bývá první). NEPŘIPOJEN: stiskni na něm tlačítko; když nic, Steam ho nejspíš posílá jako klávesnici – zvol šablonu Gamepad.' })),
+        ...[0, 1].map((i) => ({ label: 'HRÁČ ' + (i + 1) + ' – KLÁVESNICE', val: () => (i ? 'ŠIPKY + NUMERICKÁ' : 'WASD + JKLI') + ' ►', set: (d, a) => { if (a) { this.bindDev = { kind: 'kb', i }; this.sel = 0; } } })),
         { label: 'TEST OVLADAČŮ', val: () => '►', set: (d, a) => { if (a) this.padTest = true; }, hint: 'Ukáže, které ovladače hra vidí a co hlásí – pomůže, když ovladač nefunguje.' },
         { label: 'OBNOVIT VÝCHOZÍ TLAČÍTKA', val: () => '►', set: (d, a) => { if (a) { S.padMaps = {}; S.kbMaps = [{}, {}]; Input.applyKb(); } } },
       ] },
@@ -568,12 +585,43 @@ const App = {
       ] },
     ];
   },
-  // popis aktuálního přiřazení akce: první připojený ovladač / klávesnice 1
-  bindName(k) {
-    const pad = Object.values(Input.pads).find((d) => d.connected && d.gp);
-    const ps = pad ? padSpecName(Input.padMap(pad.gp)[k], pad.std) : '–';
-    const kb = Input.kb[0] && Input.kb[0].map[k] ? Input.kb[0].map[k][0].replace(/^Key|^Digit/, '').replace('Space', 'MEZERNÍK').replace('Escape', 'ESC').replace('ShiftLeft', 'SHIFT').replace('Tab', 'TAB') : '–';
-    return ps + '  /  ' + kb;
+  // i-tý připojený ovladač (podle pořadí připojení)
+  padSlot(i) { return Object.values(Input.pads).filter((d) => d.connected && d.gp).sort((a, b) => a.gp.index - b.gp.index)[i] || null; },
+  bindActs() { return BIND_ACTIONS.concat([['up', 'NAHORU'], ['down', 'DOLŮ'], ['left', 'DOLEVA'], ['right', 'DOPRAVA']]); },
+  // přiřazení akce na zařízení vybraném v podmenu
+  bindLabel(k) {
+    const B = this.bindDev;
+    if (B.kind === 'pad') { const d = this.padSlot(B.i); return d ? padSpecName(Input.padMap(d.gp)[k], d.std) : '–'; }
+    const m = Input.kb[B.i] && Input.kb[B.i].map[k];
+    return m ? m.map((q) => q.replace(/^Key|^Digit/, '').replace('Space', 'MEZERNÍK').replace('Escape', 'ESC').replace(/Shift(Left|Right)/, 'SHIFT').replace('Arrow', 'ŠIPKA ').replace('Numpad', 'NUM ')).join(', ').toUpperCase() : '–';
+  },
+  drawBind() {
+    const ctx = R.ctx, B = this.bindDev, acts = this.bindActs(), pad = B.kind === 'pad' ? this.padSlot(B.i) : null, dev = pad || Input.kb[B.i];
+    R.chromeText('HRÁČ ' + (B.i + 1) + ' – ' + (B.kind === 'pad' ? 'OVLADAČ' : 'KLÁVESNICE'), R.W / 2, 40, 36);
+    ctx.font = font(13, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(pad ? pad.gp.id.slice(0, 90) + (pad.std ? '' : '   (nestandardní rozložení)') : B.kind === 'pad' ? 'Ovladač není připojený.' : 'Klávesnice ' + (B.i + 1), R.W / 2, 74);
+    const row = (y, label, val, on) => {
+      R.panel(R.W / 2 - 330, y - 15, 660, 30, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 14, 658, 28); }
+      ctx.font = font(15); ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 310, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(val, R.W / 2 + 310, y);
+    };
+    acts.forEach(([k, label], i) => row(110 + i * 34, label, this.bindLabel(k), this.sel === i));
+    const yb = 110 + acts.length * 34;
+    row(yb, 'VÝCHOZÍ TLAČÍTKA PRO TOTO ZAŘÍZENÍ', '►', this.sel === acts.length);
+    row(yb + 34, 'ZPĚT', '', this.sel === acts.length + 1);
+    // živý náhled: co hra právě čte
+    const on = dev ? BTN.filter((b) => dev.st[b]).map((b) => b.toUpperCase()).join(' ') : '';
+    ctx.font = font(14, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#7dff8a';
+    ctx.fillText('Právě stisknuto: ' + (on || '–') + (pad ? '   •   tlačítka ' + pad.raw.b.map((q, i) => (q ? i : null)).filter((q) => q != null).join(',') : ''), R.W / 2, yb + 76);
+    if (this.capture) {
+      R.panel(R.W / 2 - 360, 300, 720, 130, 0.97);
+      ctx.font = font(20); ctx.fillStyle = '#ffd21f';
+      ctx.fillText(B.kind === 'pad' ? 'STISKNI TLAČÍTKO NA TOMTO OVLADAČI' : 'STISKNI KLÁVESU', R.W / 2, 340);
+      ctx.font = font(14, 'bold'); ctx.fillStyle = '#fff'; ctx.fillText('pro: ' + (acts.find((q) => q[0] === this.capture) || [0, ''])[1] + '     (ESC nebo 10 s = zrušit)', R.W / 2, 372);
+      if (this.capMsg) { ctx.fillStyle = '#ff9a7a'; ctx.fillText(this.capMsg, R.W / 2, 404); }
+    }
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.fillText('↑↓ výběr   A změnit   B zpět', R.W / 2, 784);
   },
   drawPadTest() {
     const ctx = R.ctx; R.chromeText('TEST OVLADAČŮ', R.W / 2, 60, 40);
@@ -598,6 +646,7 @@ const App = {
   },
   drawSettings() {
     if (this.padTest) return this.drawPadTest();
+    if (this.bindDev) return this.drawBind();
     const ctx = R.ctx, cats = this.settingsCats(), ci = this.setCat || 0, cat = cats[ci];
     R.chromeText('NASTAVENÍ', R.W / 2, 46, 40);
     // karty
@@ -634,12 +683,6 @@ const App = {
         notes.slice(0, 5).forEach((n, i) => ctx.fillText('• ' + n, R.W / 2, yb + 144 + i * 20));
       }
       if (!Upd.server) foot('Instalace aktualizací funguje ve hře spuštěné přes hokej.sh. Webová verze se aktualizuje sama.', 756);
-    }
-    if (this.capture) {
-      R.panel(R.W / 2 - 330, 330, 660, 110, 0.97);
-      ctx.font = font(20); ctx.fillStyle = '#ffd21f'; ctx.textAlign = 'center';
-      ctx.fillText('STISKNI NOVÉ TLAČÍTKO NEBO KLÁVESU', R.W / 2, 370);
-      ctx.font = font(14, 'bold'); ctx.fillStyle = '#fff'; ctx.fillText('pro: ' + (BIND_ACTIONS.find((q) => q[0] === this.capture) || [0, ''])[1] + '     (ESC = zrušit)', R.W / 2, 405);
     }
     foot('LB / RB karta   ↑↓ výběr   ◄► / A změna   B zpět', 784);
   },

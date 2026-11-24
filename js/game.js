@@ -1008,7 +1008,7 @@ class Game {
     if (!o || o.team === p.team || o === null) {
       for (const q of this.other(p.team).skaters) {
         if (q.downT > 0 || q === pk.owner) continue;
-        if (Math.hypot(q.x - bx, q.y - by) < 2.6 && Math.random() < 0.18) { this.foul(p, q, 'slash'); break; }
+        if (Math.hypot(q.x - bx, q.y - by) < 1.8 && Math.hypot(q.x - p.x, q.y - p.y) < 5 && Math.random() < 0.12) { this.foul(p, q, 'slash'); break; }   // jen když hůl opravdu zasáhne tělo
       }
     }
   }

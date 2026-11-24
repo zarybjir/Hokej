@@ -16,6 +16,8 @@ const PAD_XPAD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 'a2+', rt: 'a5+', b
 const STD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'L3', 'R3', '↑', '↓', '←', '→', 'HOME'];
 function padSpecName(spec, std) {
   if (typeof spec === 'number') return std ? (STD_NAMES[spec] || 'TL. ' + spec) : 'TL. ' + spec;
+  if (typeof spec !== 'string') return '–';
+  if (spec[0] === 'h') return 'KŘÍŽ ' + spec.slice(1);   // D-pad hlášený jako jedna osa („hat")
   return 'OSA ' + spec.slice(1);
 }
 function blankState() { const s = { lx: 0, ly: 0 }; for (const b of BTN) s[b] = false; return s; }
@@ -55,12 +57,12 @@ const Input = {
   keys: new Set(), devices: [], pads: {}, kb: [], merged: null, anyEvent: false, lastKey: null,
   // rozložení pro konkrétní ovladač (uložené v nastavení podle jeho jména), jinak výchozí podle typu
   padMap(gp) {
-    const S = window.Settings && Settings.data, own = S && S.padMaps && S.padMaps[gp.id];
+    const S = typeof Settings !== 'undefined' && Settings.data, own = S && S.padMaps && S.padMaps[gp.id];
     return Object.assign({}, gp.mapping === 'standard' ? PAD_STD : PAD_XPAD, own || {});
   },
   // klávesnice: vlastní klávesy z nastavení přes výchozí schéma
   applyKb() {
-    const S = window.Settings && Settings.data;
+    const S = typeof Settings !== 'undefined' && Settings.data;
     this.kb.forEach((d, i) => { d.map = Object.assign({}, KB_MAPS[i], (S && S.kbMaps && S.kbMaps[i]) || {}); });
   },
   init() {
@@ -71,7 +73,7 @@ const Input = {
     window.addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
       this.keys.add(e.code); this.anyEvent = true; if (!e.repeat) this.lastKey = e.code;
-      if (window.Touch && Touch.visible && !e.repeat) Touch.visible = false;
+      if (typeof Touch !== 'undefined' && Touch.visible && !e.repeat) Touch.visible = false;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
@@ -106,6 +108,7 @@ const Input = {
       const V = (spec) => {
         if (typeof spec === 'number') return B(spec);
         if (typeof spec !== 'string') return false;
+        if (spec[0] === 'h') { const [i, v] = spec.slice(1).split(':'); const a = gp.axes[+i]; return a != null && Math.abs(a - +v) < 0.1; }
         const v = gp.axes[+spec.slice(1, -1)] || 0; return spec.endsWith('+') ? v > 0.5 : v < -0.5;
       };
       const map = this.padMap(gp);
@@ -123,13 +126,13 @@ const Input = {
       }
       s.lx = lx; s.ly = ly;
       d.st = s;
-      if (BTN.some((b) => s[b])) { this.anyEvent = true; if (window.Touch) Touch.visible = false; }
+      if (BTN.some((b) => s[b])) { this.anyEvent = true; if (typeof Touch !== 'undefined') Touch.visible = false; }
     }
     for (const k in this.pads) if (!seen.has(+k)) { const d = this.pads[k]; d.connected = false; d.prev = d.st; d.st = blankState(); }
     // dotykové ovládání jako další „ovladač"
     const td = this.touchDev; td.prev = td.st;
-    td.st = window.Touch && Touch.visible ? Touch.read(blankState()) : blankState();
-    if (window.Touch && Touch.visible) td.active = true;
+    td.st = typeof Touch !== 'undefined' && Touch.visible ? Touch.read(blankState()) : blankState();
+    if (typeof Touch !== 'undefined' && Touch.visible) td.active = true;
     // sloučené ovládání pro menu
     const M = this.merged; M.prev = M.st; const s = blankState();
     for (const d of this.devices) {
@@ -145,22 +148,28 @@ const Input = {
   },
   // vibrace ovladače (Gamepad API); s = síla 0..1, ms = délka
   rumble(d, s, ms = 120) {
-    if (!d || d.kind !== 'pad' || !window.Settings || Settings.data.rumble === false) return;
+    if (!d || d.kind !== 'pad' || typeof Settings === 'undefined' || Settings.data.rumble === false) return;
     try {
       const gp = navigator.getGamepads()[+d.id.slice(3)], act = gp && (gp.vibrationActuator || (gp.hapticActuators && gp.hapticActuators[0]));
       if (act && act.playEffect) act.playEffect('dual-rumble', { duration: ms, strongMagnitude: clamp(s, 0, 1), weakMagnitude: clamp(s * 0.7 + 0.15, 0, 1) });
       else if (act && act.pulse) act.pulse(clamp(s, 0, 1), ms);
     } catch (e) {}
   },
-  // zachytávání nového tlačítka (pro přemapování): vrátí první nově stisknuté tlačítko / pohnutou osu / klávesu
-  capture() {
-    for (const d of Object.values(this.pads)) {
-      if (!d.connected || !d.raw || !d.rawPrev) continue;
+  // zachytávání nového tlačítka (přemapování): capStart() si zapamatuje klidové polohy os
+  capStart() { this.lastKey = null; for (const d of Object.values(this.pads)) d.capBase = d.raw ? d.raw.a.slice() : null; },
+  // dev = ovladač → jen jeho tlačítka/osy (klávesa = ovladač posílá klávesy, např. šablona Steamu); bez dev → jen klávesnice
+  capture(dev) {
+    if (dev) {
+      const d = dev; if (!d.connected || !d.raw || !d.rawPrev) return null;
       for (let i = 0; i < d.raw.b.length; i++) if (d.raw.b[i] && !d.rawPrev.b[i]) return { dev: d, spec: i };
+      const base = d.capBase || d.rawPrev.a;
       for (let i = 2; i < d.raw.a.length; i++) {
-        const v = d.raw.a[i], p = d.rawPrev.a[i] || 0;
-        if (Math.abs(v) > 0.6 && Math.abs(p) <= 0.6) return { dev: d, spec: 'a' + i + (v > 0 ? '+' : '-') };
+        const v = d.raw.a[i], b0 = base[i] || 0;
+        if (Math.abs(b0) > 1.05) { if (Math.abs(v) <= 1.01 && Math.abs(v - b0) > 0.2) return { dev: d, spec: 'h' + i + ':' + v.toFixed(2) }; continue; }  // „hat" (klid ~1,29)
+        if (Math.abs(v - b0) > 0.9 && Math.abs(v) > 0.6) return { dev: d, spec: 'a' + i + (v > 0 ? '+' : '-') };   // i spouště s klidem na −1
       }
+      if (this.lastKey) { const k = this.lastKey; this.lastKey = null; return { key: k, foreign: true }; }
+      return null;
     }
     if (this.lastKey) { const k = this.lastKey; this.lastKey = null; return { key: k }; }
     return null;
