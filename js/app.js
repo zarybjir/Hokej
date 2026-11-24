@@ -532,7 +532,9 @@ const App = {
           hint: 'Ovladač zavibruje při bodyčeku, srážce a tyčce (pokud to prohlížeč a ovladač umí).' },
         { label: 'HLASITOST', val: () => '▮'.repeat(S.vol) + '▯'.repeat(10 - S.vol), set: (d) => { if (d) { S.vol = clamp(S.vol + d, 0, 10); Sfx.setVol(S.vol); Sfx.stick(0.8); } } },
         { label: 'KOMENTÁŘ (HLAS)', val: () => onoff(S.comm), set: () => { S.comm = !S.comm; if (S.comm) Voice.say('Komentář zapnut.', true); },
-          hint: 'Komentář používá hlasovou syntézu systému — na některých zařízeních nemusí být k dispozici.' },
+          hint: 'Krátké hlášky ke gólům, zákrokům a vyloučením.' },
+        { label: 'JAZYK KOMENTÁŘE', val: () => '◄ ' + (S.commLang === 'cs' ? 'ČESKY' : 'ANGLICKY') + ' ►', set: () => { S.commLang = S.commLang === 'cs' ? 'en' : 'cs'; Voice.load(); setTimeout(() => Voice.say('Komentář zapnut.', true), 400); },
+          hint: 'Anglický hlas je výrazně živější; český je monotónnější.' },
       ] },
       { name: 'HRA', desc: 'Obtížnost, střídání, fauly, zranění, rolba', items: [
         { label: 'OBTÍŽNOST', val: () => '◄ ' + DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase() + ' ►', set: (d) => { S.diff = (S.diff + (d || 1) + DIFF.length) % DIFF.length; this.kidsAssist(); },

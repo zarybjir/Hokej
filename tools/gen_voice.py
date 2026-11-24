@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Vygeneruje hlášky komentátora (český hlas Piper „jirka“, licence CC0) do sounds/voice/.
-Použití: python3 tools/gen_voice.py /cesta/k/cs_CZ-jirka-medium.onnx
+"""Vygeneruje hlášky komentátora hlasem Piper.
+Česky (hlas „jirka“, CC0) do sounds/voice/:      python3 tools/gen_voice.py /cesta/k/cs_CZ-jirka-medium.onnx
+Anglicky (hlas „joe“, CC0) do sounds/voice-en/:  python3 tools/gen_voice.py /cesta/k/en_US-joe-medium.onnx en
 Potřebuje: pip install piper-tts, ffmpeg."""
 import json, os, re, subprocess, sys, unicodedata, wave, io
 from piper import PiperVoice, SynthesisConfig
@@ -32,15 +33,37 @@ PHRASES = [
     'Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.', 'nedohraje.',
 ] + surnames + cities
 
+# anglický komentář: klíč zůstává český (tak hlášku volá hra), čte se anglický text
+EN = {
+    'Vítejte u zápasu.': 'Welcome to the game!', 'Dobrý večer, vítejte na stadionu.': 'Good evening, hockey fans, and welcome!', 'proti': 'versus', 'Komentář zapnut.': 'Commentary on.',
+    'Začíná první třetina.': 'The first period is under way!', 'Začíná druhá třetina.': 'Here we go, second period!', 'Začíná třetí třetina.': 'The third period begins!', 'Jdeme do prodloužení!': 'We are going to overtime!',
+    'Konec první třetiny.': 'That is the end of the first period.', 'Konec druhé třetiny.': 'End of the second period.', 'Konec třetí třetiny.': 'End of the third period.', 'Rolba vyjíždí na led.': 'Here comes the zamboni.',
+    'Konec zápasu! Vítězí': 'That is the game! The winner is', 'Konec zápasu. Remíza.': 'That is the game. It ends in a tie.',
+    'Gól!': 'He scores!', 'A je to tam!': 'It is in the net!', 'Gól! Puk je v síti!': 'He shoots, he scores!', 'Gól! Neuvěřitelné!': 'Goal! Unbelievable!', 'Góóól!': 'Goal! What a goal!', 'Skóroval': 'Scored by', 'Gól v přesilovce!': 'A power play goal!',
+    'Chytil to!': 'Caught it!', 'Lapačka!': 'Glove save!', 'Jistý zákrok.': 'Easy save.', 'Výborný zákrok!': 'What a save!', 'Brankář je na místě.': 'The goalie was right there.', 'Skvělá reakce!': 'Great reflexes!', 'Vyrazil to!': 'Kicked away!',
+    'Tyčka!': 'Off the post!', 'Zvoní tyčka!': 'He rings it off the iron!', 'Střela!': 'Shot!', 'Pálí!': 'He fires!', 'Dělovka od modré!': 'A cannon from the blue line!', 'Z první!': 'One timer!',
+    'Ten to schytal!': 'Oh, he got crushed!', 'Tvrdý hit!': 'Big hit!', 'Au, to bolelo!': 'Ouch! That hurt!', 'Pořádný bodyček!': 'What a body check!',
+    'Odložené vyloučení.': 'Delayed penalty coming.', 'Vyloučení!': 'Penalty!', 'Dvě minuty!': 'Two minutes!', 'Rozhodčí vylučuje.': 'The referee calls a penalty.',
+    'hákování': 'hooking', 'podrážení': 'tripping', 'sekání': 'slashing', 'napadení zezadu': 'checking from behind', 'narážení na mantinel': 'boarding', 'bránění ve hře': 'interference', 'hrubost': 'roughing',
+    'Ofsajd!': 'Offside!', 'Postavení mimo hru.': 'That is offside.', 'Zakázané uvolnění.': 'Icing.',
+    'Zdá se, že je zraněný.': 'He seems to be hurt.', 'To nevypadá dobře.': 'That does not look good.', 'Zraněný hráč odchází do kabin.': 'The injured player is heading to the locker room.', 'nedohraje.': 'will not return.',
+}
+def text_for(t, lang):
+    if lang != 'en': return t
+    return EN.get(t) or unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode()   # jména a města bez diakritiky
+
 def slug(t):
     s = unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode().lower()
     return re.sub(r'[^a-z0-9]+', '_', s).strip('_') or 'x'
 
-def main(model):
+def main(model, lang='cs'):
+    global OUT
+    if lang == 'en': OUT += '-en'
     voice = PiperVoice.load(model)
     # svižné tempo; zvolání (končí vykřičníkem) rychleji, proměnlivěji, o kousek výš a hlasitěji
     cfg = SynthesisConfig(length_scale=0.8, noise_scale=0.55, noise_w_scale=0.45)
     hot = SynthesisConfig(length_scale=0.74, noise_scale=0.8, noise_w_scale=0.65)
+    if lang == 'en': cfg, hot = SynthesisConfig(length_scale=0.85, noise_scale=0.667, noise_w_scale=0.6), SynthesisConfig(length_scale=0.8, noise_scale=0.8, noise_w_scale=0.7)
     os.makedirs(OUT, exist_ok=True)
     manifest, used = {}, set()
     for t in PHRASES:
@@ -49,12 +72,13 @@ def main(model):
         used.add(f)
         buf = io.BytesIO()
         with wave.open(buf, 'wb') as w:
-            voice.synthesize_wav(t, w, syn_config=hot if t.endswith('!') else cfg)
+            say = text_for(t, lang); loud = say.endswith('!')
+            voice.synthesize_wav(say, w, syn_config=hot if loud else cfg)
         wav = os.path.join('/tmp', f + '.wav'); open(wav, 'wb').write(buf.getvalue())
         mp3 = os.path.join(OUT, f + '.mp3')
         # ořez ticha, mírná komprese a „sportovní“ barva
         subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-af',
-                        'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,highpass=f=90,acompressor=threshold=-18dB:ratio=3,' + ('asetrate=22050*1.06,aresample=22050,volume=1.8' if t.endswith('!') else 'volume=1.4'),
+                        'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,highpass=f=90,acompressor=threshold=-18dB:ratio=3,' + ('asetrate=22050*1.06,aresample=22050,volume=1.8' if loud else 'volume=1.4'),
                         '-ac', '1', '-ar', '22050', '-c:a', 'libmp3lame', '-b:a', '48k', mp3], check=True)
         os.remove(wav)
         manifest[t] = f + '.mp3'
@@ -62,4 +86,4 @@ def main(model):
     print(len(manifest), 'hlášek')
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(*sys.argv[1:3])

@@ -1,9 +1,8 @@
 {
-  "build": 49,
-  "version": "1.49",
+  "build": 50,
+  "version": "1.50",
   "date": "2026-11-25",
   "notes": [
-    "Spoluhráči řízení počítačem faulují o tři čtvrtiny méně",
-    "Rozhodčí stojí při vhazování u puku (dřív byl daleko a puk padal z ničeho)"
+    "Anglický komentátor s živějším hlasem (výchozí); češtinu vrátíš v Nastavení → Zvuk → Jazyk komentáře"
   ]
 }

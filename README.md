@@ -268,6 +268,10 @@ hákování“), takže funguje i bez systémové hlasové syntézy (ta na Steam
 přegenerovat skriptem `tools/gen_voice.py` (potřebuje `pip install piper-tts`, ffmpeg a model hlasu).
 U vlastních názvů týmů z editoru komentátor město vynechá.
 
+Výchozí je **anglický komentátor** (hlas Piper „joe“, CC0, `sounds/voice-en/`) — má živější intonaci než
+český hlas. Češtinu zapneš v Nastavení → Zvuk → *Jazyk komentáře*. Anglické hlášky se generují
+`python3 tools/gen_voice.py en_US-joe-medium.onnx en`.
+
 ## Postavy a pohyby
 
 Hráči jsou postava **Universal Base Character** od Quaternius (CC0) s dresem a výstrojí

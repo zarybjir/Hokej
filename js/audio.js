@@ -161,14 +161,17 @@ const Sfx = {
 // (např. ['Vyloučení!', 'Novák', 'hákování']); když nahrávka chybí, zkusí se systémová hlasová syntéza
 const Voice = {
   last: 0, manifest: null, bufs: new Map(), srcs: [], busyUntil: 0, gain: null,
+  // složka s hláškami podle jazyka komentáře (výchozí angličtina – živější hlas)
+  dir() { return Settings.data.commLang === 'cs' ? 'sounds/voice/' : 'sounds/voice-en/'; },
   load() {
-    if (this.manifest) return;
-    this.manifest = {};
-    fetch('sounds/voice/manifest.json').then((r) => r.json()).then((m) => { this.manifest = m; }).catch(() => {});
+    const d = this.dir();
+    if (this.manifest && this.lang === d) return;
+    this.lang = d; this.manifest = {}; this.bufs = new Map();
+    fetch(d + 'manifest.json').then((r) => r.json()).then((m) => { this.manifest = m; }).catch(() => {});
   },
   buf(t) {
     if (this.bufs.has(t)) return this.bufs.get(t);
-    const p = fetch('sounds/voice/' + this.manifest[t]).then((r) => r.arrayBuffer()).then((ab) => new Promise((res, rej) => Sfx.ctx.decodeAudioData(ab, res, rej))).catch(() => null);
+    const p = fetch(this.lang + this.manifest[t]).then((r) => r.arrayBuffer()).then((ab) => new Promise((res, rej) => Sfx.ctx.decodeAudioData(ab, res, rej))).catch(() => null);
     this.bufs.set(t, p);
     return p;
   },
