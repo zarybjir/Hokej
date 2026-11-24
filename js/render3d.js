@@ -601,7 +601,7 @@ const G3 = {
     floor.rotation.x = -Math.PI / 2; floor.position.y = -0.4; this.scene.add(floor);
   },
   paintIce() {
-    if (this.fbOn) return this.paintPitch();
+    if (this.fbOn) this.paintPitch();   // při změně kvality grafiky se přemaluje i trávník
     const W = GFX[this.quality].ice, ppf = W / 200, H = Math.round(85 * ppf);
     const [c, g] = mkCanvas(W, H), [rc, gr] = mkCanvas(W / 2, Math.round(H / 2));
     const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf;
@@ -913,19 +913,61 @@ const G3 = {
     this.fbOn = fb;
     if (fb && !this.fnets) this.buildFootNets();
     this.nets.forEach((n) => (n.visible = !fb)); if (this.fnets) this.fnets.forEach((n) => (n.visible = fb));
-    this.iceMat.clearcoat = fb ? 0 : 0.65; this.iceMat.envMapIntensity = fb ? 0.08 : 0.85;
     const q = GFX[this.quality || 'high'];
-    this.paintIce(); this.setReflector(q.refl && !fb); this.wearMesh.visible = q.wear && !fb; this.clearWear();
+    if (fb) this.paintPitch();
+    this.setReflector(q.refl && !fb); this.wearMesh.visible = q.wear && !fb; this.clearWear();
+    this.ice.visible = !fb; this.pitch && (this.pitch.visible = fb);
+  },
+  // trávník: vlastní plocha s texturou (pruhy po sekání, ošlapaná místa, čáry) a jemnou strukturou stébel
+  buildPitch() {
+    // dlaždicová textura stébel: zelený kanál = světlost, slouží i jako reliéf
+    const [dc, dg] = mkCanvas(256, 256), rnd = mulberry32(77);
+    dg.fillStyle = 'rgb(128,128,128)'; dg.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 9000; i++) {
+      const x = rnd() * 256, y = rnd() * 256, l = 3 + rnd() * 7, a = (rnd() - 0.5) * 0.9, v = Math.round(70 + rnd() * 130);
+      dg.strokeStyle = `rgba(${v},${v},${v},0.55)`; dg.lineWidth = 0.8 + rnd() * 0.8;
+      for (const [ox, oy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) { dg.beginPath(); dg.moveTo(x + ox, y + oy); dg.lineTo(x + ox + Math.sin(a) * l, y + oy - Math.cos(a) * l); dg.stroke(); }
+    }
+    const det = this.pitchDet = canvasTex(dc, false, this.aniso); det.wrapS = det.wrapT = THREE.RepeatWrapping;
+    const bump = canvasTex(dc, false, this.aniso); bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.set(70, 30);
+    const m = this.pitchMat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0, bumpMap: bump, bumpScale: 0.9, envMapIntensity: 0.12 });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uDet = { value: det };
+      // stébla: jemná struktura zblízka a hrubší skvrny z dálky (ať tráva není jednolitá plocha)
+      sh.fragmentShader = 'uniform sampler2D uDet;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  diffuseColor.rgb *= (0.72 + 0.56 * texture2D(uDet, vMapUv * vec2(72.0, 30.6)).g) * (0.9 + 0.2 * texture2D(uDet, vMapUv * vec2(9.0, 3.8) + 0.37).g);');
+    };
+    this.pitch = new THREE.Mesh(this.ice.geometry, m); this.pitch.receiveShadow = true; this.pitch.renderOrder = 1; this.pitch.visible = false;
+    this.scene.add(this.pitch);
   },
   paintPitch() {
+    if (!this.pitch) this.buildPitch();
     const W = GFX[this.quality].ice, ppf = W / 200, H = Math.round(85 * ppf);
-    const [c, g] = mkCanvas(W, H), [rc, gr] = mkCanvas(W / 2, Math.round(H / 2));
+    const [c, g] = mkCanvas(W, H);
     const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf, GX = RINK.GOAL_X, HW = FB.HW, rnd = mulberry32(2024);
-    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, W, H);                       // výběh kolem hřiště
-    for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#2f8a3e' : '#2a7d38'; g.fillRect(X(-GX + i * (2 * GX / 12)), Y(HW), 2 * GX / 12 * ppf + 1, 2 * HW * ppf); }   // pruhy trávníku
-    for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '0,0,0'},${0.02 + rnd() * 0.04})`; g.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2); }
-    g.strokeStyle = 'rgba(255,255,255,0.92)'; g.fillStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = Math.max(1.5, 0.45 * ppf);
-    const rect = (x0, y0, x1, y1) => g.strokeRect(X(x0), Y(y1), (x1 - x0) * ppf, (y1 - y0) * ppf), dot = (x, y) => { g.beginPath(); g.arc(X(x), Y(y), 0.5 * ppf, 0, TAU); g.fill(); };
+    // výběh kolem hřiště: tmavší umělý povrch
+    g.fillStyle = '#243c22'; g.fillRect(0, 0, W, H);
+    // pruhy po sekání: podélné pásy a slabší příčné (šachovnice jako na stadionech)
+    const nx = 12, bw = 2 * GX / nx, ny = 5, bh = 2 * HW / ny;
+    for (let i = 0; i < nx; i++) for (let k = 0; k < ny; k++) {
+      const a = i % 2, b = k % 2, l = 0.5 + (a ? 0.07 : -0.07) + (b ? 0.03 : -0.03);
+      g.fillStyle = `rgb(${Math.round(64 * l * 1.55)},${Math.round(128 * l * 1.55)},${Math.round(46 * l * 1.55)})`;
+      g.fillRect(X(-GX + i * bw), Y(HW - k * bh), bw * ppf + 1, bh * ppf + 1);
+    }
+    // nepravidelnosti: světlejší a tmavší mapy, sušší místa
+    for (let i = 0; i < 260; i++) {
+      const x = X((rnd() * 2 - 1) * GX), y = Y((rnd() * 2 - 1) * HW), r = (3 + rnd() * 14) * ppf, dark = rnd() < 0.55;
+      const q = g.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, dark ? `rgba(18,40,14,${0.05 + rnd() * 0.1})` : `rgba(150,170,70,${0.04 + rnd() * 0.07})`); q.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = q; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+    // ošlapaná místa: před brankami a ve středu
+    const worn = (x, y, rx, ry, a) => { g.save(); g.translate(X(x), Y(y)); g.scale(rx * ppf, ry * ppf); const q = g.createRadialGradient(0, 0, 0, 0, 0, 1); q.addColorStop(0, `rgba(96,88,48,${a})`); q.addColorStop(0.6, `rgba(86,96,46,${a * 0.5})`); q.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = q; g.fillRect(-1, -1, 2, 2); g.restore(); };
+    for (const s of [-1, 1]) { worn(s * (GX - 5), 0, 9, 8, 0.5); worn(s * (GX - FB.SPOT), 0, 4, 4, 0.3); }
+    worn(0, 0, 7, 7, 0.28);
+    // čáry: matná bílá, lehce nerovná (stébla ji prosvítají díky struktuře)
+    g.strokeStyle = 'rgba(226,230,220,0.9)'; g.fillStyle = 'rgba(226,230,220,0.9)'; g.lineWidth = Math.max(1.5, 0.4 * ppf); g.lineJoin = 'miter';
+    const rect = (x0, y0, x1, y1) => g.strokeRect(X(x0), Y(y1), (x1 - x0) * ppf, (y1 - y0) * ppf), dot = (x, y) => { g.beginPath(); g.arc(X(x), Y(y), 0.45 * ppf, 0, TAU); g.fill(); };
+    g.save(); g.beginPath(); g.rect(X(-GX) - g.lineWidth, Y(HW) - g.lineWidth, 2 * GX * ppf + 2 * g.lineWidth, 2 * HW * ppf + 2 * g.lineWidth); g.clip();   // oblouky rohů jen uvnitř hřiště
     rect(-GX, -HW, GX, HW);
     g.beginPath(); g.moveTo(X(0), Y(HW)); g.lineTo(X(0), Y(-HW)); g.stroke();
     g.beginPath(); g.arc(X(0), Y(0), 12 * ppf, 0, TAU); g.stroke(); dot(0, 0);
@@ -936,10 +978,11 @@ const G3 = {
       g.beginPath(); g.arc(X(s * (GX - FB.SPOT)), Y(0), 10 * ppf, s > 0 ? Math.PI * 0.62 : -Math.PI * 0.38, s > 0 ? Math.PI * 1.38 : Math.PI * 0.38); g.stroke();
       for (const v of [-1, 1]) { g.beginPath(); g.arc(X(s * GX), Y(v * HW), 3 * ppf, 0, TAU); g.stroke(); }
     }
-    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, X(-GX) - g.lineWidth / 2, H); g.fillRect(X(GX) + g.lineWidth / 2, 0, W, H); g.fillRect(0, 0, W, Y(HW) - g.lineWidth / 2); g.fillRect(0, Y(-HW) + g.lineWidth / 2, W, H);   // oblouky rohů jen uvnitř
-    gr.fillStyle = 'rgb(235,235,235)'; gr.fillRect(0, 0, rc.width, rc.height);
-    if (this.iceMat.map) { this.iceMat.map.dispose(); this.iceMat.roughnessMap.dispose(); }
-    this.iceMat.map = canvasTex(c, true, this.aniso); this.iceMat.roughnessMap = canvasTex(rc, false, this.aniso); this.iceMat.needsUpdate = true;
+    g.restore();
+    // ztmavení k okrajům haly
+    const vg = g.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.28)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if (this.pitchMat.map) this.pitchMat.map.dispose();
+    this.pitchMat.map = canvasTex(c, true, this.aniso); this.pitchMat.needsUpdate = true;
   },
   buildPuck() {
     this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.45 }));
