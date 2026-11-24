@@ -1,11 +1,11 @@
 {
-  "build": 45,
-  "version": "1.45",
+  "build": 46,
+  "version": "1.46",
   "date": "2026-11-25",
   "notes": [
-    "Oprava: vlastní tlačítka se ukládala, ale hra je nepoužila – teď fungují (a s nimi i vibrace)",
-    "Nastavení → Ovládání: zvlášť Hráč 1 / Hráč 2, ovladač / klávesnice, i směry kříže",
-    "Podpora spouští a kříže hlášených jako osy u externích ovladačů",
-    "Sekání se píská, jen když hůl opravdu zasáhne soupeře"
+    "Příklep: puk odletí až při úderu hole, čepel jde přesně přes puk",
+    "Šťouchnutí a zvednutí hole míří na puk a počítají se z čepele, kterou vidíš",
+    "Fauly holí (hákování, podražení, sekání) jen při skutečném zásahu soupeře",
+    "Přihrávka a střela švihnou tam, kam puk letí; bodyček má vlastní pohyb"
   ]
 }

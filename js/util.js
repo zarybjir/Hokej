@@ -80,6 +80,8 @@ function bladeOffset(dir, hand, carry, t, wind, poke, reach = 1) {
   return [fx * f + lx * s, fy * f + ly * s, z];
 }
 
+// Čepel při šťouchnutí / zvednutí hole: míří směrem a, k = fáze 1 → 0 (nejdál při 0,5) — sdílí hra i vykreslování
+function pokeBlade(a, k, reach = 1) { const f = (3.3 + 2.4 * Math.sin(Math.min(1, k) * Math.PI)) * reach; return [Math.cos(a) * f, Math.sin(a) * f]; }
 // Nejmenší vzdálenost bodu (px,py) od úsečky (ax,ay)-(bx,by)
 function segDist(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;

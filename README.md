@@ -79,6 +79,11 @@ počítač jako domácí pošle proti tvé 1. formaci svou nejlepší.
 (★ ostrostřelec, tvůrce hry, silák, rychlík, zeď). Forma (▲▼) mění výkon o ±2 %; v kariéře ji
 zvedají body v zápasech.
 
+**Hůl a kontakt:** šťouchnutí (B) a zvednutí hole (LT + B) míří na puk, pokud je před tebou, a zásah
+se vyhodnotí až ve chvíli, kdy čepel doopravdy dorazí — puk vypíchneš, jen když na něj hůl dosáhne.
+Hákování, podražení a sekání se pískají jen tehdy, když hůl zasáhne tělo soupeře. Při příklepu puk
+leží na místě a odletí až při úderu hole.
+
 **Statistiky zápasu:** v pauze nebo na konci zápasu (Y) — mapa střel obou týmů, čas na ledě, +/−,
 střely, úspěšnost na buly, zblokované střely, přesilovky.
 

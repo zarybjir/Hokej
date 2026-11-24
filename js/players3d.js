@@ -433,9 +433,6 @@ class HModel {
   // co právě hraje: střela (golfový švih z mocapu), oslava gólu (plácnutí)
   clipState(p) {
     if (this.isRef || this.goalie || !this.G.clips || p.downT > 0) return null;
-    const slapDur = p.shotSlap ? 0.5 : 0.32;
-    if (p.windT > 0) { const k = Math.min(1, p.windT / 0.9); return { clip: 'swing', frac: lerp(0.32, 0.6, k), w: Math.min(1, 0.4 + k * 2), yaw: 1 }; }
-    if (p.shotFT > 0) { const u = 1 - p.shotFT / slapDur, big = p.shotSlap ? 1 : 0.65; return { clip: 'swing', frac: lerp(p.shotSlap ? 0.64 : 0.67, 0.84, u), w: big * Math.min(1, (p.shotFT / slapDur) * 3), yaw: big }; }
     if (p.celebT > 0) { const k = Math.min(1, p.celebT); return { clip: 'highfive', frac: 0.42 + 0.22 * (0.5 + 0.5 * Math.sin(p.celebT * 5)), w: k, yaw: 0 }; }
     return null;
   }
@@ -492,6 +489,9 @@ class HModel {
   }
   poseSkater(p, t, O, F, Lv, J, down) {
     const B = this.b, spd = Math.min(1, (p.spdN || 0) / 26), ph = p.stride || 0, wind = p.windT || 0, poke = p.pokeA || 0;
+    const chk = !down && p.checkT > 0 ? Math.sin(clamp(p.checkT / 0.4, 0, 1) * Math.PI) : 0;   // bodyček: rameno dopředu
+    // směr akce (přihrávka, střela) omezený na to, kam hůl před tělem dosáhne
+    const aimA = (a) => (a == null ? p.dir : p.dir + clamp(angDiff(p.dir, a), -1.9, 1.9));
     // postoj na buly: vhazující hluboko v předklonu s holí na ledě, ostatní v připraveném podřepu
     const take = !down && p.foTake ? 1 : 0, ready = !down && (p.foReady || take) ? 1 : 0, swipe = p.foSwipe > 0 ? p.foSwipe / 0.35 : 0;
     const breathe = Math.sin(t * 2.6 + this.phase) * 0.03 * (1 - spd);
@@ -504,7 +504,8 @@ class HModel {
     rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
-    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe;
+    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk;
+    if (chk > 0) rotAxis(B.Spine1, UPV, (p.hip ? 0.9 : 0.5) * p.hand * chk);
     if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
     for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3 * (1 - cw0));
     rotAxis(B.Spine1, UPV, -Math.sin(ph) * 0.12 * spd + p.hand * wind * 0.35 + p.hand * swipe * 0.5);
@@ -524,7 +525,7 @@ class HModel {
     const poleL = F.clone().addScaledVector(Lv, 0.25), poleR = F.clone().addScaledVector(Lv, -0.25);
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce
-    const bo = bladeOffset(p.dir, p.hand, p.carry, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1);
+    const bo = bladeOffset(p.dir, p.hand, p.carry && !wind, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1);
     {
       const fx = Math.cos(p.dir), fy = Math.sin(p.dir), lx = -fy, ly = fx;
       // buly: čepel na ledě u bodu vhazování, hůl se mírně chvěje, po vhození rychlé švihnutí dozadu
@@ -533,15 +534,21 @@ class HModel {
       if (swipe > 0) { const k = Math.sin(swipe * Math.PI); bo[0] += (-fx * 1.6 + lx * p.hand * 1.4) * k; bo[1] += (-fy * 1.6 + ly * p.hand * 1.4) * k; }
       // přihrávka: krátký švih čepele dopředu po ledě
       const pf = p.passFT > 0 ? Math.sin(clamp(p.passFT / 0.22, 0, 1) * Math.PI) : 0;
-      if (pf > 0) { bo[0] = lerp(bo[0], fx * 4.0, pf); bo[1] = lerp(bo[1], fy * 4.0, pf); bo[2] = lerp(bo[2], 0.35, pf); rotAxis(B.Spine1, UPV, -p.hand * pf * 0.25); }
+      if (pf > 0) { const a = aimA(p.actDir), ax = Math.cos(a), ay = Math.sin(a); bo[0] = lerp(bo[0], ax * 4.0, pf); bo[1] = lerp(bo[1], ay * 4.0, pf); bo[2] = lerp(bo[2], 0.35, pf); rotAxis(B.Spine1, UPV, -p.hand * pf * 0.25); }
+      // šťouchnutí / zvednutí hole: čepel jede přesně tam, kde hra počítá zásah
+      if (poke > 0 && p.pokeDir != null) { const pb = pokeBlade(p.pokeDir, poke, p.reach || 1); bo[0] = pb[0]; bo[1] = pb[1]; bo[2] = p.pokeLift && poke < 0.5 ? 2.2 * Math.sin((1 - 2 * poke) * Math.PI) : 0; }
+      // bodyček: hůl k tělu
+      if (chk > 0) { bo[0] = lerp(bo[0], fx * 1.8 + lx * p.hand * 1.2, chk); bo[1] = lerp(bo[1], fy * 1.8 + ly * p.hand * 1.2, chk); bo[2] = lerp(bo[2], 1.6, chk); }
       // v klidu občas ťukne holí o led
       if (!p.carry && !ready && spd < 0.15 && !wind && !poke) bo[2] += Math.pow(Math.max(0, Math.sin(t * 3.1 + this.phase * 3)), 16) * 0.55;
     }
     // dokončení střely: hůl jde vysoko dopředu přes tělo
     const ftk = p.shotFT > 0 ? clamp(p.shotFT / (p.shotSlap ? 0.5 : 0.32), 0, 1) : 0;
     if (ftk > 0) {
-      const k = Math.sin(ftk * Math.PI * 0.5) * (p.shotSlap ? 1 : 0.7), fx = Math.cos(p.dir), fy = Math.sin(p.dir);
-      bo[0] = lerp(bo[0], fx * 4.4 + fy * p.hand * 0.6, k); bo[1] = lerp(bo[1], fy * 4.4 - fx * p.hand * 0.6, k); bo[2] = lerp(bo[2], 3.4, k);
+      // protažení střely ve směru, kam puk letí: čepel od ledu rychle vpřed a nahoru, pak zpět (bekhend níž)
+      const u = 1 - ftk, k = Math.sin(clamp(u / 0.3, 0, 1) * Math.PI * 0.5) * clamp((1 - u) / 0.45, 0, 1) * (p.shotSlap ? 1 : 0.75);
+      const a = aimA(p.actDir), fx = Math.cos(a), fy = Math.sin(a), hi = (p.shotSlap ? 3.4 : 2.2) * (p.shotBh ? 0.5 : 1) * clamp(u / 0.3, 0, 1);
+      bo[0] = lerp(bo[0], fx * 4.6 + fy * p.hand * 0.5, k); bo[1] = lerp(bo[1], fy * 4.6 - fx * p.hand * 0.5, k); bo[2] = lerp(bo[2], hi, k);
       rotAxis(B.Spine1, UPV, -p.hand * k * 0.45);
     }
     const heel = new THREE.Vector3(O.x + bo[0], bo[2] + 0.1, O.z - bo[1]);
@@ -551,16 +558,6 @@ class HModel {
     const [tA, tF, tH, tM] = topSide > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1] : [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1];
     const [bA, bF, bH, bM] = topSide > 0 ? [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1] : [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1];
     const dn = new THREE.Vector3(0, -1, 0);
-    if (cs && cs.w > 0.5 && cs.clip === 'swing') {
-      // švih z mocapu: hůl pokračuje v linii ramena → ruce (jako golfová hůl), čepel na konci
-      const hl = wpos(B.LeftHand), hr = wpos(B.RightHand), hands = hl.clone().lerp(hr, 0.5);
-      const shm = wpos(B.LeftArm).lerp(wpos(B.RightArm), 0.5);
-      const dir = hands.clone().sub(shm).normalize();
-      const topH = hands.clone().addScaledVector(dir, -0.35), heel2 = hands.clone().addScaledVector(dir, 4.2);
-      if (heel2.y < 0.1) heel2.y = 0.1;
-      this.placeStick(heel2, topH, F.clone(), F);
-      return;
-    }
     if (cs && cs.w > 0.5) return; // oslava: ruce nahoře, hůl volně v ruce
     ik2(tA, tF, tH, topT, dn.clone().addScaledVector(Lv, topSide * 0.9).addScaledVector(F, -0.3), this.L.upper, this.L.fore);
     const top = wpos(tH);

@@ -11,6 +11,7 @@ const DIFF = [
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
   def: { c1: '#111111', c2: '#f2f2f2', c3: '#111111', abbr: '', pants: '#111111' } };
 const PH = { GRIP: 112, BRAKE: 85, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.2, GR: 1.6, BE: 0.6 };
+const SWING_T = 0.13; // doba švihu od nápřahu k úderu do puku
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
 const FOULS = { hook: 'HÁKOVÁNÍ', trip: 'PODRÁŽENÍ', slash: 'SEKÁNÍ', back: 'NAPADENÍ ZEZADU', board: 'NARÁŽENÍ NA MANTINEL', interf: 'BRÁNĚNÍ VE HŘE', rough: 'HRUBOST' };
@@ -868,7 +869,7 @@ class Game {
     pk.vx = Math.cos(ang) * speed; pk.vy = Math.sin(ang) * speed;
     if (saucer) { const t = dist / speed; pk.vz = PH.G * t * 0.5; pk.z = 0.3; } else { pk.vz = 0; pk.z = 0; }
     pk.passTarget = m || null; pk.passT = dist / speed + 0.6; pk.wasPass = true; pk.shot = null; pk.oneTimer = false;
-    pk.lastTouch = p; p.pickCD = 0.3; p.winding = false; p.windT = 0; p.relT = this.time; p.passFT = saucer ? 0.3 : 0.22;
+    pk.lastTouch = p; p.pickCD = 0.3; p.winding = false; p.windT = 0; p.relT = this.time; p.passFT = saucer ? 0.3 : 0.22; p.actDir = ang;
     if (p.isGoalie) { p.holdT = 0; pk.ignore.set(p, this.time + 0.8); }
     this.sfx('stick', 0.7);
   }
@@ -890,7 +891,7 @@ class Game {
     const aim = p.ctrl >= 0 && Math.abs(p.inY) > 0.35 ? sgn(p.inY) : null;
     const low = p.ctrl >= 0 && p.inX * s < -0.5;
     if (w < 0.22) this.shoot(p, 0, false, aim, false, { snap, z: snap ? 'high' : low ? 'low' : null });
-    else this.shoot(p, clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z: low ? 'low' : null });
+    else { p.swingT = SWING_T; p.swingW = w; p.swingArgs = [clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z: low ? 'low' : null }]; p.winding = false; }
   }
   shoot(p, power, slap, aimY, oneTimer, opt = {}) {
     const pk = this.puck;
@@ -928,7 +929,7 @@ class Game {
     if (bh) this.pop('BEKHEND', p.x, p.y, '#cfd8ea'); else if (opt.snap) this.pop('ŠVIHOVKA', p.x, p.y, '#cfd8ea');
     p.team.crashT = this.time + 1.6; p.team.crashBy = p; pk.shot.human = p.ctrl >= 0;
     pk.oneTimer = !!oneTimer; pk.passTarget = null; pk.wasPass = false; pk.lastTouch = p; p.pickCD = 0.35;
-    p.winding = false; p.windT = 0; p.relT = this.time; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap;
+    p.winding = false; p.windT = 0; p.relT = this.time; p.shotFT = slap ? 0.5 : 0.32; p.shotSlap = slap; p.actDir = ang; p.shotBh = bh;
     if (slap) this.sfx('slap', 0.6 + 0.4 * power); else this.sfx('stick', 1);
     if (oneTimer) { this.pop('Z PRVNÍ!', p.x, p.y, '#ffd21f'); this.say('Z první!', false, 0.6); }
     else if (slap && Math.abs(pk.x - nx) > 45) this.say('Dělovka od modré!', false, 0.35);
@@ -947,20 +948,8 @@ class Game {
     p.vx += Math.cos(p.dir) * 9; p.vy += Math.sin(p.dir) * 9;
     const sp = Math.hypot(p.vx, p.vy); if (sp > 34) { p.vx *= 34 / sp; p.vy *= 34 / sp; }
   }
-  // zvednutí hokejky (LT + B): z boku nebo zezadu, puk zůstane volný, nosič chvíli nemůže hrát
-  liftStick(p) {
-    if (p.pokeCD > 0 || p.downT > 0) return;
-    p.pokeCD = 0.7; p.pokeA = 0.6;
-    const pk = this.puck, o = pk.owner;
-    if (!o || o.team === p.team || Math.hypot(o.x - p.x, o.y - p.y) > 4.6 * p.reach) return;
-    const side = Math.abs(angDiff(o.dir, Math.atan2(p.y - o.y, p.x - o.x))) > 1.0;   // ne zepředu
-    let ch = (side ? 0.45 : 0.15) + 0.3 * (p.chk * this.fat(p) - o.chk);
-    if (o.dekeT > 0) ch *= 0.5;
-    if (Math.random() < ch) {
-      this.loosePuck(o, o.vx * 0.35 + rand(-3, 3), o.vy * 0.35 + rand(-3, 3)); o.pickCD = 0.6; p.pickCD = 0;
-      this.pop('ZVEDNUTÁ HŮL', o.x, o.y, '#cfd8ea'); this.sfx('stick', 0.7);
-    }
-  }
+  // zvednutí hokejky (LT + B): stejný pohyb hole jako šťouchnutí, vyhodnotí se až při dotyku
+  liftStick(p) { this.poke(p, true); }
   // lehnout do střely (LT + X bez puku): velká šance zblokovat, ale chvíli ležíš
   dive(p) {
     if (p.downT > 0 || p.carry) return;
@@ -970,46 +959,66 @@ class Game {
     p.vx *= 0.4; p.vy *= 0.4;
     this.pop('LEHÁ DO STŘELY', p.x, p.y, '#cfd8ea');
   }
-  poke(p) {
+  // šťouchnutí holí: hůl vyjede směrem k puku a zásah se vyhodnotí, až čepel doopravdy dorazí (pokeResolve)
+  poke(p, lift) {
     if (p.pokeCD > 0 || p.downT > 0) return;
-    p.pokeCD = 0.55; p.pokeA = 1;
-    const pk = this.puck, R = p.reach, bx = p.x + Math.cos(p.dir) * 4.2 * R, by = p.y + Math.sin(p.dir) * 4.2 * R;
-    const o = pk.owner;
+    p.pokeCD = lift ? 0.7 : 0.55; p.pokeA = 1; p.pokeHit = false; p.pokeLift = !!lift;
+    const pk = this.puck, a = Math.atan2(pk.y - p.y, pk.x - p.x), d = Math.hypot(pk.x - p.x, pk.y - p.y);
+    const cone = p.ctrl < 0 ? 1.3 : this.assistOf(p) >= 2 ? 1.6 : 1.1;   // hůl dosáhne jen před hráče
+    p.pokeDir = d < 9 && Math.abs(angDiff(p.dir, a)) < cone ? a : p.dir;
+  }
+  // čepel je vysunutá: co hůl (úsečka hráč → čepel) opravdu zasáhla?
+  pokeResolve(p) {
+    const pk = this.puck, o = pk.owner, R = p.reach, b = pokeBlade(p.pokeDir, 0.5, R), bx = p.x + b[0], by = p.y + b[1];
+    const onPuck = pk.z < 1.5 && segDist(pk.x, pk.y, p.x, p.y, bx, by) < 1.7 && Math.hypot(pk.x - p.x, pk.y - p.y) > 1.5;
+    const touches = (q) => Math.hypot(q.x - p.x, q.y - p.y) > 2 && segDist(q.x, q.y, p.x, p.y, bx, by) < PH.PLR + 0.2;   // hůl o tělo / brusle
     if (o && o.team !== p.team) {
-      const d = Math.hypot(pk.x - bx, pk.y - by), dd = Math.hypot(pk.x - p.x, pk.y - p.y);
-      if (d < 3.2 * R || dd < 4.2 * R) {
-        let ch = 0.4 + 0.35 * (p.chk * this.fat(p) - 1) - 0.25 * (o.chk - 1) - 0.15 * (o.mass - p.mass);
+      const behind = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > 1.5; // útočí zezadu
+      const body = touches(o);
+      if (p.pokeLift) {
+        // zvednutí hole: čepel musí k holi soupeře (k puku), nejlíp z boku nebo zezadu
+        if (!onPuck && !(body && Math.hypot(pk.x - bx, pk.y - by) < 3)) return;
+        const side = Math.abs(angDiff(o.dir, Math.atan2(p.y - o.y, p.x - o.x))) > 1.0;
+        let ch = (side ? 0.5 : 0.2) + 0.3 * (p.chk * this.fat(p) - o.chk);
+        if (o.dekeT > 0) ch *= 0.5;
+        if (Math.random() < ch) {
+          this.loosePuck(o, o.vx * 0.35 + rand(-3, 3), o.vy * 0.35 + rand(-3, 3)); o.pickCD = 0.6; p.pickCD = 0;
+          this.pop('ZVEDNUTÁ HŮL', o.x, o.y, '#cfd8ea'); this.sfx('stick', 0.7);
+        } else if (body && behind && Math.random() < 0.03) this.foul(p, o, 'hook');
+        return;
+      }
+      if (onPuck) {
+        let ch = 0.5 + 0.35 * (p.chk * this.fat(p) - 1) - 0.25 * (o.chk - 1) - 0.15 * (o.mass - p.mass);
         if (p.team.cpu && this.vsHuman) ch += (this.diff.aggr - 1) * 0.15;
         const pa = this.assistOf(p); if (pa) ch += pa >= 2 ? (this.diff.kids ? 0.25 : 0.1) : 0.05;
         if (o.dekeT > 0) ch *= 0.3;
         if ((p.x - o.x) * (pk.x - o.x) + (p.y - o.y) * (pk.y - o.y) < 0) ch -= 0.08 + 0.25 * (o.chk - 1);   // puk krytý tělem
         if (o.winding) ch += 0.2;
-        const behind = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > 1.5; // útočí zezadu
         if (Math.random() < ch) {
-          const a = Math.atan2(pk.y - p.y, pk.x - p.x) + rand(-0.9, 0.9), v = rand(9, 17);
+          const a = p.pokeDir + rand(-0.9, 0.9), v = rand(9, 17);
           this.loosePuck(o, Math.cos(a) * v + o.vx * 0.3, Math.sin(a) * v + o.vy * 0.3);
-          p.pickCD = 0.1;
-          this.sfx('stick', 0.8);
-          if (behind && Math.random() < 0.06) this.foul(p, o, 'hook');
-        } else if (behind && Math.random() < 0.08) this.foul(p, o, 'hook');
-        else if (d > 2.6 && dd < 4.5 && (behind || Math.abs(angDiff(p.dir, o.dir)) > 1.2) && Math.random() < 0.04) {
-          // hůl do nohou místo do puku
+          p.pickCD = 0.1; this.sfx('stick', 0.8);
+          if (body && behind && Math.random() < 0.015) this.foul(p, o, 'hook');
+        } else if (body && behind && Math.random() < 0.025) this.foul(p, o, 'hook');
+      } else if (body) {
+        // hůl minula puk a trefila hráče: zezadu hákování, do bruslí podražení
+        if (behind && Math.random() < 0.04) this.foul(p, o, 'hook');
+        else if (Math.random() < 0.02) {
           o.downT = 0.8; o.lie = Math.atan2(o.y - p.y, o.x - p.x); this.loosePuck(o, o.vx * 0.5, o.vy * 0.5);
           this.foul(p, o, 'trip');
         }
       }
-    } else if (o && o.team === p.team) {
-      // nic
-    } else if (!o && !pk.held && pk.z < 1.5 && Math.hypot(pk.x - bx, pk.y - by) < 3 * R) {
-      pk.vx = Math.cos(p.dir) * 14 + p.vx * 0.5; pk.vy = Math.sin(p.dir) * 14 + p.vy * 0.5; pk.lastTouch = p;
-      this.sfx('stick', 0.5);
+      return;
     }
-    // sekání do hráče bez puku
-    if (!o || o.team === p.team || o === null) {
-      for (const q of this.other(p.team).skaters) {
-        if (q.downT > 0 || q === pk.owner) continue;
-        if (Math.hypot(q.x - bx, q.y - by) < 1.8 && Math.hypot(q.x - p.x, q.y - p.y) < 5 && Math.random() < 0.12) { this.foul(p, q, 'slash'); break; }   // jen když hůl opravdu zasáhne tělo
-      }
+    if (!o && !pk.held && onPuck && !p.pokeLift) {
+      pk.vx = Math.cos(p.pokeDir) * 14 + p.vx * 0.5; pk.vy = Math.sin(p.pokeDir) * 14 + p.vy * 0.5; pk.lastTouch = p;
+      this.sfx('stick', 0.5); return;
+    }
+    // sekání: hůl zasáhla soupeře bez puku
+    for (const q of this.other(p.team).skaters) {
+      if (q.downT > 0 || q === o || !touches(q)) continue;
+      if (Math.random() < 0.08) this.foul(p, q, 'slash');
+      break;
     }
   }
   deke(p) {
@@ -1074,7 +1083,8 @@ class Game {
     this.goalieMoveAll(h);
     for (const p of this.all) {
       if (p.isGoalie) continue;
-      p.pokeA = Math.max(0, p.pokeA - h * 3.3); p.pokeCD -= h; p.checkCD -= h; p.pickCD -= h;
+      p.pokeA = Math.max(0, p.pokeA - h * 3.3); p.pokeCD -= h;
+      if (p.pokeA > 0 && p.pokeA <= 0.55 && !p.pokeHit) { p.pokeHit = true; if (p.downT <= 0 && this.state === 'play') this.pokeResolve(p); } p.checkCD -= h; p.pickCD -= h;
       if (p.checkT > 0) { p.checkT -= h; if (p.checkT <= 0 && !p.checkHit) p.recoverT = 0.3; }
       if (p.blockT > 0) p.blockT -= h;
       p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h); if (p.shotFT > 0) p.shotFT -= h; if (p.passFT > 0) p.passFT -= h; if (p.foSwipe > 0) p.foSwipe -= h; if (p.celebT > 0) p.celebT -= h;
@@ -1084,6 +1094,12 @@ class Game {
         this.integrate(p, h); continue;
       }
       if (p.winding) { p.windT = Math.min(1.2, p.windT + h * 1.4); if (!p.carry) { p.winding = false; p.windT = 0; } }
+      if (p.swingT > 0) {
+        // švih dolů: hůl se vrací k puku, při dopadu vystřelí
+        p.swingT -= h; p.windT = p.swingW * Math.max(0, p.swingT) / SWING_T;
+        if (!p.carry) { p.swingT = 0; p.windT = 0; }
+        else if (p.swingT <= 0) this.shoot(p, ...p.swingArgs);
+      }
       let ix = p.inX, iy = p.inY, m = Math.hypot(ix, iy);
       if (m > 1) { ix /= m; iy /= m; m = 1; }
       const ft = this.fat(p);
@@ -1093,7 +1109,7 @@ class Game {
       if (p.carry) maxV *= 0.94;
       if (p.turbo && m > 0.3 && p.stamina > 0.08 && !p.winding) { maxV *= PH.TURBO; acc *= 1.3; p.stamina = Math.max(0, p.stamina - h * 0.024 * p.staMul); }
       if (p.recoverT > 0) acc *= 0.35;
-      if (p.winding) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
+      if (p.winding || p.swingT > 0) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
       else if (m > 0.12) {
         // bruslení se setrvačností: v rychlosti se zatáčí po oblouku (boční přilnavost brusle),
         // proti směru jízdy se brzdí smykem, rozjezd z místa je přímý; vše podle obratnosti hráče
@@ -1122,7 +1138,7 @@ class Game {
       // natočení
       const sp = Math.hypot(p.vx, p.vy);
       let fd = null;
-      if (p.winding) fd = Math.atan2(-p.y, p.team.dir * RINK.GOAL_X - p.x);
+      if (p.winding || p.swingT > 0) fd = Math.atan2(-p.y, p.team.dir * RINK.GOAL_X - p.x);
       else if (m > 0.2) fd = Math.atan2(iy, ix);
       else if (p.faceDir != null) fd = p.faceDir;
       else if (sp > 3) fd = Math.atan2(p.vy, p.vx);
@@ -1353,7 +1369,7 @@ class Game {
     }
     if (pk.owner) {
       pk.touchX = pk.owner.x; pk.touchTeam = pk.owner.team; // odkud naposledy tým puk hrál (pro zakázané uvolnění)
-      const o = pk.owner, off = bladeOffset(o.dir, o.hand, true, this.time, 0, 0, o.reach);
+      const o = pk.owner, off = bladeOffset(o.dir, o.hand, !(o.winding && o.windT > 0.15) && !(o.swingT > 0), this.time, 0, 0, o.reach);   // při nápřahu puk leží tam, kam dopadne čepel
       pk.x = o.x + off[0]; pk.y = o.y + off[1]; pk.z = 0; pk.vx = o.vx; pk.vy = o.vy; pk.vz = 0;
       const c = rinkContact(pk.x, pk.y, PH.PR);
       if (c) { pk.x -= c.nx * c.pen; pk.y -= c.ny * c.pen; }
@@ -1802,6 +1818,7 @@ class Game {
     p.inX = dx / d; p.inY = dy / d; p.faceDir = null;
     p.turbo = td > 13 && p.stamina > 0.4 && u < 65;
     if (p.winding) { p.ai.wind -= h; if (p.ai.wind <= 0 || td < 3.5) this.releaseShot(p); return; }
+    if (p.swingT > 0) return;
     p.ai.t -= h;
     if (p.ai.t > 0) return;
     p.ai.t = this.thinkFor(t) * rand(0.7, 1.3);
@@ -1951,7 +1968,7 @@ class Game {
       px: pk.x, py: pk.y, pz: pk.z,
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
-        windT: p.winding ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
+        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
         num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();
