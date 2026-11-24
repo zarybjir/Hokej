@@ -1,11 +1,9 @@
 {
-  "build": 37,
-  "version": "1.37",
-  "date": "2026-11-23",
+  "build": 38,
+  "version": "1.38",
+  "date": "2026-11-24",
   "notes": [
-    "Odložený icing: píská se, až se puku dotkne bránící hráč (útočník nebo brankář icing ruší)",
-    "Nastavení → Ovládání: přemapování tlačítek pro každý ovladač i klávesnici",
-    "Test ovladačů: ukáže stisknutá tlačítka, osy a co z toho hra čte",
-    "Podpora nestandardních (externích) ovladačů bez standardního mapování"
+    "Odraz puku od mantinelu podle úhlu: šikmo puk sjede po mantinelu a objede roh za brankou, zpříma se odrazí",
+    "Puk už v rozích nezastavuje každý dotyk mantinelu"
   ]
 }

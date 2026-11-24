@@ -1127,7 +1127,12 @@ class Game {
       pk.x -= c.nx * c.pen; pk.y -= c.ny * c.pen;
       const vn = pk.vx * c.nx + pk.vy * c.ny;
       if (vn > 0) {
-        pk.vx -= (1 + PH.BE) * vn * c.nx; pk.vy -= (1 + PH.BE) * vn * c.ny; pk.vx *= 0.92; pk.vy *= 0.92;
+        // odraz podle úhlu: šikmo puk sjede po mantinelu (i kolem rohu za brankou), zpříma se odrazí;
+        // tření o mantinel (Coulomb) bere tečnou rychlost úměrně síle nárazu
+        const tx = -c.ny, ty = c.nx, vt = pk.vx * tx + pk.vy * ty, sp = Math.hypot(vn, vt), k = vn / sp;
+        const e = 0.85 * PH.BE * clamp((k - 0.2) / 0.3, 0, 1) * (1 + 0.1 * gauss());
+        const vt2 = vt - sgn(vt) * Math.min(Math.abs(vt), 0.2 * (1 + e) * vn + 8 * h);
+        pk.vx = vt2 * tx - e * vn * c.nx; pk.vy = vt2 * ty - e * vn * c.ny;
         if (vn > 10) this.sfx('board', clamp(vn / 90, 0.15, 0.6));
         if (vn > 30) pk.shot = null;
       }
