@@ -1,11 +1,12 @@
 {
-  "build": 40,
-  "version": "1.40",
+  "build": 41,
+  "version": "1.41",
   "date": "2026-11-24",
   "notes": [
-    "Prodloužení 3 na 3 (volitelně 5 na 5 nebo bez prodloužení), vyloučení soupeře = 4 na 3",
-    "Nájezdy v hraném zápase: řídíš střelce, a když bráníš, i brankáře (X = vypíchnout)",
-    "Icing: vypnutý / odložený / okamžitý",
-    "Střela po kličce zblízka je o něco nebezpečnější"
+    "Počítač nahazuje puk po mantinelu a předvídá, kam puk objede (obránce mu jede naproti za branku)",
+    "Dorážky, tečování před brankou a clony (hráč v dráze střely zhoršuje brankáři výhled)",
+    "Přihrávky podle přehledu (PŘE): naslepo a na dálku nahrává lépe šikovnější hráč",
+    "Spoluhráči se nabízejí do volných míst s průchozí přihrávkou",
+    "Souboje o puk u mantinelu (mačkej X/B), krytí puku tělem, tlak v útočném pásmu unavuje soupeře"
   ]
 }
