@@ -392,6 +392,7 @@ const App = {
     R.chromeText(T.city.toUpperCase(), x, y + 200, 28);
     ctx.font = font(18, 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(T.name.toUpperCase(), x, y + 226);
     ctx.font = font(10, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText((T.conf ? 'ZÁPAD' : 'VÝCHOD') + ' • ' + ({ ATLANTIC: 'ATLANTICKÁ', METRO: 'METROPOLITNÍ', CENTRAL: 'CENTRÁLNÍ', PACIFIC: 'PACIFICKÁ' }[T.div] || '') + ' DIVIZE', x, y + 240);
+    ctx.font = font(11, 'bold'); ctx.fillStyle = ACC; ctx.textAlign = 'center'; ctx.fillText('STYL: ' + STYLES[teamStyle(TEAMS.indexOf(T))], x, y + 44);
     const RT = teamRatings(TEAMS.indexOf(T));
     const bars = [['SÍLA', RT.SIL], ['RYCHLOST', RT.RYC], ['PŘESNOST', RT.PRE], ['STAMINA', RT.STA], ['BRANKÁŘ', RT.REF]];
     bars.forEach(([n, v], i) => {
@@ -697,12 +698,12 @@ const App = {
     const ctx = R.ctx;
     R.chromeText('OVLÁDÁNÍ', R.W / 2, 60, 46);
     const L = [
-      ['LEVÁ PÁČKA', 'bruslení (i D-pad)'], ['RT / RB', 'sprint (spotřebovává sílu)'],
+      ['LEVÁ PÁČKA', 'bruslení; páčka proti směru = ostré zastavení a výpad'], ['RT / RB', 'sprint (zásoba na 2,5 s, sama se dobíjí)'],
       ['', ''], ['S PUKEM', ''],
       ['A / LT + A', 'přihrávka (ve směru páčky) / o mantinel'], ['A s páčkou dozadu', 'nechat puk spoluhráči za sebou'],
       ['X / LT + X', 'střela (ťuk = zápěstí, drž = příklep) / švihovka nahoru'],
       ['X nebo A během přihrávky k tobě', 'golfák z první / přihrávka z první'], ['B', 'klička'], ['Y', 'lobovaná přihrávka / nahození'],
-      ['páčka do strany / od branky', 'mířit k tyči / placka k ledu'],
+      ['páčka při střele', 'míření plynule: do stran, k brance nahoru, od branky po ledě'],
       ['PRAVÁ PÁČKA', 'vést puk do strany, před sebe nebo k tělu (krytí puku)'],
       ['BEZ PUKU', ''],
       ['A', 'přepnout na hráče nejblíž puku'], ['X / LT + X', 'bodyček (vestoje bokem) / lehnout do střely'], ['B / LT + B', 'šťouchnutí holí / zvednout hokejku'],

@@ -13,6 +13,7 @@ gameMixin(class {
       if (p.checkT > 0) { p.checkT -= h; if (p.checkT <= 0 && !p.checkHit) p.recoverT = 0.3; }
       if (p.blockT > 0) p.blockT -= h;
       if (p.noStick > 0) { p.noStick -= h; if (p.noStick <= 0) this.pop('NOVÁ HŮL', p.x, p.y, '#cfd8ea'); }
+      if (p.cutT > 0) p.cutT -= h; if (p.stagT > 0) p.stagT -= h;
       p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h); if (p.shotFT > 0) p.shotFT -= h; if (p.passFT > 0) p.passFT -= h; if (p.foSwipe > 0) p.foSwipe -= h; if (p.celebT > 0) p.celebT -= h;
       p.carry = pk.owner === p;
       if (p.downT > 0) {
@@ -30,11 +31,16 @@ gameMixin(class {
       if (m > 1) { ix /= m; iy /= m; m = 1; }
       const ft = this.fat(p);
       const snow = this.iceAt(p.x, p.y), mf = Math.pow(1 / p.mass, 0.15);
-      let maxV = PH.MAXV * p.spd * p.team.spdMod * ft * Math.pow(1 / p.mass, 0.04) * (1 - 0.04 * snow),
+      let maxV = PH.MAXV * (1 + 0.02 * p.team.mom) * p.spd * p.team.spdMod * ft * Math.pow(1 / p.mass, 0.04) * (1 - 0.04 * snow),
         acc = PH.ACC * (0.8 + 0.2 * p.spd) * (0.8 + 0.2 * ft) * mf * (1 - 0.06 * snow);
       if (p.carry) maxV *= 0.94;
       if (p.stance != null) maxV *= 0.8;   // v obranném postoji (couvání) pomaleji
-      if (p.turbo && m > 0.3 && p.stamina > 0.08 && !p.winding) { maxV *= PH.TURBO; acc *= 1.3; p.stamina = Math.max(0, p.stamina - h * 0.024 * p.staMul); }
+      // sprint je zásoba: vydrží asi 2,5 s, dobíjí se 5 s; po vyčerpání se musí dobít na třetinu
+      if (p.turbo && m > 0.3 && p.boost > 0 && !p.boostLock && p.stamina > 0.08 && !p.winding) {
+        maxV *= PH.TURBO; acc *= 1.3; p.sprint = true;
+        p.boost = Math.max(0, p.boost - h / 2.5); p.stamina = Math.max(0, p.stamina - h * 0.014 * p.staMul);
+        if (p.boost <= 0) p.boostLock = true;
+      } else { p.sprint = false; p.boost = Math.min(1, p.boost + h / 5); if (p.boost > 0.33) p.boostLock = false; }
       if (p.recoverT > 0) acc *= 0.35;
       if (p.winding || p.swingT > 0) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
       else if (m > 0.12) {
@@ -44,13 +50,17 @@ gameMixin(class {
         p.braking = false;
         if (sp0 < 5) {
           let dvx = tx * want - p.vx, dvy = ty * want - p.vy;
-          const dl = Math.hypot(dvx, dvy), lim = acc * 1.1 * ag * h;
+          const dl = Math.hypot(dvx, dvy), lim = acc * (p.cutT > 0 ? 1.7 : 1.1) * ag * h;   // po ostrém zastavení rychlý výpad novým směrem
           if (dl > lim) { dvx *= lim / dl; dvy *= lim / dl; }
           p.vx += dvx; p.vy += dvy;
         } else {
           const ux = p.vx / sp0, uy = p.vy / sp0, cosA = ux * tx + uy * ty, cr = ux * ty - uy * tx;
           let sp = sp0, dir = Math.atan2(uy, ux);
-          if (cosA < -0.3) { sp = Math.max(0, sp - PH.BRAKE * ag * h); p.braking = true; }
+          if (cosA < -0.3) {
+            // páčka proti směru jízdy = hokejové zastavení: čím přímější protipohyb, tím ostřejší
+            const hard = cosA < -0.75 && sp0 > 9;
+            sp = Math.max(0, sp - PH.BRAKE * ag * (hard ? 1.5 : 1) * h); p.braking = true; if (hard) p.cutT = 0.45;
+          }
           else {
             const grip = PH.GRIP * ag * (p.turbo ? 0.88 : 1) * (p.carry ? 0.95 : 1), wMax = grip / Math.max(sp, 5);
             const turn = clamp(Math.atan2(cr, cosA), -wMax * h, wMax * h);
@@ -127,6 +137,7 @@ gameMixin(class {
           const pk = this.puck, car = pk.owner === a ? a : pk.owner === b ? b : null;
           if (car) { const o = car === a ? b : a; if (Math.random() < clamp(0.18 * o.mass / car.mass * (rel / 15) * (1 + 0.7 * this.takeEdge(o)), 0, 0.6)) { this.loosePuck(car, car.vx * 0.4 + rand(-5, 5), car.vy * 0.4 + rand(-5, 5)); this.pop('ZTRÁTA!', car.x, car.y, '#cfd8ea'); } }
         }
+        if (rel > 9) a.stagT = b.stagT = 0.4;   // zapotácení po srážce
         if (rel > 6 && this.state === 'play') { this.feel(a, rel / 40, 90); this.feel(b, rel / 40, 90); if (a.ctrl >= 0 || b.ctrl >= 0) this.shake = Math.max(this.shake, clamp(rel / 60, 0, 0.35)); }
       }
     }
@@ -255,6 +266,7 @@ gameMixin(class {
       }                        // nájezd: střelec má čas i prostor
       if (pk.shot) sv += clamp((pk.shot.dist - 30) / 120, -0.06, 0.12);
       sv -= clamp((Math.hypot(g.vx, g.vy) - 6) / 40, 0, 0.1);
+      sv += (g.conf || 0) * 0.012 + (t.mom - this.other(t).mom) * 0.008;   // jistota brankáře a momentum (mírně)
       sv = clamp(sv, 0.25, 0.97);
       if (Math.random() < sv) { this.save(g, sp, onNet); return; }
       pk.ignore.set(g, this.time + 0.6);
@@ -266,6 +278,8 @@ gameMixin(class {
     if (onNet && pk.shot && !pk.shot.counted && this.state !== 'shootout') {
       pk.shot.counted = true; pk.shot.team.shots++; pk.shot.by.stats.s++; g.stats.sa++; g.stats.sv++;
     }
+    if (onNet && sp > 70) this.impact(0.05, 0.45);
+    if (onNet) { g.conf = Math.min(1, (g.conf || 0) + 0.1); this.addMom(g.team, 0.05); if (sp > 70 || pk.oneTimer) this.hl = { t: this.time, what: 'ZÁKROK' }; }
     g.saveT = 0.5; g.saveKind = pk.z < 1.0 ? 1 : (pk.y - g.y) * sN > 0 ? 2 : 3;
     if ((sp < 62 && pk.z > 0.7 && Math.random() < 0.55) || (sp < 40 && Math.random() < 0.5)) {
       this.goalieCover(g);
@@ -375,7 +389,7 @@ gameMixin(class {
           if (zc > RINK.NET_H - 0.2) { pk.vz = -Math.abs(pk.vz) * 0.4 + 2; pk.vx *= -0.4; }
           else { pk.vx = -pk.vx * 0.55; pk.vy += sgn(yc) * rand(3, 10); }
           if (pk.shot && this.state === 'play') {
-            this.feel(pk.lastTouch || pk, 0.5, 150); this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say(pick(['Tyčka!', 'Zvoní tyčka!']), true, 0.8); this.sfx('ooh', 1);
+            this.impact(0.06, 0.5); this.hl = { t: this.time, what: 'TYČKA' }; this.feel(pk.lastTouch || pk, 0.5, 150); this.sfx('post'); this.pop('TYČKA!', pk.x, pk.y, '#ffe066'); this.say(pick(['Tyčka!', 'Zvoní tyčka!']), true, 0.8); this.sfx('ooh', 1);
             pk.shot = null;
           } else this.sfx('stick', 0.6);
           return false;
@@ -464,11 +478,13 @@ gameMixin(class {
       this.assign(h, p);
     }
     for (const q of this.all) if (q !== p) { q.oneTimerQ = false; q.oneTouchQ = false; }
-    if (p.oneTimerQ) { p.oneTimerQ = false; this.shoot(p, 0.85, true, p.ctrl >= 0 && Math.abs(p.inY) > 0.35 ? sgn(p.inY) : null, true); return; }
+    // načasování: stisk těsně před dopadem puku na hůl = přesnější a tvrdší střela / přihrávka
+    const perfect = p.ctrl >= 0 && this.time - (p.otAt || -9) < 0.22;
+    if (p.oneTimerQ) { p.oneTimerQ = false; this.shoot(p, 0.85, true, p.ctrl >= 0 && Math.abs(p.inY) > 0.2 ? clamp(p.inY * 1.25, -1, 1) : null, true, { perfect }); return; }
     if (p.oneTouchQ) {
       // přihrávka z první: puk hned dál ve směru páčky (o kousek méně přesně)
       p.oneTouchQ = false; const m = this.choosePassTarget(p, p.inX, p.inY);
-      if (m) { const pas = p.pas; p.pas -= 0.04; this.pass(p, m, false); p.pas = pas; this.pop('Z PRVNÍ', p.x, p.y, '#cfd8ea'); return; }
+      if (m) { const pas = p.pas; p.pas += perfect ? 0.03 : -0.04; this.pass(p, m, false); p.pas = pas; this.pop(perfect ? 'PŘESNĚ!' : 'Z PRVNÍ', p.x, p.y, perfect ? '#7dff8a' : '#cfd8ea'); return; }
     }
     if (p.ctrl < 0 && reb && this.state === 'play') {
       const s = p.team.dir, dn = Math.hypot(s * RINK.GOAL_X - p.x, p.y);
@@ -476,7 +492,7 @@ gameMixin(class {
     }
     if (p.ctrl < 0 && wasPass) {
       const s = p.team.dir, u = s * p.x, dn = Math.hypot(s * RINK.GOAL_X - p.x, p.y);
-      if (u > 55 && u < 86 && dn < 38 && Math.abs(p.y) < 24 && Math.random() < 0.35) this.shoot(p, 0.75, true, null, true);
+      if (u > 55 && u < 86 && dn < 38 && Math.abs(p.y) < 24 && Math.random() < (p.trait === 'S' ? 0.6 : 0.35)) this.shoot(p, 0.75, true, null, true);   // ostrostřelec pálí z první
     }
   }
 });

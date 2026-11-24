@@ -187,10 +187,11 @@ gameMixin(class {
   aggrFor(t) {
     const base = t.cpu && this.vsHuman ? this.diff.aggr : 0.85;
     const cpuM = t.cpu ? [0.55, 1, 1.5][this.cfg.cpuAggr == null ? 1 : this.cfg.cpuAggr] : 1;
-    return base * cpuM * [0.8, 1, 1.2][this.tacOf(t)];
+    const style = { heavy: 1.25, pass: 0.9, trap: 0.9, gun: 1 }[t.style] || 1;
+    return base * cpuM * [0.8, 1, 1.2][this.tacOf(t)] * style * (t.angryT > this.time ? 1.3 : 1);   // po tvrdém hitu na svého hráče to chvíli vrací
   }
   // taktika právě hrající formace: 0 obranná, 1 vyvážená, 2 útočná
-  tacOf(t) { const v = t.tactics && t.tactics[t.line]; return v == null ? 1 : v; }
+  tacOf(t) { if (t.tacOver != null) return t.tacOver; const v = t.tactics && t.tactics[t.line]; return v == null ? 1 : v; }
 
   // ---------- buly ----------
   setupFaceoff(fx, fy) {

@@ -189,6 +189,9 @@ function traitOf(p) {
   let h = 3; for (const ch of String(p.name) + p.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return best === 'RYC' ? 'R' : best === 'SIL' ? 'E' : h % 2 ? 'S' : 'P';
 }
+// herní styl týmu (jak hraje počítač): podle zaměření klubu, u vyrovnaných klubů střídavě
+const STYLES = { heavy: 'TVRDÁ HRA', pass: 'KOMBINACE', trap: 'OBRANA A BREJKY', gun: 'ÚTOK' };
+function teamStyle(idx) { const d = TEAMS[idx]; return d.off >= d.def + 3 ? 'gun' : d.def >= d.off + 3 ? 'trap' : idx % 2 ? 'heavy' : 'pass'; }
 function buildRoster(teamIdx) {
   const t = TEAMS[teamIdx], rnd = mulberry32(teamIdx * 7919 + 13), rk = mulberry32(teamIdx * 131 + 5);
   const used = new Set(), nums = new Set();

@@ -64,6 +64,8 @@ gameMixin(class {
       dist = Math.hypot(tx - pk.x, ty - pk.y);
     }
     let err = (1.15 - p.pas) * 0.07;
+    // počítač pod tlakem kazí přihrávky (soupeř těsně u něj), tvůrce hry méně
+    if (p.ctrl < 0 && !p.isGoalie && this.other(p.team).skaters.some((o) => o.downT <= 0 && Math.hypot(o.x - p.x, o.y - p.y) < 6)) err += (0.045 - 0.03 * vis) * (p.trait === 'P' ? 0.5 : 1);
     if (!p.isGoalie && Math.abs(angDiff(p.dir, Math.atan2(ty - pk.y, tx - pk.x))) > 1.7) err += 0.015 + (1 - vis) * 0.05;
     if (dist > 55) err += (1 - vis) * 0.02;
     const ang = Math.atan2(ty - pk.y, tx - pk.x) + gauss() * err;
@@ -90,10 +92,12 @@ gameMixin(class {
   // X: ťuknutí = zápěstí, držení = příklep; LT + X = švihovka nahoru; páčka od branky = placka k ledu
   releaseShot(p, snap) {
     const w = p.windT, s = p.team.dir;
-    const aim = p.ctrl >= 0 && Math.abs(p.inY) > 0.35 ? sgn(p.inY) : null;
-    const low = p.ctrl >= 0 && p.inX * s < -0.5;
-    if (w < 0.22) this.shoot(p, 0, false, aim, false, { snap, z: snap ? 'high' : low ? 'low' : null });
-    else { p.swingT = SWING_T; p.swingW = w; p.swingArgs = [clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z: low ? 'low' : null }]; p.winding = false; }
+    // míření páčkou plynule: do stran = kam mezi tyče, k brance = nahoru, od branky = po ledě
+    const aim = p.ctrl >= 0 && Math.abs(p.inY) > 0.2 ? clamp(p.inY * 1.25, -1, 1) : null;
+    const low = p.ctrl >= 0 && p.inX * s < -0.5, high = p.ctrl >= 0 && p.inX * s > 0.6 && aim != null;
+    const z = low ? 'low' : high ? 'high' : null;
+    if (w < 0.22) this.shoot(p, 0, false, aim, false, { snap, z: snap ? 'high' : z });
+    else { p.swingT = SWING_T; p.swingW = w; p.swingArgs = [clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z }]; p.winding = false; }
   }
   shoot(p, power, slap, aimY, oneTimer, opt = {}) {
     const pk = this.puck;
@@ -121,7 +125,8 @@ gameMixin(class {
     err *= p.snipe || 1;
     if (opt.snap) err *= 1.35; if (bh) err *= 1.25;
     if (p.team.cpu && this.vsHuman) err *= 2 - this.diff.cpuAcc;
-    if (oneTimer) err *= 1.25;
+    if (oneTimer) err *= opt.perfect ? 0.75 : 1.25;
+    if (opt.perfect) { speed *= 1.08; this.pop('PŘESNĚ!', p.x, p.y, '#7dff8a'); }
     if (ast) err *= ast >= 2 ? (this.diff.kids ? 0.4 : 0.6) : 0.8;
     const ang = Math.atan2(dy, dx) + gauss() * err;
     // tvrdý příklep může zlomit hůl: puk jen odskočí a hráč je pár vteřin bez hole
@@ -144,7 +149,7 @@ gameMixin(class {
     pk.owner = null; pk.vx = Math.cos(a) * v; pk.vy = Math.sin(a) * v; pk.vz = 0; pk.z = 0; pk.shot = null; pk.passTarget = null; pk.lastTouch = p;
     p.noStick = 6; p.winding = false; p.windT = 0; p.swingT = 0; p.pickCD = 0.5; p.relT = this.time; p.shotFT = 0.5; p.shotSlap = true; p.actDir = ang;
     this.pop('ZLOMENÁ HŮL!', p.x, p.y, '#ff9a5a'); this.sfx('post'); this.sfx('stick', 1); this.sfx('ooh', 0.7); this.feel(p, 0.8, 200);
-    this.say('To nevypadá dobře.', false, 0.6);
+    this.say('Zlomená hůl!', false, 0.9);
   }
   startCheck(p) {
     if (p.checkCD > 0 || p.downT > 0 || p.carry) return;
@@ -285,10 +290,12 @@ gameMixin(class {
     b.winding = false; b.windT = 0;
     b.vx += nx * force * 0.45 / Math.sqrt(b.mass); b.vy += ny * force * 0.45 / Math.sqrt(b.mass);
     a.team.hits++; a.stats.h++;
+    if (force > 24) { this.addMom(a.team, 0.12); b.team.angryT = this.time + 25; this.hl = { t: this.time, what: 'TVRDÝ HIT' }; }
     this.feel(b, clamp(force / 30, 0.4, 1), 260); this.feel(a, clamp(force / 45, 0.25, 0.7), 180);
     if (this.puck.owner === b) this.loosePuck(b, b.vx * 0.6 + rand(-6, 6), b.vy * 0.6 + rand(-6, 6));
     this.sfx('hit', clamp(force / 30, 0.4, 1));
     this.shake = Math.max(this.shake, clamp(force / 25, 0.2, 1) * 0.6);
+    this.impact(clamp((force - 16) / 150, 0.03, 0.11), clamp(force / 40, 0.3, 1));
     if (force > 24) {
       if (this.achOn && a.ctrl >= 0) Ach.unlock('hit');
       this.pop('TVRDÝ HIT!', b.x, b.y, '#ff5a3c');

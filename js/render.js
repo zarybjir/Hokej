@@ -44,8 +44,22 @@ const R = {
   setPreset() { G3.setView(); },
   updateCam(tx, dt, snap, shake, ty = 0) { G3.follow(tx, ty, dt, snap, Settings.data.camShake === false ? 0 : shake); },
   drawWorld(g, players, pk, t, dt, opts = {}) {
+    G3.punch = g ? g.punch || 0 : 0;
     G3.render(g, players, pk, t, dt, opts.refs);
     const ctx = this.ctx;
+    // stopa za rychlým pukem
+    const tr = this.trail || (this.trail = []), sp = Math.hypot(pk.vx || 0, pk.vy || 0);
+    if (g && opts.rings && sp > 50 && !g.puck.owner) { const q = G3.toScreen(pk.x, pk.y, (pk.z || 0) + 0.1); if (q) tr.push([q[0], q[1], 1]); } else if (tr.length) tr.shift();
+    if (tr.length > 14) tr.shift();
+    for (let i = 1; i < tr.length; i++) { const a = i / tr.length; ctx.strokeStyle = `rgba(255,255,255,${0.5 * a})`; ctx.lineWidth = 1 + 3 * a; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(tr[i - 1][0], tr[i - 1][1]); ctx.lineTo(tr[i][0], tr[i][1]); ctx.stroke(); }
+    // ukazatel síly střely nad hráčem, který napřahuje (plný = příklep naplno)
+    if (g && opts.rings) for (const h of g.humans) {
+      const p = h.player; if (!p || !p.winding || p.windT < 0.12) continue;
+      const q = G3.toScreen(p.x, p.y, 9.5); if (!q) continue;
+      const k = clamp((p.windT - 0.22) / 0.75, 0, 1), w = 64, full = k >= 1;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(q[0] - w / 2 - 2, q[1] - 6, w + 4, 11);
+      ctx.fillStyle = full ? (Math.floor(t * 12) % 2 ? '#fff' : '#ff5a3c') : k > 0.6 ? '#ffb02e' : '#7dff8a'; ctx.fillRect(q[0] - w / 2, q[1] - 4, w * (p.windT < 0.22 ? 0.06 : 0.06 + 0.94 * k), 7);
+    }
     // jmenovka nad hráčem s pukem
     const o = g && opts.rings && g.puck.owner;
     if (o && Settings.data.tags !== false) {
@@ -172,6 +186,7 @@ const R = {
     LED.panel(ctx, x, y, clockR + 14 - x, H, P);
     for (const [T, px] of pos) {
       this.chip(T, px, y + 11, H - 22);
+      if (T.mom > 0.05) { ctx.fillStyle = T.mom >= 0.7 ? '#ff7a3c' : '#2fd4ff'; ctx.fillRect(px + 16, y + H - 8, 74 * T.mom, 3); }   // momentum
       const ax = px + 16; LED.text(ctx, T.def.abbr, ax, cy, P);
       LED.text(ctx, T.score, ax + LED.width(T.def.abbr, P) + 14 + W2, cy, P, { align: 'right', color: '#ffd21f' });
     }
@@ -217,7 +232,8 @@ const R = {
       LED.panel(ctx, hx, hy, w, 82, 3);
       LED.text(ctx, (i + 1) + 'P', hx + 12, hy + 18, 3, { color: h.color });
       LED.text(ctx, '#' + pl.num + ' ' + pl.name, hx + 56, hy + 18, 3);
-      LED.bar(ctx, hx + 12, hy + 34, Math.floor((w - 24) / 4), 4, pl.stamina, pl.stamina > 0.35 ? LED.WHITE : '#ff5a46', 2);
+      LED.bar(ctx, hx + 12, hy + 34, Math.floor((w - 24) / 8) - 1, 4, pl.stamina, pl.stamina > 0.35 ? LED.WHITE : '#ff5a46', 2);
+      LED.bar(ctx, hx + 12 + (w - 24) / 2 + 4, hy + 34, Math.floor((w - 24) / 8) - 1, 4, pl.boost == null ? 1 : pl.boost, pl.boostLock ? '#ff5a46' : '#2fd4ff', 2);   // zásoba sprintu
       for (let L = 0; L < 3; L++) {
         const x0 = hx + 12 + L * 102, e = g.lineEnergy(T, L), cur = T.line === L, next = T.change && T.change.to === L;
         LED.text(ctx, 'F' + (L + 1), x0, hy + 63, 2.5, { color: cur ? '#ffd21f' : next ? '#7dff8a' : '#8a93a6' });
@@ -294,6 +310,7 @@ const R = {
     LED.panel(ctx, this.W - 236, 6, 222, 36, 3);
     if (Math.floor(t * 2) % 2 === 0) LED.text(ctx, '●', this.W - 222, 24, 3, { color: '#ff3a28' });
     LED.text(ctx, 'ZÁZNAM', this.W - 24, 24, 3, { align: 'right' });
+    if (g.replay && g.replay.what) LED.text(ctx, g.replay.what, this.W / 2, 24, 3, { align: 'center', color: '#ffd21f' });
     LED.text(ctx, 'A = PŘESKOČIT', this.W / 2, this.H - 22, 2, { align: 'center', color: '#bfc6d6' });
   },
   statsTable(g, x, y) {

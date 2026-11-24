@@ -23,6 +23,7 @@ gameMixin(class {
     const assists = [];
     for (let i = hist.length - 2; i >= 0 && assists.length < 2; i--) if (hist[i] !== scorer && !assists.includes(hist[i])) assists.push(hist[i]);
     if (scorer) { scorer.stats.g++; scorer.celebT = 3; }
+    this.addMom(team, 0.6); if (!en) opp.goalie.conf = Math.max(-1, (opp.goalie.conf || 0) - 0.5);
     if (this.practice) this.practice.goals++;
     this.achGoal(team, opp, scorer, en);
     for (const a of assists) a.stats.a++;
@@ -36,14 +37,19 @@ gameMixin(class {
       this.endPenalty(pn, false);
     }
     if (ppNote !== 'Gól v přesilovce') { for (const q of team.skaters) q.stats.pm++; for (const q of opp.skaters) q.stats.pm--; }
+    // komentář k průběhu: hattrick, druhý gól, dva góly po sobě, vyrovnání, vedení
+    const lastG = this.goals[this.goals.length - 1], ng = scorer ? scorer.stats.g : 0;
+    const ctxNote = ng === 3 ? 'Hattrick!' : ng === 2 ? 'Jeho druhý gól!' : lastG && lastG.team === team && lastG.period === this.period && lastG.clock - this.clock < 45 ? 'Dva góly krátce po sobě!'
+      : team.score === opp.score ? 'Vyrovnáno!' : team.score === opp.score + 1 ? 'Jdou do vedení!' : null;
     this.goals.push({ team, scorer, assists, period: this.period, clock: this.clock, pp: ppNote === 'Gól v přesilovce', en });
     this.state = 'goal'; this.stateT = 0; this.goalLight = sN; this.goalLightT = 4;
+    if (!this.silent && !this.demo) { this.slowT = 0.5; this.punch = 1; }
     this.showBanner('GÓÓÓL!', team.def.city + ' ' + team.def.name, 3.4, team.jersey);
     const who = scorer ? '#' + scorer.num + ' ' + scorer.name.toUpperCase() : 'VLASTNÍ GÓL';
     const ast = (assists.length ? 'Asistence: ' + assists.map((a) => a.name).join(', ') : 'Bez asistence') + (ppNote ? '  •  ' + ppNote : '');
     this.lower = { title: who, sub: ast, team, t: 0, dur: 3.6 };
     this.sfx('horn'); this.sfx('cheer', 1);
-    this.say([pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!', 'Góóól!']), ppNote === 'Gól v přesilovce' ? 'Gól v přesilovce!' : en ? 'Do prázdné branky!' : null, scorer ? 'Skóroval' : null, scorer ? scorer.name : null], true);
+    this.say([pick(['Gól!', 'A je to tam!', 'Gól! Puk je v síti!', 'Gól! Neuvěřitelné!', 'Góóól!']), ppNote === 'Gól v přesilovce' ? 'Gól v přesilovce!' : en ? 'Do prázdné branky!' : null, scorer ? 'Skóroval' : null, scorer ? scorer.name : null, ctxNote], true);
     for (const p of team.skaters) { p.inX = 0; p.inY = 0; }
   }
   // výzvy: gól hráče, kterého řídí člověk
@@ -77,6 +83,7 @@ gameMixin(class {
   }
   endReplay() { this.replay = null; this.afterReplay(); }
   afterReplay() {
+    if (this.replayThen) { const f = this.replayThen; this.replayThen = null; this.rec = []; return f(); }   // záznam při přerušení: pak vhazování
     this.rec = [];
     this.setupFaceoff(...this.practiceSpot());
     this.sfx('organ', Math.floor(Math.random() * 4));
@@ -89,7 +96,7 @@ gameMixin(class {
       px: pk.x, py: pk.y, pz: pk.z,
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
-        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, noStick: p.noStick > 0, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
+        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, stagT: p.stagT, stamina: p.stamina, noStick: p.noStick > 0, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
         pkOff: p.carry ? p.pkOff : null, num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();

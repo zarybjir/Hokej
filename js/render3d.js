@@ -972,8 +972,8 @@ const G3 = {
     const v = dt > 0 && !snap && this.lastTx != null ? Math.hypot(tx - this.lastTx, ty - this.lastTy) / dt : 0;
     this.lastTx = tx; this.lastTy = ty;
     this.vEst = (this.vEst || 0) + (Math.min(v, 80) - (this.vEst || 0)) * Math.min(1, dt * 1.5);
-    const zt = 0.95 + clamp((this.vEst - 8) / 30, 0, 1) * 0.1;
-    this.zf = snap || this.zf == null ? zt : this.zf + (zt - this.zf) * Math.min(1, dt * 0.8);
+    const zt = (0.95 + clamp((this.vEst - 8) / 30, 0, 1) * 0.1) * (1 - 0.05 * (this.punch || 0));   // při zásahu kamera krátce přiskočí
+    this.zf = snap || this.zf == null ? zt : this.zf + (zt - this.zf) * Math.min(1, dt * (this.punch > 0.05 ? 9 : 0.8));
     this.camT.x += (tx - this.camT.x) * k; this.camT.y += (ty - this.camT.y) * k * 0.85;
     const sx = (Math.random() - 0.5) * shake * 1.2, sy = (Math.random() - 0.5) * shake * 1.0;
     const [ox, oy, oz] = this.off.map((q) => q * this.zf);

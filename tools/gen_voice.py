@@ -31,6 +31,11 @@ PHRASES = [
     # zranění
     'Ofsajd!', 'Postavení mimo hru.', 'Zakázané uvolnění.',
     'Zdá se, že je zraněný.', 'To nevypadá dobře.', 'Zraněný hráč odchází do kabin.', 'nedohraje.',
+    # nájezdy, odvolání brankáře, tlak, průběh zápasu
+    'O vítězi rozhodnou samostatné nájezdy!', 'Nájezd.', 'Proměnil!', 'Je to tam!', 'Neproměnil.', 'Zákrok!', 'Brankář vyhrál souboj.', 'Trestné střílení!',
+    'Brankář jede na střídačku!', 'Odvolávají brankáře!', 'Do prázdné branky!',
+    'Domácí drží soupeře v pásmu.', 'Velký tlak v útočném pásmu!', 'Soupeř se nemůže dostat z pásma.', 'Jsou na vlně!',
+    'Hattrick!', 'Jeho druhý gól!', 'Dva góly krátce po sobě!', 'Vyrovnáno!', 'Jdou do vedení!', 'Poslední minuta!', 'Zlomená hůl!',
 ] + surnames + cities
 
 # anglický komentář: klíč zůstává český (tak hlášku volá hra), čte se anglický text
@@ -46,6 +51,10 @@ EN = {
     'Odložené vyloučení.': 'Delayed penalty coming.', 'Vyloučení!': 'Penalty!', 'Dvě minuty!': 'Two minutes!', 'Rozhodčí vylučuje.': 'The referee calls a penalty.',
     'hákování': 'hooking', 'podrážení': 'tripping', 'sekání': 'slashing', 'napadení zezadu': 'checking from behind', 'narážení na mantinel': 'boarding', 'bránění ve hře': 'interference', 'hrubost': 'roughing',
     'Ofsajd!': 'Offside!', 'Postavení mimo hru.': 'That is offside.', 'Zakázané uvolnění.': 'Icing.',
+    'O vítězi rozhodnou samostatné nájezdy!': 'We are going to a shootout!', 'Nájezd.': 'Here he comes.', 'Proměnil!': 'He scores!', 'Je to tam!': 'It is in!', 'Neproměnil.': 'No goal.', 'Zákrok!': 'Save!', 'Brankář vyhrál souboj.': 'The goalie wins that one.', 'Trestné střílení!': 'Penalty shot!',
+    'Brankář jede na střídačku!': 'The goalie is heading to the bench!', 'Odvolávají brankáře!': 'They pull the goalie!', 'Do prázdné branky!': 'Into the empty net!',
+    'Domácí drží soupeře v pásmu.': 'They are keeping the pressure on.', 'Velký tlak v útočném pásmu!': 'Huge pressure in the zone!', 'Soupeř se nemůže dostat z pásma.': 'They just cannot clear the puck.', 'Jsou na vlně!': 'They have all the momentum!',
+    'Hattrick!': 'Hat trick!', 'Jeho druhý gól!': 'His second of the night!', 'Dva góly krátce po sobě!': 'Back to back goals!', 'Vyrovnáno!': 'We are tied!', 'Jdou do vedení!': 'They take the lead!', 'Poslední minuta!': 'One minute to go!', 'Zlomená hůl!': 'Broken stick!',
     'Zdá se, že je zraněný.': 'He seems to be hurt.', 'To nevypadá dobře.': 'That does not look good.', 'Zraněný hráč odchází do kabin.': 'The injured player is heading to the locker room.', 'nedohraje.': 'will not return.',
 }
 def text_for(t, lang):

@@ -1,9 +1,11 @@
 {
-  "build": 55,
-  "version": "1.55",
+  "build": 56,
+  "version": "1.56",
   "date": "2026-11-25",
   "notes": [
-    "Odebírání puku je pro tebe snazší: delší dosah hole, vyšší šance při šťouchnutí i při střetu tělem",
-    "Platí jen proti počítači a podle obtížnosti (na Legendu beze změny); tvoje góly to neovlivní"
+    "Odezva: zastavení a trhnutí kamery při hitu, zpomalený gól, stopa puku, ukazatel síly střely",
+    "Ovládání: plynulé míření, bonus za načasování, sprint jako zásoba, ostré zastavení",
+    "Soupeř s povahou: styly týmů, hvězdy, chyby pod tlakem, reakce na stav zápasu",
+    "Momentum, záznamy hitů a zákroků, komentátor reaguje na průběh"
   ]
 }

@@ -504,7 +504,9 @@ class HModel {
     rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
-    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk;
+    const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;   // unavený hráč se hrbí
+    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk + 0.16 * tired;
+    if (p.stagT > 0 && !down) rotAxis(B.Hips, F, Math.sin(p.stagT * 22) * 0.16 * (p.stagT / 0.4));   // zapotácení po srážce
     if (chk > 0) rotAxis(B.Spine1, UPV, (p.hip ? 0.9 : 0.5) * p.hand * chk);
     if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
     for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3 * (1 - cw0));

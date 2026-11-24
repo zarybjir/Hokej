@@ -24,6 +24,23 @@ gameMixin(class {
     }
     return [x, y];
   }
+  // ---------- nálada zápasu: momentum, reakce počítače na stav, jistota brankářů ----------
+  addMom(t, v) {
+    if (this.practice || this.shootout) return;
+    const was = t.mom; t.mom = clamp(t.mom + v, 0, 1); const o = this.other(t); o.mom = Math.max(0, o.mom - v * 0.5);
+    if (was < 0.7 && t.mom >= 0.7 && this.state === 'play') { if (this.humans.length) this.toast = { text: t.def.abbr + ' JSOU NA VLNĚ', t: 0, dur: 1.8 }; this.say('Jsou na vlně!', false, 0.7); }
+  }
+  updateMood(h) {
+    for (const t of this.teams) {
+      t.mom = Math.max(0, t.mom - h / 50);
+      const g = t.goalie; g.conf = (g.conf || 0) * (1 - h / 40);
+      // počítač reaguje na stav: ve 3. třetině při prohře riskuje, těsné vedení v závěru brání
+      if (t.cpu && !this.practice) {
+        const d = t.score - this.other(t).score, late = this.period === 3 ? 1 - this.clock / this.periodLen : this.period > 3 ? 1 : 0;
+        t.tacOver = d < 0 && late > 0.45 ? 2 : d > 0 && d <= 2 && late > 0.7 ? 0 : null;
+      }
+    }
+  }
   // tlak v útočném pásmu: jak dlouho tým drží puk v pásmu soupeře
   updatePressure(h) {
     const pk = this.puck, own = pk.owner || pk.held, H = this.teams[0];
@@ -171,7 +188,8 @@ gameMixin(class {
           const ag = this.aggrFor(t), fa = Math.abs(angDiff(p.dir, Math.atan2(o.y - p.y, o.x - p.x)));
           const rear = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > d * 0.5; // byl by to faul zezadu
           const sideOn = Math.abs(angDiff(o.dir, Math.atan2(p.y - o.y, p.x - o.x))) > 1.0;
-          if (fa < 0.8 && p.spdN > 9 && (!rear || Math.random() < 0.12 * ag) && Math.random() < 0.2 * ag) this.startCheck(p);
+          const hitM = (t.style === 'heavy' ? 1.5 : 1) * (p.trait === 'E' ? 1.5 : 1);
+          if (fa < 0.8 && p.spdN > 9 && (!rear || Math.random() < 0.12 * ag) && Math.random() < 0.2 * ag * hitM) this.startCheck(p);
           else if (sideOn && d < 4.5 && Math.random() < 0.12) this.liftStick(p);
           else if (Math.random() < 0.55 * ag) this.poke(p);
         }
@@ -274,7 +292,7 @@ gameMixin(class {
     const hw = rinkHalfWidthAt(s * tu) - 5; tv = clamp(tv, -hw, hw);
     const dx = s * tu - p.x, dy = s * tv - p.y, d = Math.hypot(dx, dy) || 1;
     p.inX = dx / d; p.inY = dy / d; p.faceDir = null;
-    p.turbo = td > 13 && p.stamina > 0.4 && u < 65;
+    p.turbo = td > (p.trait === 'R' ? 7 : 13) && p.stamina > 0.4 && u < (p.trait === 'R' ? 80 : 65);   // rychlík jede do brejku
     if (p.winding) { p.ai.wind -= h; if (p.ai.wind <= 0 || td < 3.5) this.releaseShot(p); return; }
     if (p.swingT > 0) return;
     p.ai.t -= h;
@@ -292,6 +310,7 @@ gameMixin(class {
       if (a > 1.15) sp *= 0.15; else if (a > 0.9) sp *= 0.5;
       if (Math.abs(angDiff(p.dir, Math.atan2(-p.y, s * RINK.GOAL_X - p.x))) > 1.4) sp *= 0.3;   // zády k brance raději nestřílí
     }
+    sp *= ({ gun: 1.25, pass: 0.8, trap: 0.9 }[t.style] || 1) * (p.trait === 'S' ? 1.35 : p.trait === 'P' ? 0.75 : 1);   // styl týmu a typ hráče
     if (Math.random() < sp) {
       if (dn > 30 && td > 9 && Math.random() < 0.65) { p.winding = true; p.windT = 0; p.ai.wind = rand(0.35, 0.8); }
       else { const sn = dn > 15 && dn < 38 && Math.random() < 0.3; this.shoot(p, 0, false, null, false, { snap: sn, z: sn ? 'high' : Math.random() < 0.2 ? 'low' : null }); }
@@ -308,14 +327,15 @@ gameMixin(class {
     }
     const pressure = td < 9 && front;
     const back = best && s * (best.x - p.x) < -6;
-    if (best && ((pressure && bs > my - (back ? -6 : 4) && Math.random() < (back ? 0.3 : 0.55)) || (bs > my + (back ? 18 : 10) && Math.random() < 0.4))) {
+    const pm = (t.style === 'pass' ? 1.3 : 1) * (p.trait === 'P' ? 1.3 : p.trait === 'S' ? 0.8 : 1);
+    if (best && ((pressure && bs > my - (back ? -6 : 4) && Math.random() < (back ? 0.3 : 0.55) * pm) || (bs > my + (back ? 18 : 10) && Math.random() < 0.4 * pm))) {
       if (this.laneBlocked(p, best) && Math.abs(p.x) < 65 && Math.random() < 0.35) this.bankPass(p, best); else this.pass(p, best, false);
       return;
     }
     if (pressure && p.spdN > 10 && Math.random() < 0.02 && this.dropPass(p)) return;
     const offRisk = this.cfg.offside !== false && t.skaters.some((q) => q !== p && s * q.x > RINK.BLUE_X + 0.5);
     const iceRisk = this.cfg.icing !== false && u < 1 && !(t.skaters.length < opp.skaters.length);
-    if (pressure && u > -15 && u < 28 && !offRisk && !iceRisk && Math.random() < 0.18) { this.dump(p); return; }
+    if (pressure && u > -15 && u < 28 && !offRisk && !iceRisk && Math.random() < (t.style === 'heavy' ? 0.36 : t.style === 'pass' ? 0.1 : 0.18)) { this.dump(p); return; }   // tvrdý tým nahazuje a dohrává
     if (t.change && u > -30 && u < 40 && !offRisk && !iceRisk && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
   }

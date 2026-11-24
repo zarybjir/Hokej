@@ -94,6 +94,20 @@ nebo o puk nepřijdeš. Těsně po střele nebo přihrávce se X nepočítá jak
 šanci na zisk puku — nejvíc na Dětské a Lehké, na Normální znatelně, na Legendu vůbec. Počítač tuhle
 pomoc nemá.
 
+**Odezva a cit v ovládání:** tvrdý hit, tyčka a těžký zákrok na okamžik zastaví hru a trhnou kamerou
+(vypneš s otřesy obrazu), gól padá zpomaleně, za rychlým pukem je stopa. Nad hráčem, který napřahuje,
+je ukazatel síly střely. Střela se míří páčkou plynule (do stran, k brance nahoru, od branky po ledě).
+Stisk X nebo A těsně před dopadem přihrávky na hůl dá přesnější a tvrdší střelu či přihrávku z první
+(„PŘESNĚ!"). **Sprint** je zásoba na 2,5 s, která se sama dobíjí (modrý ukazatel vedle energie).
+Páčka proti směru jízdy udělá ostré zastavení a rychlý výpad novým směrem.
+
+**Soupeř s povahou:** každý tým má herní styl (tvrdá hra, kombinace, obrana a brejky, útok) – je vidět
+na kartě týmu. Hvězdy hrají podle svého typu (ostrostřelec pálí z první, silák dohrává, rychlík jede do
+brejku). Počítač pod tlakem kazí přihrávky, při prohře ve třetí třetině riskuje, těsné vedení brání
+a po tvrdém hitu na svého hráče to chvíli vrací. **Momentum** (proužek pod zkratkou týmu) roste po gólu,
+hitech a zákrocích; tým na vlně je nepatrně rychlejší a jeho brankář jistější. Při přerušení se přehraje
+záznam tvrdého hitu, zákroku nebo tyčky a komentátor hlásí hattrick, vyrovnání či poslední minutu.
+
 **Statistiky zápasu:** v pauze nebo na konci zápasu (Y) — mapa střel obou týmů, čas na ledě, +/−,
 střely, úspěšnost na buly, zblokované střely, přesilovky.
 
@@ -274,7 +288,7 @@ do prohlížeče, rozehranou kariéru jde kdykoli načíst).
 
 ## Komentátor
 
-Komentář je předem namluvený neuronovým českým hlasem **Piper „jirka“** (licence CC0) — 224 hlášek
+Komentář je předem namluvený neuronovým českým hlasem **Piper „jirka“** (licence CC0) — 249 hlášek
 včetně jmen hráčů a měst, uložených v `sounds/voice/`. Hra je skládá dohromady („Vyloučení! — Novák —
 hákování“), takže funguje i bez systémové hlasové syntézy (ta na SteamOS chybí). Hlášky se dají
 přegenerovat skriptem `tools/gen_voice.py` (potřebuje `pip install piper-tts`, ffmpeg a model hlasu).

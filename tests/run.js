@@ -227,6 +227,37 @@ test('odebírání puku: člověk má proti počítači větší dosah hole, na 
   ok(hit(2) >= 12, 'na Normální člověk puk na okraji dosahu nezíská'); ok(hit(4) === 0, 'na Legendu má dosah zůstat základní');
 });
 
+test('sprint je zásoba: vyčerpá se, zamkne a zase dobije', (G) => {
+  const { g, dev, h } = humanGame(G), p = h.player; g.thinkAll = () => {};
+  for (const q of g.all) if (q !== p && !q.isGoalie) { q.x = -70; q.y = 30; }
+  dev.st.rt = true; let ang = 0;
+  for (let i = 0; i < 60 * 4; i++) { ang += 0.02; dev.st.lx = Math.cos(ang); dev.st.ly = Math.sin(ang); g.update(1 / 60); }
+  ok(p.boostLock && p.boost < 0.4 && !p.sprint, 'sprint se po 4 s nevyčerpal');
+  dev.st.rt = false; for (let i = 0; i < 60 * 6; i++) g.update(1 / 60);
+  ok(p.boost > 0.95 && !p.boostLock, 'sprint se nedobil');
+});
+
+test('načasování: stisk těsně před puknem dá přesnou střelu z první', (G) => {
+  const { g, h } = humanGame(G), p = h.player, pk = g.puck; let perfect = null;
+  const sh = g.shoot.bind(g); g.shoot = (q, pw, slap, aim, ot, opt) => { perfect = !!(opt && opt.perfect); return sh(q, pw, slap, aim, ot, opt); };
+  pk.owner = null; pk.wasPass = true; p.oneTimerQ = true; p.otAt = g.time - 0.1; g.gain(p);
+  ok(perfect === true, 'včasný stisk nebyl vyhodnocen jako přesný');
+  pk.owner = null; p.oneTimerQ = true; p.otAt = g.time - 0.6; g.gain(p);
+  ok(perfect === false, 'pozdní stisk byl vyhodnocen jako přesný');
+});
+
+test('nálada zápasu: gól dá momentum, počítač při prohře v závěru riskuje', (G) => {
+  const g = new G.Game({ home: 0, away: 1, humans: [], silent: true, periodLen: 120 });
+  while (g.state !== 'play') g.update(1 / 60);
+  const [A, B] = g.teams;
+  g.addMom(A, 0.6); ok(A.mom > 0.5 && B.mom === 0, 'momentum se nepřičetlo');
+  g.period = 3; g.clock = 20; B.score = 1; g.updateMood(1 / 120);
+  ok(g.tacOf(A) === 2, 'prohrávající tým v závěru nepřešel do útoku'); ok(g.tacOf(B) === 0, 'vedoucí tým v závěru nebrání');
+  for (let i = 0; i < 60 * 70; i++) g.updateMood(1 / 60);
+  ok(A.mom === 0, 'momentum nevyprchalo');
+  ok(['heavy', 'pass', 'trap', 'gun'].includes(A.style), 'tým nemá herní styl');
+});
+
 // ---------- spuštění ----------
 const filter = process.argv[2];
 let fail = 0; const t0 = Date.now();
