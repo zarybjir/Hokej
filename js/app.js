@@ -666,7 +666,7 @@ const App = {
     const yb = y0 + cat.items.length * st;
     row(yb, 'ZPĚT DO MENU', '', this.sel === cat.items.length);
     const it = cat.items[this.sel];
-    if (it && it.hint) foot(it.hint, yb + 52);
+    if (it && it.hint) foot(it.hint, yb + (st < 48 ? 34 : 52));
     if (cat.name === 'AKTUALIZACE') {
       if (Upd.msg) { ctx.font = font(16, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center'; ctx.fillText(Upd.msg, R.W / 2, yb + 86); }
       const notes = (Upd.newer() ? Upd.remote : Upd.local || {}).notes || [];
