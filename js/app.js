@@ -312,7 +312,7 @@ const App = {
     PRACTICE.forEach(([, name, desc], i) => {
       const y = 220 + i * 92, on = this.sel === i;
       R.panel(R.W / 2 - 380, y - 34, 760, 76, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 379, y - 33, 758, 74); }
+      if (on) { R.sel(R.W / 2 - 379, y - 33, 758, 74); }
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = font(22); ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(name, R.W / 2 - 355, y - 10);
       ctx.font = font(14, 'bold'); ctx.fillStyle = '#cfd8ea'; ctx.fillText(desc, R.W / 2 - 355, y + 18);
     });
@@ -336,29 +336,22 @@ const App = {
     });
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText('A / B zpět', R.W / 2, 786);
   },
-  dim(a) { R.ctx.fillStyle = `rgba(2,6,20,${a})`; R.ctx.fillRect(0, 0, R.W, R.H); },
+  dim(a) { R.ctx.fillStyle = `rgba(8,11,20,${Math.min(0.9, a + 0.08)})`; R.ctx.fillRect(0, 0, R.W, R.H); },
   drawLogo() {
     const ctx = R.ctx, cx = R.W / 2, y = 200 + Math.sin(this.t * 1.5) * 4;
-    ctx.save(); ctx.translate(cx, y); ctx.transform(1, 0, -0.12, 1, 0, 0);
-    ctx.fillStyle = '#c8102e'; ctx.fillRect(-330, 52, 660, 10);
-    ctx.fillStyle = '#1d4fb8'; ctx.fillRect(-330, 66, 660, 6);
-    ctx.restore();
-    R.chromeText('HOKEJ', cx - 70, y - 10, 120, '#ffffff', '#9fc4ff');
-    R.chromeText("'98", cx + 215, y - 10, 120, '#fff4c0', '#ffb300');
-    ctx.font = font(22); ctx.fillStyle = '#e8eefc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('L E D O V Á   L I G A', cx, y + 100);
+    ctx.font = font(112); const w1 = ctx.measureText('HOKEJ ').width, w2 = ctx.measureText("'98").width, x0 = cx - (w1 + w2) / 2;
+    R.chromeText('HOKEJ', x0, y - 10, 112, '#ffffff', '#9fb4d8', 'left');
+    R.chromeText("'98", x0 + w1, y - 10, 112, '#fff', '#ffd21f', 'left');
+    ctx.fillStyle = '#ffd21f'; ctx.fillRect(cx - 40, y + 62, 80, 4);
+    ctx.font = font(16, '600'); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('L E D O V Á   L I G A', cx, y + 92);
   },
   drawList(items, y0, sel = this.sel) {
     const ctx = R.ctx;
     items.forEach((it, i) => {
       const y = y0 + i * 56, on = i === sel;
-      if (on) {
-        const w = 420, g = ctx.createLinearGradient(R.W / 2 - w / 2, 0, R.W / 2 + w / 2, 0);
-        g.addColorStop(0, 'rgba(255,210,31,0)'); g.addColorStop(0.5, 'rgba(255,210,31,0.35)'); g.addColorStop(1, 'rgba(255,210,31,0)');
-        ctx.fillStyle = g; ctx.fillRect(R.W / 2 - w / 2, y - 24, w, 48);
-        this.puckIcon(R.W / 2 - 190 + Math.sin(this.t * 6) * 4, y);
-      }
-      R.chromeText(it, R.W / 2, y, on ? 36 : 30, on ? '#fff8d0' : '#ffffff', on ? '#ffcc33' : '#8fa4c8');
+      if (on) R.sel(R.W / 2 - 230, y - 24, 460, 48);
+      R.chromeText(it, R.W / 2, y, 28, on ? '#ffffff' : 'rgba(255,255,255,0.62)');
     });
   },
   puckIcon(x, y) {
@@ -378,7 +371,7 @@ const App = {
   teamCard(T, x, y, label, on) {
     const ctx = R.ctx, w = 380, h = 330;
     R.panel(x - w / 2, y, w, h, 0.85);
-    if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 3; ctx.strokeRect(x - w / 2 + 1.5, y + 1.5, w - 3, h - 3); }
+    if (on) { R.sel(x - w / 2 + 1.5, y + 1.5, w - 3, h - 3); }
     ctx.font = font(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#9fe3ff'; ctx.fillText(label, x, y + 22);
     this.teamLogo(T, x, y + 110, 0.8);
     if (on) {
@@ -409,7 +402,7 @@ const App = {
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 299, y - 18, 598, 36); }
+      if (on) { R.sel(R.W / 2 - 299, y - 18, 598, 36); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(n, R.W / 2 - 280, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText((on ? '◄  ' : '') + v + (on ? '  ►' : ''), R.W / 2 + 280, y);
     });
@@ -602,7 +595,7 @@ const App = {
     ctx.fillText(pad ? pad.gp.id.slice(0, 90) + (pad.std ? '' : '   (nestandardní rozložení)') : B.kind === 'pad' ? 'Ovladač není připojený.' : 'Klávesnice ' + (B.i + 1), R.W / 2, 74);
     const row = (y, label, val, on) => {
       R.panel(R.W / 2 - 330, y - 15, 660, 30, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 14, 658, 28); }
+      if (on) { R.sel(R.W / 2 - 329, y - 14, 658, 28); }
       ctx.font = font(15); ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 310, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(val, R.W / 2 + 310, y);
     };
@@ -663,7 +656,7 @@ const App = {
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText(cat.desc.toUpperCase(), R.W / 2, ty + 66);
     const row = (y, label, val, on) => {
       R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 19, 658, 38); }
+      if (on) { R.sel(R.W / 2 - 329, y - 19, 658, 38); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea'; ctx.fillText(label, R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(val, R.W / 2 + 305, y);
     };
@@ -696,6 +689,7 @@ const App = {
       ['X / LT + X', 'střela (ťuk = zápěstí, drž = příklep) / švihovka nahoru'],
       ['X nebo A během přihrávky k tobě', 'golfák z první / přihrávka z první'], ['B', 'klička'], ['Y', 'lobovaná přihrávka / nahození'],
       ['páčka do strany / od branky', 'mířit k tyči / placka k ledu'],
+      ['PRAVÁ PÁČKA', 'vést puk do strany, před sebe nebo k tělu (krytí puku)'],
       ['BEZ PUKU', ''],
       ['A', 'přepnout na hráče nejblíž puku'], ['X / LT + X', 'bodyček (vestoje bokem) / lehnout do střely'], ['B / LT + B', 'šťouchnutí holí / zvednout hokejku'],
       ['BULY', 'A/X přesně při dopadu, páčkou k soupeři = vyhrát dopředu'],
@@ -799,7 +793,7 @@ const App = {
     rows.forEach((r, i) => {
       const y = 200 + i * 48 + (rows.length > 3 && i >= 3 ? 20 : 0), on = this.sel === i, cur = r.t.line === r.L;
       R.panel(R.W / 2 - 330, y - 20, 660, 40, on ? 0.95 : 0.6);
-      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 329, y - 19, 658, 38); }
+      if (on) { R.sel(R.W / 2 - 329, y - 19, 658, 38); }
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fff' : '#cfd8ea';
       ctx.fillText((g.teams[0].humans.length && g.teams[1].humans.length ? r.t.def.abbr + '  ' : '') + (r.L + 1) + '. FORMACE' + (cur ? '  (na ledě)' : ''), R.W / 2 - 305, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText('◄ ' + N[r.t.tactics[r.L]] + ' ►', R.W / 2 + 305, y);

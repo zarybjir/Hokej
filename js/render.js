@@ -1,7 +1,7 @@
 'use strict';
 // ---------- 2D vrstva: HUD, menu a popisky nad 3D scénou ----------
-const FONT = '"Arial Black","Archivo Black","DejaVu Sans","Liberation Sans",Verdana,sans-serif';
-const font = (sz, st = 'italic 900') => `${st} ${sz}px ${FONT}`;
+const FONT = '"Inter","Segoe UI","Noto Sans","DejaVu Sans","Liberation Sans",system-ui,sans-serif';
+const font = (sz, st = '800') => `${st} ${sz}px ${FONT}`;
 
 const R = {
   W: 1280, H: 800, cx: 640,
@@ -90,18 +90,27 @@ const R = {
   // ---------- menu prvky (chrom) ----------
   clockStr(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); },
   panel(x, y, w, h, a = 0.78) {
-    const ctx = this.ctx, g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, `rgba(30,45,90,${a})`); g.addColorStop(1, `rgba(5,10,30,${a})`);
-    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = 'rgba(180,200,255,0.5)'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    // plochá zaoblená karta s jemným okrajem
+    const ctx = this.ctx, r = Math.min(12, h / 4);
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
+    ctx.fillStyle = `rgba(16,22,38,${a})`; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.lineWidth = 1; ctx.stroke();
+  },
+  // zvýraznění vybrané položky: světlejší výplň a barevný proužek vlevo
+  sel(x, y, w, h) {
+    const ctx = this.ctx, r = Math.min(12, h / 4);
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,210,31,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x + 5, y + 6, 4, h - 12, 2); ctx.fillStyle = '#ffd21f'; ctx.fill();
   },
   chromeText(txt, x, y, size, col1 = '#ffffff', col2 = '#9fb4d8', align = 'center') {
     const ctx = this.ctx;
-    ctx.font = font(size); ctx.textAlign = align; ctx.textBaseline = 'middle';
-    const g = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
-    g.addColorStop(0, col1); g.addColorStop(0.5, col2); g.addColorStop(0.55, '#4a5a7a'); g.addColorStop(1, col1);
-    ctx.lineWidth = Math.max(3, size / 8); ctx.strokeStyle = '#000'; ctx.lineJoin = 'round';
-    ctx.strokeText(txt, x, y); ctx.fillStyle = g; ctx.fillText(txt, x, y);
+    // plochý nadpis: bílá, nebo zvýrazňující barva (col2, když není výchozí šedomodrá), měkký stín
+    ctx.save(); ctx.font = font(size); ctx.textAlign = align; ctx.textBaseline = 'middle';
+    try { ctx.letterSpacing = size >= 28 ? (size * 0.03).toFixed(1) + 'px' : '0px'; } catch (e) {}
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = size / 3; ctx.shadowOffsetY = 2;
+    ctx.fillStyle = ['#9fb4d8', '#8fa4c8', '#9fc4ff'].includes(col2) ? col1 : col2; ctx.fillText(txt, x, y);
+    ctx.restore();
   },
 
   // ---------- HUD: bílý LED displej ----------

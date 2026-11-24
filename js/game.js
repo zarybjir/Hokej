@@ -700,7 +700,7 @@ class Game {
   glide() { for (const p of this.all) { if (p.ctrl < 0 || this.state !== 'play') { p.inX = 0; p.inY = 0; p.turbo = false; p.winding = false; p.windT = 0; } } }
 
   // ---------- lidští hráči ----------
-  handleHumans() {
+  handleHumans(dt = 1 / 60) {
     const pk = this.puck;
     for (const h of this.humans) {
       const d = h.dev, p = h.player;
@@ -710,6 +710,12 @@ class Game {
       if (d.pressed('lb')) this.requestChange(h.team, true);
       const ax = st.lx, ay = -st.ly; // páčka → svět podle kamery
       p.inX = ax * VIEW.rx + ay * VIEW.fx; p.inY = ax * VIEW.ry + ay * VIEW.fy; p.turbo = st.rt || st.rb;
+      // pravá páčka: kam držet hůl s pukem (vůči tělu hráče), plynule
+      if (st.rx || st.ry) {
+        const wx = st.rx * VIEW.rx - st.ry * VIEW.fx, wy = st.rx * VIEW.ry - st.ry * VIEW.fy, c = Math.cos(p.dir), s = Math.sin(p.dir);
+        const k = Math.min(1, dt * 14), o = p.stk || [p.hand * 0.4, 0];
+        p.stk = [o[0] + (clamp(-wx * s + wy * c, -1, 1) - o[0]) * k, o[1] + (clamp(wx * c + wy * s, -1, 1) - o[1]) * k];
+      } else p.stk = null;
       if (this.state === 'faceoff') {
         // páčka k soupeřově brance při stisku = vyhrát buly dopředu (na střelu), jinak dozadu k obránci
         if (d.pressed('a') || d.pressed('x')) { h.foPress = this.time; h.foFwd = (p.inX * h.team.dir) > 0.5; }
@@ -796,7 +802,7 @@ class Game {
   }
   assign(h, p) {
     if (h.player === p) return;
-    if (h.player) { h.player.ctrl = -1; h.player.winding = false; h.player.windT = 0; }
+    if (h.player) { h.player.ctrl = -1; h.player.winding = false; h.player.windT = 0; h.player.stk = null; }
     h.player = p; p.ctrl = h.idx; p.oneTimerQ = false;
   }
 
@@ -1369,7 +1375,7 @@ class Game {
     }
     if (pk.owner) {
       pk.touchX = pk.owner.x; pk.touchTeam = pk.owner.team; // odkud naposledy tým puk hrál (pro zakázané uvolnění)
-      const o = pk.owner, off = bladeOffset(o.dir, o.hand, !(o.winding && o.windT > 0.15) && !(o.swingT > 0), this.time, 0, 0, o.reach);   // při nápřahu puk leží tam, kam dopadne čepel
+      const o = pk.owner, off = bladeOffset(o.dir, o.hand, !(o.winding && o.windT > 0.15) && !(o.swingT > 0), this.time, 0, 0, o.reach, o.ctrl >= 0 ? o.stk : null);   // při nápřahu puk leží tam, kam dopadne čepel
       pk.x = o.x + off[0]; pk.y = o.y + off[1]; pk.z = 0; pk.vx = o.vx; pk.vy = o.vy; pk.vz = 0;
       const c = rinkContact(pk.x, pk.y, PH.PR);
       if (c) { pk.x -= c.nx * c.pen; pk.y -= c.ny * c.pen; }
@@ -1968,7 +1974,7 @@ class Game {
       px: pk.x, py: pk.y, pz: pk.z,
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
-        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
+        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
         num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();

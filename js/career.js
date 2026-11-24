@@ -680,7 +680,7 @@ Object.assign(Career, {
   T(s, x, y, size = 15, col = '#fff', align = 'left', st = 'bold') {
     const ctx = R.ctx; ctx.font = font(size, st); ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(String(s), x, y);
   },
-  hl(x, y, w, h) { const ctx = R.ctx; ctx.fillStyle = 'rgba(255,210,31,0.22)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); },
+  hl(x, y, w, h) { const ctx = R.ctx; R.sel(x, y, w, h); },
   footer(t) { this.T(t, R.W / 2, 776, 13, 'rgba(255,255,255,0.7)', 'center'); },
   draw() {
     const v = this.view;
@@ -703,7 +703,7 @@ Object.assign(Career, {
     R.panel(R.W / 2 - 360, 260, 720, 240, 0.95);
     R.chromeText(t, R.W / 2, 320, 40);
     this.T(s, R.W / 2, 390, 18, '#fff', 'center');
-    this.T('A = ANO     B = NE', R.W / 2, 450, 20, '#ffd21f', 'center', 'italic 900');
+    this.T('A = ANO     B = NE', R.W / 2, 450, 20, '#ffd21f', 'center', '800');
   },
   drawPick() {
     R.chromeText('VYBER SVŮJ KLUB', R.W / 2, 60, 44);
@@ -722,7 +722,7 @@ Object.assign(Career, {
     // příští zápas
     R.panel(x0, 104, 600, 330, 0.9);
     const ev = this.event(), m = this.userMatch(ev);
-    this.T(c.phase === 'offseason' ? 'SEZÓNA SKONČILA' : this.eventLabel(ev), x0 + 300, 132, 22, '#ffd21f', 'center', 'italic 900');
+    this.T(c.phase === 'offseason' ? 'SEZÓNA SKONČILA' : this.eventLabel(ev), x0 + 300, 132, 22, '#ffd21f', 'center', '800');
     if (m) {
       App.teamLogo(TEAMS[m.h], x0 + 150, 250, 0.75); App.teamLogo(TEAMS[m.a], x0 + 450, 250, 0.75);
       R.chromeText('VS', x0 + 300, 250, 44, '#fff', '#ff5a3c');
@@ -752,7 +752,7 @@ Object.assign(Career, {
     it.forEach(([, label], i) => {
       const y = 140 + i * 48;
       if (i === this.sel) this.hl(x1 + 14, y - 21, 562, 42);
-      this.T(label, x1 + 34, y, i === this.sel ? 20 : 18, i === this.sel ? '#ffd21f' : '#fff', 'left', 'italic 900');
+      this.T(label, x1 + 34, y, i === this.sel ? 20 : 18, i === this.sel ? '#ffd21f' : '#fff', 'left', '800');
     });
     if (c.phase === 'season') this.T(this.windowOpen() ? 'Přestupní okno je otevřené' : 'Přestupní okno je zavřené', x1 + 295, 740, 13, this.windowOpen() ? '#7dff8a' : '#ff9a7a', 'center');
     this.footer('↑↓ výběr   A potvrdit   B uložit a odejít');
@@ -802,7 +802,7 @@ Object.assign(Career, {
     const c = this.c;
     R.chromeText('POHÁR', R.W / 2, 44, 44);
     const xs = [R.W / 2 - 520, R.W / 2 - 115, R.W / 2 + 290];
-    ROUND_NAMES.forEach((n, k) => this.T(n, xs[k] + 115, 100, 16, '#9fe3ff', 'center', 'italic 900'));
+    ROUND_NAMES.forEach((n, k) => this.T(n, xs[k] + 115, 100, 16, '#9fe3ff', 'center', '800'));
     const rounds = c.cup.rounds;
     for (let k = 0; k < 3; k++) {
       const cnt = [4, 2, 1][k], gap = 640 / cnt;
@@ -811,7 +811,7 @@ Object.assign(Career, {
         this.bracketBox(xs[k], y, m ? m.a : null, m ? m.b : null, m && m.s, m && m.w);
       }
     }
-    if (c.cup.winner != null) this.T(`VÍTĚZ POHÁRU: ${this.teamName(c.cup.winner)}`, R.W / 2, 740, 20, '#ffd21f', 'center', 'italic 900');
+    if (c.cup.winner != null) this.T(`VÍTĚZ POHÁRU: ${this.teamName(c.cup.winner)}`, R.W / 2, 740, 20, '#ffd21f', 'center', '800');
     else this.T('Čtvrtfinále po 10. kole ligy, semifinále po 20., finále po 30. kole. Jeden zápas, při remíze prodloužení a nájezdy.', R.W / 2, 740, 13, '#cfd8ea', 'center');
     this.footer('A / B zpět');
   },
@@ -819,7 +819,7 @@ Object.assign(Career, {
     const c = this.c;
     R.chromeText('PLAY-OFF', R.W / 2, 44, 44);
     const xs = [R.W / 2 - 520, R.W / 2 - 115, R.W / 2 + 290];
-    ROUND_NAMES.forEach((n, k) => this.T(n, xs[k] + 115, 100, 16, '#9fe3ff', 'center', 'italic 900'));
+    ROUND_NAMES.forEach((n, k) => this.T(n, xs[k] + 115, 100, 16, '#9fe3ff', 'center', '800'));
     for (let k = 0; k < 3; k++) {
       const cnt = [4, 2, 1][k], gap = 640 / cnt;
       for (let i = 0; i < cnt; i++) {
@@ -827,7 +827,7 @@ Object.assign(Career, {
         this.bracketBox(xs[k], y, s ? s.a : null, s ? s.b : null, s && s.games.join('  '), s && s.w, s ? s.wa : null, s ? s.wb : null);
       }
     }
-    if (c.po.champion != null) this.T(`MISTR LIGY: ${this.teamName(c.po.champion)}`, R.W / 2, 740, 20, '#ffd21f', 'center', 'italic 900');
+    if (c.po.champion != null) this.T(`MISTR LIGY: ${this.teamName(c.po.champion)}`, R.W / 2, 740, 20, '#ffd21f', 'center', '800');
     else this.T('Série na 2 vítězství. Vyšší nasazený hraje doma 1. a 3. zápas.', R.W / 2, 740, 13, '#cfd8ea', 'center');
     this.footer('A / B zpět');
   },
@@ -872,7 +872,7 @@ Object.assign(Career, {
       if (this.mark === p) { R.ctx.strokeStyle = '#7dff8a'; R.ctx.lineWidth = 3; R.ctx.strokeRect(x0 + 8, y - rh / 2, 1184, rh); }
       const st = p.st, G = p.role === 'G';
       this.playerRow(p, y, x0, cols, false, G ? [[st.gp, 950], [st.sa ? (st.sv / st.sa * 100).toFixed(1) + '%' : '–', 1037]] : [[st.gp, 950], [st.g, 1008], [st.a, 1066], [st.g + st.a, 1124]]);
-      if (p.id === capId) this.T('C', x0 + 106, y, 13, '#ffd21f', 'center', 'italic 900');
+      if (p.id === capId) this.T('C', x0 + 106, y, 13, '#ffd21f', 'center', '800');
       y += rh;
     });
     const inj = this.injured(c.user);
@@ -957,12 +957,12 @@ Object.assign(Career, {
       App.teamLogo(TEAMS[mine.h], R.W / 2 - 250, 190, 0.6); App.teamLogo(TEAMS[mine.a], R.W / 2 + 250, 190, 0.6);
       R.chromeText(`${mine.hg} : ${mine.ag}`, R.W / 2, 180, 72);
       this.T(mine.suf.trim() === 'SN' ? 'PO NÁJEZDECH' : mine.suf.trim() === 'PP' ? 'PO PRODLOUŽENÍ' : '', R.W / 2, 240, 16, '#cfd8ea', 'center');
-      this.T(my > op ? 'VÝHRA!' : 'PROHRA', R.W / 2, 280, 26, my > op ? '#7dff8a' : '#ff7a5a', 'center', 'italic 900');
+      this.T(my > op ? 'VÝHRA!' : 'PROHRA', R.W / 2, 280, 26, my > op ? '#7dff8a' : '#ff7a5a', 'center', '800');
     }
     this.drawResultsBox(R.W / 2 - 400, 330, 800, 200);
     if (c.phase === 'season' || c.phase === 'playoffs') this.T(`Tvůj tým je ${this.myPos()}. v tabulce (${c.table[u].pts} b.)`, R.W / 2, 560, 18, '#9fe3ff', 'center');
     if (c.phase === 'playoffs' && c.po) this.T(`Play-off: ${ROUND_NAMES[c.po.round]}`, R.W / 2, 592, 16, '#cfd8ea', 'center');
-    if (c.phase === 'offseason') this.T('Sezóna skončila!', R.W / 2, 600, 22, '#ffd21f', 'center', 'italic 900');
+    if (c.phase === 'offseason') this.T('Sezóna skončila!', R.W / 2, 600, 22, '#ffd21f', 'center', '800');
     (ld && ld.inj || []).forEach((q, i) => this.T(`ZRANĚNÍ: #${q.num} ${q.name} – ${q.injName}, mimo ${q.games} ${gamesWord(q.games)}`, R.W / 2, 640 + i * 28, 16, '#ff9a7a', 'center'));
     this.footer('A pokračovat');
   },
@@ -982,7 +982,7 @@ Object.assign(Career, {
       const a = p.at, G = p.role === 'G'; this.ensureBody(p);
       drawFlag(R.ctx, natOf(p), x0 + cols[2], y - 7, 20, 13);
       [p.role, p.num, p.first + ' ' + p.name, p.age, p.cm + ' / ' + p.kg, G ? a.REF : a.SIL, a.RYC, G ? '–' : a.PRE, a.STA, plOvr(p)].forEach((v, k) => this.T(v, x0 + cols[k] + (k === 2 ? 26 : 0), y, k === 4 ? 13 : 15, k === 9 ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
-      this.T(potName(p.pot), x0 + 806, y, 20, { A: '#4cff7a', B: '#b6ff5a', C: '#ffd21f', D: '#ff9a3a' }[potName(p.pot)], 'right', 'italic 900');
+      this.T(potName(p.pot), x0 + 806, y, 20, { A: '#4cff7a', B: '#b6ff5a', C: '#ffd21f', D: '#ff9a3a' }[potName(p.pot)], 'right', '800');
     });
     R.panel(x0 + 840, 88, 360, 672, 0.85);
     this.T('JIŽ VYBRÁNO', x0 + 860, 112, 15, '#ffd21f');
@@ -1014,7 +1014,7 @@ Object.assign(Career, {
     R.chromeText('KONEC SEZÓNY ' + this.seasonStr(), R.W / 2, 60, 42);
     R.panel(R.W / 2 - 480, 100, 960, 560, 0.92);
     App.teamLogo(TEAMS[S.champ], R.W / 2, 220, 0.85);
-    this.T(`MISTR LIGY: ${this.teamName(S.champ).toUpperCase()}`, R.W / 2, 320, 26, '#ffd21f', 'center', 'italic 900');
+    this.T(`MISTR LIGY: ${this.teamName(S.champ).toUpperCase()}`, R.W / 2, 320, 26, '#ffd21f', 'center', '800');
     const lines = [
       `Finalista: ${this.teamName(S.runner)}`,
       `Vítěz poháru: ${this.teamName(S.cup)}`,

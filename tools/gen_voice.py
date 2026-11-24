@@ -38,7 +38,9 @@ def slug(t):
 
 def main(model):
     voice = PiperVoice.load(model)
-    cfg = SynthesisConfig(length_scale=0.92, noise_scale=0.5, noise_w_scale=0.4)
+    # svižné tempo; zvolání (končí vykřičníkem) rychleji, proměnlivěji, o kousek výš a hlasitěji
+    cfg = SynthesisConfig(length_scale=0.8, noise_scale=0.55, noise_w_scale=0.45)
+    hot = SynthesisConfig(length_scale=0.74, noise_scale=0.8, noise_w_scale=0.65)
     os.makedirs(OUT, exist_ok=True)
     manifest, used = {}, set()
     for t in PHRASES:
@@ -47,12 +49,12 @@ def main(model):
         used.add(f)
         buf = io.BytesIO()
         with wave.open(buf, 'wb') as w:
-            voice.synthesize_wav(t, w, syn_config=cfg)
+            voice.synthesize_wav(t, w, syn_config=hot if t.endswith('!') else cfg)
         wav = os.path.join('/tmp', f + '.wav'); open(wav, 'wb').write(buf.getvalue())
         mp3 = os.path.join(OUT, f + '.mp3')
         # ořez ticha, mírná komprese a „sportovní“ barva
         subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-af',
-                        'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,highpass=f=90,acompressor=threshold=-18dB:ratio=3,volume=1.4',
+                        'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,highpass=f=90,acompressor=threshold=-18dB:ratio=3,' + ('asetrate=22050*1.06,aresample=22050,volume=1.8' if t.endswith('!') else 'volume=1.4'),
                         '-ac', '1', '-ar', '22050', '-c:a', 'libmp3lame', '-b:a', '48k', mp3], check=True)
         os.remove(wav)
         manifest[t] = f + '.mp3'

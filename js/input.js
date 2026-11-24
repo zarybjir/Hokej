@@ -20,7 +20,7 @@ function padSpecName(spec, std) {
   if (spec[0] === 'h') return 'KŘÍŽ ' + spec.slice(1);   // D-pad hlášený jako jedna osa („hat")
   return 'OSA ' + spec.slice(1);
 }
-function blankState() { const s = { lx: 0, ly: 0 }; for (const b of BTN) s[b] = false; return s; }
+function blankState() { const s = { lx: 0, ly: 0, rx: 0, ry: 0 }; for (const b of BTN) s[b] = false; return s; }
 
 class Device {
   constructor(id, kind, name) {
@@ -125,6 +125,9 @@ const Input = {
         if (lx && ly) { lx *= 0.7071; ly *= 0.7071; }
       }
       s.lx = lx; s.ly = ly;
+      // pravá páčka (vedení puku): standard osy 2/3, linuxové rozložení 3/4
+      const ra = d.std ? 2 : 3, rx = gp.axes[ra] || 0, ry = gp.axes[ra + 1] || 0;
+      if (Math.hypot(rx, ry) > 0.3 && Math.abs(rx) <= 1 && Math.abs(ry) <= 1) { s.rx = rx; s.ry = ry; }
       d.st = s;
       if (BTN.some((b) => s[b])) { this.anyEvent = true; if (typeof Touch !== 'undefined') Touch.visible = false; }
     }
