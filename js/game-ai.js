@@ -36,7 +36,7 @@ gameMixin(class {
       const g = t.goalie; g.conf = (g.conf || 0) * (1 - h / 40);
       // počítač reaguje na stav: ve 3. třetině při prohře riskuje, těsné vedení v závěru brání
       if (t.cpu && !this.practice) {
-        const d = t.score - this.other(t).score, late = this.period === 3 ? 1 - this.clock / this.periodLen : this.period > 3 ? 1 : 0;
+        const d = t.score - this.other(t).score, late = this.period === (this.fb ? 2 : 3) ? 1 - this.clock / this.periodLen : this.period > 3 ? 1 : 0;
         t.tacOver = d < 0 && late > 0.45 ? 2 : d > 0 && d <= 2 && late > 0.7 ? 0 : null;
       }
     }

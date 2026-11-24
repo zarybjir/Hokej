@@ -573,8 +573,8 @@ Object.assign(Career, {
       case 'start': {
         const it = [this.c && 'cont', 'new', 'back'].filter(Boolean);
         this.navN(it.length, dt);
-        if (ok) { const k = it[this.sel]; if (k === 'cont') this.go('hub'); else if (k === 'new') this.go(this.c ? 'confirmNew' : 'pick'); else App.go('title', 1); }
-        if (back) App.go('title', 1);
+        if (ok) { const k = it[this.sel]; if (k === 'cont') this.go('hub'); else if (k === 'new') this.go(this.c ? 'confirmNew' : 'pick'); else App.go('title', 2); }
+        if (back) App.go('title', 2);
         break;
       }
       case 'confirmNew': if (ok) this.go('pick'); if (back) this.go('start'); break;
@@ -582,7 +582,7 @@ Object.assign(Career, {
         const d = App.lr(dt);
         if (d) { this.pick = (this.pick + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
         if (ok) { this.newCareer(this.pick); this.go('hub'); }
-        if (back) { if (this.exists()) this.go('start'); else App.go('title', 1); }
+        if (back) { if (this.exists()) this.go('start'); else App.go('title', 2); }
         break;
       }
       case 'hub': {
@@ -594,10 +594,10 @@ Object.assign(Career, {
           else if (k === 'sim' || k === 'next') this.simUser();
           else if (k === 'summary') this.go('summary');
           else if (k === 'simall') this.go('confirmSim');
-          else if (k === 'quit') { this.save(); App.go('title', 1); }
+          else if (k === 'quit') { this.save(); App.go('title', 2); }
           else this.go(k);
         }
-        if (back) { this.save(); App.go('title', 1); }
+        if (back) { this.save(); App.go('title', 2); }
         break;
       }
       case 'confirmSim': if (ok) this.simToEnd(); if (back) this.go('hub'); break;

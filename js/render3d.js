@@ -601,6 +601,7 @@ const G3 = {
     floor.rotation.x = -Math.PI / 2; floor.position.y = -0.4; this.scene.add(floor);
   },
   paintIce() {
+    if (this.fbOn) return this.paintPitch();
     const W = GFX[this.quality].ice, ppf = W / 200, H = Math.round(85 * ppf);
     const [c, g] = mkCanvas(W, H), [rc, gr] = mkCanvas(W / 2, Math.round(H / 2));
     const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf;
@@ -855,7 +856,7 @@ const G3 = {
     const [nc, ng] = mkCanvas(64, 64);
     ng.strokeStyle = 'rgba(255,255,255,0.95)'; ng.lineWidth = 4; ng.strokeRect(0, 0, 64, 64);
     const netTex = canvasTex(nc, true, this.aniso); netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
-    const netMat = new THREE.MeshStandardMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 0.9 });
+    const netMat = this.netMat = new THREE.MeshStandardMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 0.9 });
     const red = new THREE.MeshStandardMaterial({ color: 0xd0101a, metalness: 0.55, roughness: 0.28 });
     const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, metalness: 0.2 });
     this.nets = [-1, 1].map((sN) => {
@@ -882,6 +883,63 @@ const G3 = {
       this.scene.add(grp);
       return grp;
     });
+  },
+  // ---------- fotbal: branky, míč, trávník ----------
+  buildFootNets() {
+    const white = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.35, metalness: 0.1 }), W = 5, Hh = 6.5, Dp = 3.4;
+    this.fnets = [-1, 1].map((sN) => {
+      const grp = new THREE.Group(), Pn = (u, v, z) => new THREE.Vector3(sN * (RINK.GOAL_X + u), z, -v);
+      const bar = (a, b) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1, 14), white); seg(m, a, b, new THREE.Vector3(1, 0, 0)); m.castShadow = true; grp.add(m); };
+      bar(Pn(0, -W, 0), Pn(0, -W, Hh)); bar(Pn(0, W, 0), Pn(0, W, Hh)); bar(Pn(0, -W - 0.2, Hh), Pn(0, W + 0.2, Hh));
+      const pos = [], uv = [];
+      const quad = (a, b, c, d) => { const la = a.distanceTo(b) / 0.5, lb = a.distanceTo(d) / 0.5; for (const [p, t] of [[a, [0, 0]], [b, [la, 0]], [c, [la, lb]], [a, [0, 0]], [c, [la, lb]], [d, [0, lb]]]) { pos.push(p.x, p.y, p.z); uv.push(t[0], t[1]); } };
+      quad(Pn(0, -W, Hh), Pn(0, W, Hh), Pn(Dp * 0.5, W, Hh), Pn(Dp * 0.5, -W, Hh));
+      quad(Pn(Dp * 0.5, -W, Hh), Pn(Dp * 0.5, W, Hh), Pn(Dp, W, 0), Pn(Dp, -W, 0));
+      for (const v of [-1, 1]) { quad(Pn(0, v * W, 0), Pn(0, v * W, Hh), Pn(Dp * 0.5, v * W, Hh), Pn(Dp, v * W, 0)); }
+      const ngeo = new THREE.BufferGeometry();
+      ngeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ngeo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); ngeo.computeVertexNormals();
+      const net = new THREE.Mesh(ngeo, this.netMat); net.renderOrder = 3; grp.add(net);
+      this.scene.add(grp); return grp;
+    });
+    // míč: bílý s tmavými poli
+    const [bc, bg] = mkCanvas(128, 64); bg.fillStyle = '#f6f6f6'; bg.fillRect(0, 0, 128, 64); bg.fillStyle = '#1b1b1f';
+    for (const [x, y] of [[16, 16], [48, 44], [80, 14], [112, 46], [64, 30], [0, 44], [128, 44]]) { bg.beginPath(); bg.arc(x, y, 9, 0, TAU); bg.fill(); }
+    this.ball = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 14), new THREE.MeshStandardMaterial({ map: canvasTex(bc, true, 4), roughness: 0.5 }));
+    this.ball.castShadow = true; this.ball.visible = false; this.scene.add(this.ball);
+  },
+  // přepnutí sportu: povrch, branky, míč; hala a tribuny zůstávají
+  setSport(fb) {
+    if (this.fbOn === fb) return;
+    this.fbOn = fb;
+    if (fb && !this.fnets) this.buildFootNets();
+    this.nets.forEach((n) => (n.visible = !fb)); if (this.fnets) this.fnets.forEach((n) => (n.visible = fb));
+    this.iceMat.clearcoat = fb ? 0 : 0.65; this.iceMat.envMapIntensity = fb ? 0.08 : 0.85;
+    const q = GFX[this.quality || 'high'];
+    this.paintIce(); this.setReflector(q.refl && !fb); this.wearMesh.visible = q.wear && !fb; this.clearWear();
+  },
+  paintPitch() {
+    const W = GFX[this.quality].ice, ppf = W / 200, H = Math.round(85 * ppf);
+    const [c, g] = mkCanvas(W, H), [rc, gr] = mkCanvas(W / 2, Math.round(H / 2));
+    const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf, GX = RINK.GOAL_X, HW = FB.HW, rnd = mulberry32(2024);
+    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, W, H);                       // výběh kolem hřiště
+    for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#2f8a3e' : '#2a7d38'; g.fillRect(X(-GX + i * (2 * GX / 12)), Y(HW), 2 * GX / 12 * ppf + 1, 2 * HW * ppf); }   // pruhy trávníku
+    for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '0,0,0'},${0.02 + rnd() * 0.04})`; g.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2); }
+    g.strokeStyle = 'rgba(255,255,255,0.92)'; g.fillStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = Math.max(1.5, 0.45 * ppf);
+    const rect = (x0, y0, x1, y1) => g.strokeRect(X(x0), Y(y1), (x1 - x0) * ppf, (y1 - y0) * ppf), dot = (x, y) => { g.beginPath(); g.arc(X(x), Y(y), 0.5 * ppf, 0, TAU); g.fill(); };
+    rect(-GX, -HW, GX, HW);
+    g.beginPath(); g.moveTo(X(0), Y(HW)); g.lineTo(X(0), Y(-HW)); g.stroke();
+    g.beginPath(); g.arc(X(0), Y(0), 12 * ppf, 0, TAU); g.stroke(); dot(0, 0);
+    for (const s of [-1, 1]) {
+      rect(Math.min(s * GX, s * (GX - FB.BOXD)), -FB.BOXW, Math.max(s * GX, s * (GX - FB.BOXD)), FB.BOXW);     // pokutové území
+      rect(Math.min(s * GX, s * (GX - 8)), -11, Math.max(s * GX, s * (GX - 8)), 11);                              // brankové území
+      dot(s * (GX - FB.SPOT), 0);
+      g.beginPath(); g.arc(X(s * (GX - FB.SPOT)), Y(0), 10 * ppf, s > 0 ? Math.PI * 0.62 : -Math.PI * 0.38, s > 0 ? Math.PI * 1.38 : Math.PI * 0.38); g.stroke();
+      for (const v of [-1, 1]) { g.beginPath(); g.arc(X(s * GX), Y(v * HW), 3 * ppf, 0, TAU); g.stroke(); }
+    }
+    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, X(-GX) - g.lineWidth / 2, H); g.fillRect(X(GX) + g.lineWidth / 2, 0, W, H); g.fillRect(0, 0, W, Y(HW) - g.lineWidth / 2); g.fillRect(0, Y(-HW) + g.lineWidth / 2, W, H);   // oblouky rohů jen uvnitř
+    gr.fillStyle = 'rgb(235,235,235)'; gr.fillRect(0, 0, rc.width, rc.height);
+    if (this.iceMat.map) { this.iceMat.map.dispose(); this.iceMat.roughnessMap.dispose(); }
+    this.iceMat.map = canvasTex(c, true, this.aniso); this.iceMat.roughnessMap = canvasTex(rc, false, this.aniso); this.iceMat.needsUpdate = true;
   },
   buildPuck() {
     this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.45 }));
@@ -926,10 +984,10 @@ const G3 = {
     this.key.castShadow = q.shadow > 0;
     if (q.shadow) { this.key.shadow.mapSize.set(q.shadow, q.shadow); if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; } }
     this.resize();
-    this.setReflector(q.refl);
+    this.setReflector(q.refl && !this.fbOn);
     if (this.bodies) { const n = this.seats.length; this.bodies.count = this.heads.count = name === 'low' ? Math.floor(n * 0.55) : n; }
     if (changedIce) this.paintIce();
-    this.setPost(q.post); this.wearMesh.visible = q.wear; this.resize();
+    this.setPost(q.post); this.wearMesh.visible = q.wear && !this.fbOn; this.resize();
   },
   setView() {
     const S = Settings.data, view = S.cam === 'side' ? 'side' : 'top';
@@ -1033,6 +1091,7 @@ const G3 = {
   },
   render(g, players, pk, t, dt, refs) {
     if (this.fail) return;
+    if (g) this.setSport(!!g.fb);
     if (g && this.modelGame !== g) this.buildModels(g);
     const vis = new Set();
     for (const p of refs ? players.concat(refs) : players) {
@@ -1041,7 +1100,13 @@ const G3 = {
     }
     for (const m of this.modelMap.values()) if (!vis.has(m)) m.setVisible(false);
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
-    this.puck.visible = !(g && g.puck.held && g.state !== 'replay');
+    this.puck.visible = !this.fbOn && !(g && g.puck.held && g.state !== 'replay');
+    if (this.ball) {
+      // míč se kutálí podle uražené dráhy
+      const b = this.ball, nx = pk.x, nz = -pk.y, dx = nx - b.position.x, dz = nz - b.position.z, d = Math.hypot(dx, dz);
+      if (d > 0.001 && d < 8) b.rotateOnWorldAxis(_va.set(dz / d, 0, -dx / d), d / 0.36);
+      b.position.set(nx, (pk.z || 0) + 0.36, nz); b.visible = this.fbOn;
+    }
     const used = new Set();
     for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl]; m.position.set(p.x, 0.04, -p.y); m.rotation.y += dt * 1.6; const k = 1 + Math.sin(t * 6) * 0.04; m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl); }
     this.rings.forEach((m, i) => { if (!used.has(i)) m.visible = false; });
@@ -1067,7 +1132,7 @@ const G3 = {
       this.zamBeacon.visible = Math.floor(t * 3) % 2 === 0;
       this.zamClean(zam, dt);
     } else this.zamOn = false;
-    this.updateWear(players, dt, !!g && (g.state === 'play' || g.state === 'stop' || g.state === 'goal'));
+    if (!this.fbOn) this.updateWear(players, dt, !!g && (g.state === 'play' || g.state === 'stop' || g.state === 'goal'));
     this.updateSnow(dt);
     if (this.comp) this.comp.render(dt); else this.r.render(this.scene, this.cam);
   },

@@ -50,16 +50,16 @@ const App = {
         if (M.pressed('a') || M.pressed('start') || (Input.anyEvent && Input.keys.size) || (Touch.visible && Touch.touches.size)) { Sfx.init(); Sfx.resume(); this.go('title'); }
         break;
       case 'title': {
-        const items = 7;
+        const items = 8;
         this.menuMove(0, items, dt);
         if (M.pressed('a') || M.pressed('start')) {
-          if (this.sel === 0) this.go('setup');
-          else if (this.sel === 1) { this.go('career'); Career.enter(); }
-          else if (this.sel === 2) this.go('practice');
-          else if (this.sel === 3) this.go('ach');
-          else if (this.sel === 4) { this.setCat = 0; this.go('settings'); }
-          else if (this.sel === 5) { this.go('settings'); this.setCat = this.settingsCats().findIndex((c) => c.name === 'OVLÁDÁNÍ'); }   // mapování tlačítek + přehled
-          else if (this.sel === 6) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
+          if (this.sel <= 1) { this.sport = this.sel ? 'hockey' : 'football'; this.go('setup'); }   // fotbal nahoře, hokej pod ním
+          else if (this.sel === 2) { this.go('career'); Career.enter(); }
+          else if (this.sel === 3) this.go('practice');
+          else if (this.sel === 4) this.go('ach');
+          else if (this.sel === 5) { this.setCat = 0; this.go('settings'); }
+          else if (this.sel === 6) { this.go('settings'); this.setCat = this.settingsCats().findIndex((c) => c.name === 'OVLÁDÁNÍ'); }   // mapování tlačítek + přehled
+          else if (this.sel === 7) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
         if (this.quitMsg) this.quitMsg = Math.max(0, this.quitMsg - dt);
         break;
@@ -86,17 +86,17 @@ const App = {
           else if (this.sel === 6) { S.three = !S.three; Settings.save(); }
           else this.sel = Math.min(7, this.sel + 1);
         }
-        if (M.pressed('b')) this.go('title');
+        if (M.pressed('b')) this.go('title', this.sport === 'hockey' ? 1 : 0);
         break;
       }
       case 'career': Career.update(dt); break;
       case 'practice': {
         this.menuMove(0, PRACTICE.length + 1, dt);
-        if (M.pressed('a') || M.pressed('start')) { if (this.sel < PRACTICE.length) this.startPractice(PRACTICE[this.sel][0]); else this.go('title', 2); }
-        if (M.pressed('b')) this.go('title', 2);
+        if (M.pressed('a') || M.pressed('start')) { if (this.sel < PRACTICE.length) this.startPractice(PRACTICE[this.sel][0]); else this.go('title', 3); }
+        if (M.pressed('b')) this.go('title', 3);
         break;
       }
-      case 'ach': if (M.pressed('a') || M.pressed('b')) this.go('title', 3); break;
+      case 'ach': if (M.pressed('a') || M.pressed('b')) this.go('title', 4); break;
       case 'roster': {
         const d = this.lr(dt);
         if (d) { this.rosterTeam = (this.rosterTeam + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
@@ -152,9 +152,9 @@ const App = {
         const cat = cats[this.setCat], n = cat.items.length + 1;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
-        if (this.sel === cat.items.length) { if (a) { Settings.save(); this.go('title', 4); break; } }
+        if (this.sel === cat.items.length) { if (a) { Settings.save(); this.go('title', 5); break; } }
         else if (d || a) { const it = cat.items[this.sel]; if (it.set) { it.set(d, a); Settings.save(); } }
-        if (M.pressed('b')) { Settings.save(); this.go('title', 4); }
+        if (M.pressed('b')) { Settings.save(); this.go('title', 5); }
         break;
       }
       case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
@@ -239,7 +239,7 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1, assist });
     });
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg(), three: !!S.three });
+    this.game = this.sport === 'football' ? new Football({ home: S.home, away: S.away, humans, ...this.ruleCfg() }) : new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg(), three: !!S.three });
     this.screen = 'game'; this.sel = 0;
   },
   // trénink: všechny ovladače hrají za domácí (tým z Exhibice), soupeř podle druhu cvičení
@@ -285,8 +285,8 @@ const App = {
     }
     if (this.screen === 'title') {
       // úvodní menu: logo a nabídka vlevo, znak vybraného týmu vpravo
-      this.drawLogo(96, 150, 104, false);
-      this.drawList(['EXHIBICE', 'KARIÉRA', 'TRÉNINK', 'VÝZVY  ' + Ach.done() + '/' + ACH.length, 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 300, this.sel, 96);
+      this.drawLogo(96, 130, 100, false);
+      this.drawList(['FOTBAL', 'HOKEJ', 'KARIÉRA (HOKEJ)', 'TRÉNINK (HOKEJ)', 'VÝZVY  ' + Ach.done() + '/' + ACH.length, 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 270, this.sel, 96);
       const T = TEAMS[Settings.data.home] || TEAMS[0], ex = 920, ey = 400;
       ctx.save(); ctx.globalAlpha = 0.9; const q = ctx.createRadialGradient(ex, ey, 60, ex, ey, 330); q.addColorStop(0, 'rgba(47,212,255,0.20)'); q.addColorStop(1, 'rgba(47,212,255,0)'); ctx.fillStyle = q; ctx.fillRect(ex - 330, ey - 330, 660, 660); ctx.restore();
       this.teamLogo(T, ex, ey + Math.sin(this.t * 1.2) * 5, 1.7);
@@ -354,7 +354,7 @@ const App = {
     ctx.fillStyle = ACC; ctx.fillRect(x0 + 4, y + size * 0.56, 90, 5);
     ctx.fillStyle = '#ff3c5a'; ctx.fillRect(x0 + 100, y + size * 0.56, 30, 5);
     ctx.font = font(15, '600'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('L E D O V Á   L I G A', x0 + 150, y + size * 0.56 + 3);
+    ctx.fillText('F O T B A L   A   H O K E J', x0 + 150, y + size * 0.56 + 3);
   },
   // nabídka: na střed, nebo zarovnaná vlevo od x
   drawList(items, y0, sel = this.sel, x) {
@@ -405,12 +405,13 @@ const App = {
   },
   drawSetup() {
     const ctx = R.ctx, S = Settings.data;
-    R.chromeText('EXHIBICE', R.W / 2, 50, 46);
+    const fb = this.sport === 'football';
+    R.chromeText(fb ? 'FOTBAL – PŘÁTELSKÝ ZÁPAS' : 'HOKEJ – EXHIBICE', R.W / 2, 50, 42);
     this.teamCard(TEAMS[S.home], R.W / 2 - 230, 90, 'DOMÁCÍ', this.sel === 0);
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
-    const rows = [['DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['FORMÁT', S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
+    const rows = [[fb ? 'DÉLKA POLOČASU' : 'DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
+      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['FORMÁT', fb ? 'MALÁ KOPANÁ 5+1' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
@@ -697,7 +698,19 @@ const App = {
   drawHelp() {
     const ctx = R.ctx;
     R.chromeText('OVLÁDÁNÍ', R.W / 2, 60, 46);
-    const L = [
+    const fbHelp = this.game ? this.game.fb : this.sport === 'football';
+    const L = fbHelp ? [
+      ['LEVÁ PÁČKA', 'běh; páčka proti směru = prudké zastavení'], ['RT / RB', 'sprint (zásoba na 2,5 s, sama se dobíjí)'],
+      ['', ''], ['S MÍČEM', ''],
+      ['A', 'přihrávka po zemi (ve směru páčky)'], ['Y', 'vysoká přihrávka / centr / dlouhý míč'],
+      ['X', 'střela – ťukni = placírka, drž = rána'], ['páčka při střele', 'míření: do stran, k brance nahoru, od branky po zemi'],
+      ['X nebo A během přihrávky k tobě', 'střela z voleje / přihrávka z první'], ['B', 'klička (naznačení)'],
+      ['PRAVÁ PÁČKA', 'vedení míče do strany, před sebe, k tělu'],
+      ['', ''], ['BEZ MÍČE', ''],
+      ['A', 'přepnout na hráče nejblíž míči'], ['X', 'odebrání míče ve stoje'], ['B', 'skluz (pozor: do hráče = faul, zezadu karta)'],
+      ['drž LT / pravá páčka', 'obranný postoj čelem k míči / zvoleným směrem'],
+      ['LB', 'střídání pětky (při ručním střídání)'], ['VIEW (BACK)', 'zoom kamery'], ['MENU / START', 'pauza'],
+    ] : [
       ['LEVÁ PÁČKA', 'bruslení; páčka proti směru = ostré zastavení a výpad'], ['RT / RB', 'sprint (zásoba na 2,5 s, sama se dobíjí)'],
       ['', ''], ['S PUKEM', ''],
       ['A / LT + A', 'přihrávka (ve směru páčky) / o mantinel'], ['A s páčkou dozadu', 'nechat puk spoluhráči za sebou'],
@@ -719,7 +732,7 @@ const App = {
       ctx.font = font(16, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(b, R.W / 2 + 20, y);
     });
     ctx.font = font(12, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
-    ctx.fillText('Fauly: šťouchnutí zezadu, hůl do nohou, bodyček zezadu, na mantinel nebo do hráče bez puku → vyloučení (hra 5 na 4).', R.W / 2, 668);
+    ctx.fillText(fbHelp ? 'Míč za postranní čárou = aut (rozehrává se nohou), za brankovou = roh nebo kop od branky. Faul = volný kop, ve vápně penalta. Dvě žluté nebo červená = vyloučení do konce zápasu.' : 'Fauly: šťouchnutí zezadu, hůl do nohou, bodyček zezadu, na mantinel nebo do hráče bez puku → vyloučení (hra 5 na 4).', R.W / 2, 668);
     ctx.fillText('Klávesnice 1: WASD, J=A, K=X, L=B, I=Y, U=LT, Mezerník=sprint, Esc=pauza   •   Klávesnice 2: šipky, Num1=A, Num2=X, Num3=B, Num5=Y, Num7=LT, Num0=sprint, Enter=pauza', R.W / 2, 690);
     ctx.font = font(14, 'bold'); ctx.fillStyle = ACC; ctx.fillText('A / B — zpět', R.W / 2, 740);
   },
@@ -793,7 +806,7 @@ const App = {
   pauseItems(g) {
     const it = [['go', 'POKRAČOVAT'], ['tac', 'TAKTIKA FORMACÍ']];
     const hum = g.teams.filter((t) => t.humans.length);
-    if (!g.shootout && !g.practice) for (const t of hum) it.push([{ t }, (t.wantPull ? 'VRÁTIT BRANKÁŘE' : 'ODVOLAT BRANKÁŘE') + (hum.length > 1 ? ' ' + t.def.abbr : '')]);
+    if (!g.shootout && !g.practice && !g.fb) for (const t of hum) it.push([{ t }, (t.wantPull ? 'VRÁTIT BRANKÁŘE' : 'ODVOLAT BRANKÁŘE') + (hum.length > 1 ? ' ' + t.def.abbr : '')]);
     it.push(['stats', 'STATISTIKY ZÁPASU'], ['help', 'OVLÁDÁNÍ'], ['quit', 'UKONČIT ZÁPAS']);
     return it;
   },

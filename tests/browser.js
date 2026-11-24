@@ -49,6 +49,20 @@ try { ({ chromium } = require('playwright')); } catch (e) { console.log('Playwri
     });
     await p.waitForTimeout(800);
     step('zápas s náhodným ovládáním doběhl', res.startsWith('final') && errs.length === 0, res + (errs[0] ? '  ' + errs[0] : ''));
+    // fotbal: zápas s náhodným ovládáním
+    const fb = await p.evaluate(() => {
+      const d = Input.pads[0];
+      __app.sport = 'football'; __app.game = new Football({ home: 3, away: 8, humans: [{ dev: d, team: 0, assist: 0 }], ...__app.ruleCfg(), periodLen: 60 }); __app.screen = 'game';
+      const g = __app.game;
+      for (let i = 0; i < 60 * 400 && g.state !== 'final'; i++) {
+        if (i % 30 === 0) { for (const a of [0, 1, 2, 3]) __pad.axes[a] = Math.random() * 2 - 1; for (const k of [0, 1, 2, 3, 6]) { const on = Math.random() < 0.2; __pad.buttons[k].pressed = on; __pad.buttons[k].value = on ? 1 : 0; } }
+        Input.poll(1 / 60); g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay();
+      }
+      return g.state + ' ' + g.teams.map((t) => t.score).join(':');
+    });
+    await p.waitForTimeout(1200);
+    step('fotbalový zápas doběhl a vykreslil se', fb.startsWith('final') && errs.length === 0, fb + (errs[0] ? '  ' + errs[0] : ''));
+    await p.evaluate(() => { __app.helpFrom = 'pause'; __app.screen = 'help'; }); await p.waitForTimeout(400); await p.evaluate(() => { __app.screen = 'game'; });
     await p.evaluate(() => { __app.statView = true; __app.statTeam = 0; }); await p.waitForTimeout(500);
     step('statistiky zápasu se vykreslí', errs.length === 0, errs[0] || '');
   } catch (e) { step('test v prohlížeči', false, e.message.split('\n')[0]); }

@@ -108,13 +108,14 @@ gameMixin(class {
     if (ast >= 2 && aimY == null) aimY = null; // plná asistence: bez míření páčkou střílí sám do volného rohu
     const empty = this.goalieOff(this.other(p.team));
     if (empty) ty = (aimY != null ? aimY * 1.2 : 0) + rand(-0.8, 0.8);
-    else if (aimY != null) ty = aimY * 2.45;
+    else if (aimY != null) ty = aimY * (RINK.NET_W - 0.55);
     else {
       const off = g.y;
-      ty = (Math.abs(off) > 0.4 ? -sgn(off) : pick([-1, 1])) * 2.45;
+      ty = (Math.abs(off) > 0.4 ? -sgn(off) : pick([-1, 1])) * (RINK.NET_W - 0.55);
       if (Math.random() < 0.25) ty *= rand(0, 0.6);
     }
-    const tz = empty ? rand(0.1, 1.2) : opt.z === 'high' ? rand(2.5, 3.75) : opt.z === 'low' ? rand(0.1, 0.6) : slap ? rand(0.15, 3.6) : rand(0.25, 3.3);
+    const nh = RINK.NET_H / 4;   // výška branky (hokej 4 stopy)
+    const tz = (empty ? rand(0.1, 1.2) : opt.z === 'high' ? rand(2.5, 3.75) : opt.z === 'low' ? rand(0.1, 0.6) : slap ? rand(0.15, 3.6) : rand(0.25, 3.3)) * nh;
     const dx = nx - pk.x, dy = ty - pk.y, d = Math.hypot(dx, dy);
     const ft = this.fat(p);
     // bekhend: střela „přes tělo" (hráč není natočený k brance) – slabší a méně přesná, ale brankáře zaskočí

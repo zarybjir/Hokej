@@ -151,6 +151,20 @@ hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzděn
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
+## Fotbal (malá kopaná 5+1)
+
+V hlavním menu je nahoře **FOTBAL**, pod ním **HOKEJ**. Fotbal se hraje ve stejné hale na trávníku
+uvnitř mantinelů: 5 hráčů v poli a brankář, dva poločasy, stejné týmy a soupisky jako v hokeji
+(střídá se po pětkách jako v hokeji).
+
+- **Pravidla:** míč za postranní čárou = aut (rozehrává se nohou), za brankovou čárou roh nebo kop
+  od branky, po gólu výkop. Faul = volný kop, ve vápně penalta. Žlutá a červená karta – po červené
+  (nebo dvou žlutých) hraje tým do konce zápasu v oslabení. Při remíze prodloužení na první gól, pak penalty.
+- **Ovládání s míčem:** A přihrávka, Y vysoký míč, X střela (drž = rána, páčkou míříš), B klička,
+  pravá páčka vede míč. **Bez míče:** X odebrání ve stoje, B skluz (do hráče = faul, zezadu karta),
+  LT obranný postoj.
+- Kariéra, trénink a výzvy jsou zatím jen hokejové.
+
 ## Legion Go S / Steam Deck (SteamOS)
 
 1. Přepni do **plochy** (Steam → Napájení → Přepnout na plochu).

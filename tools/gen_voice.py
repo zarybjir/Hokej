@@ -35,6 +35,9 @@ PHRASES = [
     'O vítězi rozhodnou samostatné nájezdy!', 'Nájezd.', 'Proměnil!', 'Je to tam!', 'Neproměnil.', 'Zákrok!', 'Brankář vyhrál souboj.', 'Trestné střílení!',
     'Brankář jede na střídačku!', 'Odvolávají brankáře!', 'Do prázdné branky!',
     'Domácí drží soupeře v pásmu.', 'Velký tlak v útočném pásmu!', 'Soupeř se nemůže dostat z pásma.', 'Jsou na vlně!',
+    # fotbal
+    'Začíná první poločas.', 'Začíná druhý poločas.', 'Konec prvního poločasu.', 'Konec druhého poločasu.', 'Aut.', 'Rohový kop.', 'Faul.',
+    'Žlutá karta.', 'Červená karta!', 'Penalta!', 'O vítězi rozhodnou penalty!',
     'Hattrick!', 'Jeho druhý gól!', 'Dva góly krátce po sobě!', 'Vyrovnáno!', 'Jdou do vedení!', 'Poslední minuta!', 'Zlomená hůl!',
 ] + surnames + cities
 
@@ -54,6 +57,8 @@ EN = {
     'O vítězi rozhodnou samostatné nájezdy!': 'We are going to a shootout!', 'Nájezd.': 'Here he comes.', 'Proměnil!': 'He scores!', 'Je to tam!': 'It is in!', 'Neproměnil.': 'No goal.', 'Zákrok!': 'Save!', 'Brankář vyhrál souboj.': 'The goalie wins that one.', 'Trestné střílení!': 'Penalty shot!',
     'Brankář jede na střídačku!': 'The goalie is heading to the bench!', 'Odvolávají brankáře!': 'They pull the goalie!', 'Do prázdné branky!': 'Into the empty net!',
     'Domácí drží soupeře v pásmu.': 'They are keeping the pressure on.', 'Velký tlak v útočném pásmu!': 'Huge pressure in the zone!', 'Soupeř se nemůže dostat z pásma.': 'They just cannot clear the puck.', 'Jsou na vlně!': 'They have all the momentum!',
+    'Začíná první poločas.': 'The first half is under way!', 'Začíná druhý poločas.': 'Here we go, second half!', 'Konec prvního poločasu.': 'That is half time.', 'Konec druhého poločasu.': 'The referee blows for full time.',
+    'Aut.': 'Out of play.', 'Rohový kop.': 'Corner kick.', 'Faul.': 'Foul.', 'Žlutá karta.': 'Yellow card.', 'Červená karta!': 'Red card! He is off!', 'Penalta!': 'Penalty!', 'O vítězi rozhodnou penalty!': 'We are going to penalties!',
     'Hattrick!': 'Hat trick!', 'Jeho druhý gól!': 'His second of the night!', 'Dva góly krátce po sobě!': 'Back to back goals!', 'Vyrovnáno!': 'We are tied!', 'Jdou do vedení!': 'They take the lead!', 'Poslední minuta!': 'One minute to go!', 'Zlomená hůl!': 'Broken stick!',
     'Zdá se, že je zraněný.': 'He seems to be hurt.', 'To nevypadá dobře.': 'That does not look good.', 'Zraněný hráč odchází do kabin.': 'The injured player is heading to the locker room.', 'nedohraje.': 'will not return.',
 }

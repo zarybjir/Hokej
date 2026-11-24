@@ -205,7 +205,7 @@ const R = {
       LED.panel(ctx, x, py, LED.width(txt, 2.5) + 24, 30, 2.5); LED.text(ctx, txt, x + 12, py + 15, 2.5, { color: '#ffd21f' }); py += 34;
     }
     for (const pn of g.penalties) {
-      const txt = `${pn.team.def.abbr} #${pn.player.num} ${pn.player.name}  ${this.clockStr(pn.left)}`;
+      const txt = `${pn.team.def.abbr} #${pn.player.num} ${pn.player.name}  ${pn.left > 1e6 ? 'ČERVENÁ KARTA' : this.clockStr(pn.left)}`;
       LED.panel(ctx, x, py, LED.width(txt, 2.5) + 40, 30, 2.5);
       this.chip(pn.team, x + 8, py + 7, 16);
       LED.text(ctx, txt, x + 26, py + 15, 2.5, { color: '#ff7a5a' }); py += 34;
@@ -315,7 +315,7 @@ const R = {
   },
   statsTable(g, x, y) {
     const ctx = this.ctx, [A, B] = g.teams;
-    const rows = [['GÓLY', A.score, B.score], ['STŘELY', A.shots, B.shots], ['HITY', A.hits, B.hits], ['VYLOUČENÍ', A.pim, B.pim], ['PŘESILOVKY', A.ppg + '/' + A.ppOpp, B.ppg + '/' + B.ppOpp]];
+    const rows = g.fb ? [['GÓLY', A.score, B.score], ['STŘELY NA BRANKU', A.shots, B.shots], ['ROHY', A.corners || 0, B.corners || 0], ['FAULY', A.pim, B.pim]] : [['GÓLY', A.score, B.score], ['STŘELY', A.shots, B.shots], ['HITY', A.hits, B.hits], ['VYLOUČENÍ', A.pim, B.pim], ['PŘESILOVKY', A.ppg + '/' + A.ppOpp, B.ppg + '/' + B.ppOpp]];
     this.chip(A, x - 160, y - 12, 24); LED.text(ctx, A.def.abbr, x - 90, y, 3, { align: 'right' });
     this.chip(B, x + 150, y - 12, 24); LED.text(ctx, B.def.abbr, x + 90, y, 3);
     rows.forEach((r, i) => {
@@ -329,9 +329,9 @@ const R = {
     const ctx = this.ctx, w = 600, h = 390, x = this.W / 2 - w / 2, y = 160;
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, this.W, this.H);
     LED.panel(ctx, x, y, w, h, 4, 0.94);
-    LED.text(ctx, 'KONEC ' + (g.period > 3 ? 'PRODLOUŽENÍ' : g.period + '. TŘETINY'), this.W / 2, y + 44, 4, { align: 'center' });
+    LED.text(ctx, g.fb ? (g.period === 1 ? 'POLOČAS' : g.period === 3 ? 'KONEC ZÁKLADNÍ DOBY' : 'KONEC PRODLOUŽENÍ') : 'KONEC ' + (g.period > 3 ? 'PRODLOUŽENÍ' : g.period + '. TŘETINY'), this.W / 2, y + 44, 4, { align: 'center' });
     this.statsTable(g, this.W / 2, y + 110);
-    { const q = Math.round(g.iceQuality()); LED.text(ctx, 'STAV LEDU ' + q + ' %', this.W / 2, y + h - 62, 2.5, { align: 'center', color: q > 70 ? '#7dff8a' : q > 45 ? '#ffd21f' : '#ff8a6a' }); }
+    if (!g.fb) { const q = Math.round(g.iceQuality()); LED.text(ctx, 'STAV LEDU ' + q + ' %', this.W / 2, y + h - 62, 2.5, { align: 'center', color: q > 70 ? '#7dff8a' : q > 45 ? '#ffd21f' : '#ff8a6a' }); }
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - POKRAČOVAT', this.W / 2, y + h - 28, 2.5, { align: 'center', color: '#ffd21f' });
     if (g.humans.length && g.cfg.zamboni !== 'off') LED.panel(ctx, this.W / 2 - 190, y + h + 8, 380, 36, 3, 0.9);
     if (g.humans.length && g.cfg.zamboni !== 'off') LED.text(ctx, g.cfg.zamboni === 'manual' ? 'ROLBA VYJÍŽDÍ...' : 'Y - ŘÍDIT ROLBU', this.W / 2, y + h + 26, 2.5, { align: 'center', color: '#9fe3ff' });
@@ -351,7 +351,7 @@ const R = {
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, this.W, this.H);
     LED.panel(ctx, x, y, w, h, 4, 0.95);
     LED.text(ctx, 'KONEC ZÁPASU', this.W / 2, y + 42, 5, { align: 'center' });
-    const win = g.winner ? 'VÍTĚZ: ' + g.winner.def.city + ' ' + g.winner.def.name + (g.soWinner ? ' (NÁJEZDY)' : g.period > 3 ? ' (PRODL.)' : '') : 'REMÍZA';
+    const win = g.winner ? 'VÍTĚZ: ' + g.winner.def.city + ' ' + g.winner.def.name + (g.soWinner ? (g.fb ? ' (PENALTY)' : ' (NÁJEZDY)') : g.period > 3 ? ' (PRODL.)' : '') : 'REMÍZA';
     LED.text(ctx, win, this.W / 2, y + 88, 3, { align: 'center', color: '#ffd21f' });
     this.statsTable(g, this.W / 2, y + 136);
     LED.text(ctx, 'HVĚZDY ZÁPASU', this.W / 2, y + 338, 3, { align: 'center' });

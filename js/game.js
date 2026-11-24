@@ -11,6 +11,16 @@ const DIFF = [
 const REF_TEAM = { jersey: '#f2f2f2', stripe: '#111111', numCol: '#111111', helmet: '#121212', pants: '#111111',
   def: { c1: '#111111', c2: '#f2f2f2', c3: '#111111', abbr: '', pants: '#111111' } };
 const PH = { GRIP: 112, BRAKE: 85, ACC: 40, MAXV: 25, TURBO: 1.27, GLIDE: 0.55, PF: 0.2, G: 32, PR: 0.3, PLR: 1.2, GR: 1.6, BE: 0.6 };
+// ---------- sport: hokej (výchozí) nebo malá kopaná ----------
+// Fotbal používá stejné jádro: mění jen fyziku pohybu a míče a velikost branky (viz football.js).
+const PH_HOCKEY = { ...PH, BZ: 0.3 };
+const PH_FOOTBALL = { GRIP: 300, BRAKE: 150, ACC: 62, MAXV: 21, TURBO: 1.28, GLIDE: 7, PF: 0.6, PR: 0.36, PLR: 1.0, GR: 1.3, BE: 0.5, BZ: 0.55 };
+let SPORT = 'hockey';
+function applySport(s) {
+  SPORT = s === 'football' ? 'football' : 'hockey';
+  Object.assign(PH, PH_HOCKEY, SPORT === 'football' ? PH_FOOTBALL : {});
+  Object.assign(RINK, SPORT === 'football' ? { NET_W: 5, NET_H: 6.5 } : { NET_W: 3, NET_H: 4 });
+}
 const SWING_T = 0.13; // doba švihu od nápřahu k úderu do puku
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
@@ -79,6 +89,7 @@ class Player {
 class Game {
   constructor(cfg) {
     this.cfg = cfg; this.silent = !!cfg.silent; this.demo = !!cfg.demo;
+    this.fb = cfg.sport === 'football'; applySport(cfg.sport);
     this.diff = DIFF[cfg.diff == null ? 1 : cfg.diff];
     this.periodLen = cfg.periodLen || 180;
     this.otMode = cfg.ot || '3v3';   // '3v3' | '5v5' | 'off'

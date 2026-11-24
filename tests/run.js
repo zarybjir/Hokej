@@ -258,6 +258,69 @@ test('nálada zápasu: gól dá momentum, počítač při prohře v závěru ris
   ok(['heavy', 'pass', 'trap', 'gun'].includes(A.style), 'tým nemá herní styl');
 });
 
+// ---------- fotbal ----------
+function fbPlay(G, cfg, each) {
+  const g = new G.Football({ humans: [], silent: true, periodLen: 120, ...cfg });
+  for (let t = 0; g.state !== 'final' && t < 4000; t += 1 / 60) { g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay(); if (each) each(g); }
+  return g;
+}
+
+test('fotbal: zápasy počítač × počítač doběhnou, rozehrání a čísla dávají smysl', (G) => {
+  const N = 6; let goals = 0, shots = 0, outs = 0, corners = 0, fouls = 0, bad = '', outT = 0;
+  const kinds = {}; const rf = G.Football.prototype.resolveFaceoff; G.Football.prototype.resolveFaceoff = function () { kinds[this.cur.kind] = (kinds[this.cur.kind] || 0) + 1; return rf.call(this); };
+  for (let n = 0; n < N; n++) {
+    const g = fbPlay(G, { home: n * 4, away: n * 4 + 2 }, (g) => {
+      const pk = g.puck; if (!isFinite(pk.x + pk.y + pk.z)) bad = 'míč má neplatnou polohu';
+      for (const p of g.all) if (!isFinite(p.x + p.y)) bad = 'hráč má neplatnou polohu';
+      for (const t of g.teams) if (t.skaters.length > 5) bad = 'víc než 5 hráčů v poli';
+      if (g.state === 'play' && (Math.abs(pk.y) > G.FB.HW + 2 || Math.abs(pk.x) > G.RINK.GOAL_X + 4.5) && !pk.inNet) outT++;
+    });
+    ok(g.state === 'final' && g.winner, 'zápas ' + n + ' neskončil vítězem (stav ' + g.state + ')');
+    ok(g.period !== 3, 'fotbal nemá třetí třetinu');
+    goals += g.teams[0].score + g.teams[1].score; shots += g.teams[0].shots + g.teams[1].shots; outs += g.outs || 0; corners += g.corners || 0; fouls += g.fouls || 0;
+  }
+  ok(!bad, bad); ok(outT < 30, 'míč zůstával ve hře mimo hřiště (' + outT + ' snímků)');
+  between(goals / N, 1, 8, 'góly na zápas'); between(shots / N, 5, 30, 'střely na zápas');
+  ok(outs > 0 && corners > 0 && kinds.goalkick > 0 && kinds.kickoff >= N * 2, 'chybí některý druh rozehrání: ' + JSON.stringify(kinds));
+  between(fouls / N, 0.5, 9, 'fauly na zápas');
+});
+
+test('fotbal: aut, roh a kop od branky podle toho, kdo se míče dotkl naposled', (G) => {
+  const mk = () => { const g = new G.Football({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60); g.thinkAll = () => {}; return g; };
+  let g = mk(), A = g.teams[0], B = g.teams[1], pk = g.puck;
+  Object.assign(pk, { owner: null, held: null, x: 10, y: G.FB.HW - 0.5, vx: 0, vy: 30, z: 0, lastTouch: A.skaters[0] });
+  for (let i = 0; i < 10 && g.state === 'play'; i++) g.update(1 / 60);
+  ok(g.state === 'stop' && g.rs.kind === 'kickin' && g.rs.team === B, 'aut nepřipadl soupeři');
+  g = mk(); A = g.teams[0]; B = g.teams[1]; pk = g.puck;
+  const end = A.dir * (G.RINK.GOAL_X - 0.5);   // branková čára, na kterou útočí A (brání ji B)
+  Object.assign(pk, { owner: null, held: null, x: end, y: 20, vx: A.dir * 30, vy: 0, z: 0, lastTouch: B.skaters[0] });
+  for (let i = 0; i < 10 && g.state === 'play'; i++) g.update(1 / 60);
+  ok(g.state === 'stop' && g.rs.kind === 'corner' && g.rs.team === A, 'po teči obránce nebyl roh');
+  g = mk(); A = g.teams[0]; B = g.teams[1]; pk = g.puck;
+  Object.assign(pk, { owner: null, held: null, x: A.dir * (G.RINK.GOAL_X - 0.5), y: 20, vx: A.dir * 30, vy: 0, z: 0, lastTouch: A.skaters[0] });
+  for (let i = 0; i < 10 && g.state === 'play'; i++) g.update(1 / 60);
+  ok(g.state === 'stop' && g.rs.kind === 'goalkick' && g.rs.team === B, 'po střele vedle nebyl kop od branky');
+  for (let i = 0; i < 60 * 4; i++) g.update(1 / 60);
+  ok(g.state === 'play', 'hra po kopu od branky nepokračuje');
+});
+
+test('fotbal: faul ve vápně je penalta, mimo vápno volný kop, červená karta oslabí tým', (G) => {
+  const mk = () => { const g = new G.Football({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60); return g; };
+  let g = mk(), A = g.teams[0], B = g.teams[1], v = A.skaters[0], o = B.skaters[0];
+  v.x = A.dir * (G.RINK.GOAL_X - 10); v.y = 0; g.puck.owner = v; g.foul(o, v, 'trip');
+  ok(g.psPending, 'faul ve vápně nebyl penalta');
+  let was = false; for (let i = 0; i < 60 * 12; i++) { g.update(1 / 60); if (g.state === 'shootout') was = true; if (g.state === 'replay') g.endReplay(); }
+  ok(was && g.state !== 'shootout' && !g.shootout, 'penalta neproběhla nebo hra nepokračuje');
+  g = mk(); A = g.teams[0]; B = g.teams[1]; v = A.skaters[0]; o = B.skaters[0];
+  v.x = 0; v.y = 10; g.puck.owner = v; g.foul(o, v, 'trip');
+  ok(g.state === 'stop' && g.rs.kind === 'freekick' && g.rs.team === A, 'faul mimo vápno nebyl volný kop');
+  g = mk(); A = g.teams[0]; B = g.teams[1]; v = A.skaters[0]; o = B.skaters[1]; o.yc = 1;
+  for (let k = 0; k < 40 && !g.reds; k++) { if (g.state !== 'play') { for (let i = 0; i < 300 && g.state !== 'play'; i++) g.update(1 / 60); } v = A.skaters[0]; v.x = 0; v.y = 0; v.downT = 0; if (!o.inBox) g.foul(o, v, 'back'); }
+  ok(g.reds === 1 && o.inBox, 'druhá žlutá neznamenala vyloučení');
+  for (let i = 0; i < 60 * 6; i++) { g.update(1 / 60); if (g.state === 'replay') g.endReplay(); }
+  ok(B.skaters.length === 4, 'tým po červené kartě nehraje ve čtyřech (hraje v ' + B.skaters.length + ')');
+});
+
 // ---------- spuštění ----------
 const filter = process.argv[2];
 let fail = 0; const t0 = Date.now();

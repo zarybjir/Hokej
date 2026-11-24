@@ -39,12 +39,14 @@ function ik2(a, b, c, target, pole, la, lb) {
 
 // ---------- materiál těla: barvy podle oblastí + objem výstroje ----------
 const BODY_VERT_HEAD = `
-uniform float uInfl;
+uniform float uInfl, uFoot;
 attribute float aArm;
 varying vec3 vPos;
 varying float vArm;
 // trup pod dresem: místo úzkého pasu modelu souvislý tvar přes chrániče (elipsa v průřezu)
-float torsoM(vec3 p) {
+float torsoM0(vec3 p);
+float torsoM(vec3 p) { return (1.0 - uFoot) * torsoM0(p); }   // fotbalista nemá chrániče
+float torsoM0(vec3 p) {
   float armM = aArm;
   return (1.0 - armM) * smoothstep(0.9, 0.99, p.y) * (1.0 - smoothstep(1.43, 1.5, p.y));
 }
@@ -52,7 +54,7 @@ vec2 torsoR(float y) { return vec2(mix(0.2, 0.215, smoothstep(1.05, 1.38, y)), m
 `;
 const LEG_FN = `
 // nohy: hokejové kalhoty ke kolenům, chránič kolene a holeně pod štulpnou (válec kolem osy nohy)
-float legM(vec3 p) { return (1.0 - aArm) * smoothstep(0.1, 0.16, p.y) * (1.0 - smoothstep(0.93, 0.99, p.y)); }
+float legM(vec3 p) { return (1.0 - uFoot) * (1.0 - aArm) * smoothstep(0.1, 0.16, p.y) * (1.0 - smoothstep(0.93, 0.99, p.y)); }
 vec2 legC(vec3 p) { return vec2(sign(p.x + 1e-5) * 0.105, mix(-0.045, -0.02, smoothstep(0.1, 0.9, p.y))); }
 float legR(float y) {
   float r = mix(0.066, 0.08, smoothstep(0.44, 0.53, y));             // holeň → koleno
@@ -122,7 +124,7 @@ vPos = position; vArm = aArm;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
-uniform float uRef, uStyle, uYoke, uHasMap;
+uniform float uRef, uStyle, uYoke, uHasMap, uFoot;
 varying vec3 vPos;
 varying float vArm;
 // pruhy (lem dresu, rukávy, štulpny): t = vzdálenost od okraje v metrech
@@ -209,6 +211,13 @@ const BODY_FRAG = `
     // štulpny: stejné pruhy jako dres
     c = band(uSock, y - 0.29);
   } else c = vec3(0.03);
+  if (uFoot > 0.5 && uRef < 0.5) {
+    // fotbalový dres: krátký rukáv, trenýrky nad kolena, podkolenky
+    if (vArm > 0.5) { if (ax > 0.66) c = uGlove; else if (ax > 0.42) c = uSkin; }
+    else if (y > 1.5 && y <= 1.535 && ax < 0.08) c = uSkin;
+    else if (y <= 0.72 && y > 0.5) { c = uSkin; fab = 1.0; }
+    else if (y <= 0.5 && y > 0.115) c = uSock;
+  }
   diffuseColor.rgb = c * fab;
 }
 `;
@@ -243,9 +252,9 @@ function bodyMaterialFinish(T, p, c, ref) {
   const idx = TEAMS.indexOf(T.def);
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
-    uInfl: { value: p.isGoalie ? 1.55 : 1 },
+    uInfl: { value: p.isGoalie && SPORT !== 'football' ? 1.55 : 1 }, uFoot: { value: SPORT === 'football' ? 1 : 0 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
-    uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
+    uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
     uHasMap: { value: 0 },
@@ -256,7 +265,7 @@ function bodyMaterialFinish(T, p, c, ref) {
     sh.vertexShader = BODY_VERT_HEAD + LEG_FN + sh.vertexShader.replace('#include <beginnormal_vertex>', BODY_NORMAL).replace('#include <begin_vertex>', BODY_VERT);
     sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + BODY_FRAG);
   };
-  m.customProgramCacheKey = () => 'hokej-body5';
+  m.customProgramCacheKey = () => 'hokej-body6';
   m.userData.tex = tex;
   return m;
 }
@@ -363,15 +372,22 @@ class HModel {
       this.root.add(m); m.updateMatrixWorld(true); bone.attach(m); return m;
     };
     const blk = G.mat.boot, steel = G.mat.steel, white = G.mat.whitePlastic;
+    const foot = this.foot = SPORT === 'football';   // fotbal: kopačky bez nožů, žádná helma, rukavice ani hůl
     for (const s of [1, -1]) {
       const F = s > 0 ? B.LeftFoot : B.RightFoot, x = s * 0.082;
       add(F, G.hgeo.boot, blk, x, 0.06, 0.04);
       add(F, G.hgeo.toeCap, blk, x, 0.035, 0.15);
+      if (foot) continue;
       add(F, G.hgeo.tendon, blk, x, 0.12, -0.07);
       add(F, G.hgeo.holder, white, x, -0.005, 0.045);
       add(F, G.hgeo.runner, steel, x, -0.032, 0.045, false);
     }
-    if (p.isRef) {
+    if (foot) {
+      // vlasy: přiléhavá čepička v přirozené barvě (podle jména, ať je hráč pořád stejný)
+      let hh = 5; for (const ch of String(p.name) + p.num) hh = (hh * 31 + ch.charCodeAt(0)) >>> 0;
+      const hair = add(B.Head, G.hgeo.helmet, new THREE.MeshStandardMaterial({ color: [0x2a1d14, 0x4a3320, 0x7a5a32, 0xc9a45a, 0x1a1a1c, 0x8a4a22][hh % 6], roughness: 0.95 }), 0, 1.675, -0.012);
+      hair.scale.multiplyScalar(0.9);
+    } else if (p.isRef) {
       add(B.Head, G.hgeo.helmet, this.helmetMat, 0, 1.69, -0.006);
     } else if (!p.isGoalie) {
       add(B.Head, G.hgeo.helmet, this.helmetMat, 0, 1.69, -0.006);
@@ -412,7 +428,7 @@ class HModel {
     else { this.blade = sm(G.geo.blade, G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); }
     G.scene.add(this.root, this.stick);
   }
-  setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef; }
+  setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef && !this.foot; }
   dispose() {
     this.helmetMat.map.dispose(); this.helmetMat.dispose();
     this.G.scene.remove(this.root, this.stick);
@@ -454,9 +470,10 @@ class HModel {
     this.stick.position.set(0, 0, 0); this.stick.quaternion.identity();
     const down = p.downT > 0;
     if (this.isRef) return this.poseRef(p, t, O, F, Lv, J);
-    if (this.goalie) this.poseGoalie(p, t, O, F, Lv, J);
+    if (this.foot) this.poseFoot(down ? { ...p, spdN: 0, windT: 0, stride: 0 } : p, t, O, F, Lv, J);
+    else if (this.goalie) this.poseGoalie(p, t, O, F, Lv, J);
     else this.poseSkater(down ? { ...p, spdN: 0, windT: 0, pokeA: 0, carry: false, stride: 0 } : p, t, O, F, Lv, J, down);
-    if (down) {
+    if (down && !(this.foot && p.slideT > 0)) {
       // pád: tělo se překlopí kolem bodu na ledě, hůl leží vedle
       const dl = [Math.cos(p.lie), Math.sin(p.lie)], k3 = new THREE.Vector3(-dl[1], 0, -dl[0]);
       const q = new THREE.Quaternion().setFromAxisAngle(k3, 1.5), pivot = O.clone();
@@ -582,6 +599,43 @@ class HModel {
     aimBone(bH, bM, wpos(bH).addScaledVector(sdir, 0.5));
     const ta = p.dir + p.hand * 0.7, toe = new THREE.Vector3(Math.cos(ta), 0, -Math.sin(ta));
     this.placeStick(heel, top, toe, F);
+  }
+  // ---------- fotbal: běh, kop, skluz, brankář ----------
+  poseFoot(p, t, O, F, Lv, J) {
+    const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 24), ph = (p.stride || 0) * 1.6, wind = Math.min(1, p.windT || 0);
+    const slide = p.slideT > 0, sv = G && p.saveT > 0 ? p.saveKind : 0, ready = G ? 1 - spd : 0;
+    const kick = Math.max(p.shotFT > 0 ? p.shotFT / (p.shotSlap ? 0.5 : 0.32) : 0, p.passFT > 0 ? p.passFT / 0.3 : 0), kk = Math.sin(clamp(kick, 0, 1) * Math.PI);
+    const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;
+    this.root.position.set(O.x, 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd + 0.32 * ready + 0.15 * wind), O.z);
+    this.root.updateMatrixWorld(true);
+    const lean = slide ? -0.95 : 0.06 + 0.32 * spd + 0.14 * ready + 0.1 * tired - 0.25 * kk;
+    rotAxis(B.Hips, Lv, lean * 0.55);
+    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
+    if (sv === 2 || sv === 3) rotAxis(B.Hips, F, (sv === 2 ? -1 : 1) * 0.75);   // skok po míči do strany
+    if (p.stagT > 0) rotAxis(B.Hips, F, Math.sin(p.stagT * 22) * 0.16 * (p.stagT / 0.4));
+    const cs = this.cs; if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
+    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean * 0.45 / 3 * (cs ? 1 - cs.w : 1));
+    rotAxis(B.Neck, Lv, -lean * 0.4);
+    // nohy: běžecký krok, stojná šířka podle postoje
+    const sw = Math.sin(ph) * spd, cw = Math.cos(ph), st = 0.42 + 0.5 * ready;
+    let fL = J(0.05 - 1.5 * sw, st, Math.max(0, cw) * 1.0 * spd), fR = J(0.05 + 1.5 * sw, -st, Math.max(0, -cw) * 1.0 * spd);
+    // kop: noha u míče se napřáhne dozadu a švihne dopředu
+    const kf = wind > 0 ? J(-1.7 * wind, p.hand * 0.5, 1.3 * wind) : kk > 0 ? J(0.5 + 2.2 * kk, p.hand * 0.5, 1.5 * kk) : null;
+    if (kf) { if (p.hand >= 0) fL = kf; else fR = kf; }
+    if (slide) { fL = J(2.7, 0.4, 0.3); fR = J(1.3, -0.55, 0.1); }
+    if (sv === 1) { fL = J(-0.2, 1.7, 0); fR = J(-0.2, -1.7, 0); }
+    this.legs(fL, fR, F.clone().addScaledVector(Lv, 0.2), F.clone().addScaledVector(Lv, -0.2), 0.12, -0.12, F);
+    if (cs && cs.w > 0.5) return;   // oslava gólu
+    // ruce: při běhu proti nohám, brankář je má připravené od těla
+    const dn = new THREE.Vector3(0, -1, 0);
+    for (const sd of [1, -1]) {
+      const [A, Fa, Hd] = sd > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand] : [B.RightArm, B.RightForeArm, B.RightHand];
+      const sh = wpos(A), a = sd > 0 ? sw : -sw;
+      let tgt = sh.clone().addScaledVector(Lv, sd * 0.3).addScaledVector(F, 0.3 + 1.0 * a).add(new THREE.Vector3(0, -1.35 + 0.55 * Math.abs(a), 0));
+      if (G) tgt = sh.clone().addScaledVector(Lv, sd * (0.9 + 0.3 * ready)).addScaledVector(F, 0.9).add(new THREE.Vector3(0, -0.7 + ((sv === 2 && sd > 0) || (sv === 3 && sd < 0) ? 1.9 : sv === 1 ? -0.9 : 0), 0));
+      if (slide) tgt = sh.clone().addScaledVector(Lv, sd * 0.9).addScaledVector(F, -0.8).add(new THREE.Vector3(0, -0.9, 0));
+      ik2(A, Fa, Hd, tgt, dn.clone().addScaledVector(F, -0.6).addScaledVector(Lv, sd * 0.5), this.L.upper, this.L.fore);
+    }
   }
   poseRef(p, t, O, F, Lv, J) {
     const B = this.b, spd = Math.min(1, (p.spdN || 0) / 24), ph = p.stride || 0;

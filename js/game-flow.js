@@ -34,7 +34,7 @@ gameMixin(class {
     if (oppPen.length > ownPen.length) {
       team.ppg++; ppNote = 'Gól v přesilovce';
       const pn = oppPen.reduce((a, b) => (a.left < b.left ? a : b));
-      this.endPenalty(pn, false);
+      if (pn.left < 1e6) this.endPenalty(pn, false);   // červená karta gólem nekončí
     }
     if (ppNote !== 'Gól v přesilovce') { for (const q of team.skaters) q.stats.pm++; for (const q of opp.skaters) q.stats.pm--; }
     // komentář k průběhu: hattrick, druhý gól, dva góly po sobě, vyrovnání, vedení
@@ -96,7 +96,7 @@ gameMixin(class {
       px: pk.x, py: pk.y, pz: pk.z,
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
-        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, stagT: p.stagT, stamina: p.stamina, noStick: p.noStick > 0, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
+        windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, slideT: p.slideT, stagT: p.stagT, stamina: p.stamina, noStick: p.noStick > 0, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
         pkOff: p.carry ? p.pkOff : null, num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();

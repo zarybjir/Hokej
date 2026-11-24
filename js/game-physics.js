@@ -165,8 +165,8 @@ gameMixin(class {
         let near = 1e9;
         for (const o of this.other(g.team).skaters) near = Math.min(near, Math.hypot(o.x - g.x, o.y - g.y));
         const human = g.team.humans.length > 0;
-        if (near < 13 || g.holdT > (human ? 3 : 2.2)) this.whistle('ZAKRYTÝ PUK', [sN * 69, (pk.y >= 0 ? 1 : -1) * 22]);
-        else if (!human || g.holdT > 1.6) {
+        if (!this.fb && (near < 13 || g.holdT > (human ? 3 : 2.2))) this.whistle('ZAKRYTÝ PUK', [sN * 69, (pk.y >= 0 ? 1 : -1) * 22]);
+        else if (!human || g.holdT > (this.fb ? 2.5 : 1.6)) {   // fotbalový brankář vždy rozehraje
           let best = null, bs = -1e9;
           for (const q of g.team.skaters) { if (q.downT > 0) continue; const sc = this.openScore(q, g); if (sc > bs) { bs = sc; best = q; } }
           if (best) this.passTo(g, best.x, best.y, false, best);
@@ -176,7 +176,7 @@ gameMixin(class {
     let tx, ty;
     if (sN * pk.x > gl) { tx = sN * (gl - 1.3); ty = (pk.y >= 0 ? 1 : -1) * 2.3; }
     else {
-      const dx = pk.x - gx, dy = pk.y, d = Math.hypot(dx, dy) || 1, r = clamp(1.6 + d * 0.045, 1.6, 4.2);
+      const dx = pk.x - gx, dy = pk.y, d = Math.hypot(dx, dy) || 1, r = clamp(1.6 + d * 0.045, 1.6, this.fb ? 6 : 4.2);
       tx = gx + (dx / d) * r; ty = (dy / d) * r;
       if (!pk.owner && !pk.held && pk.vx * sN > 20) {
         const t = (gx - pk.x) / pk.vx;
@@ -224,7 +224,7 @@ gameMixin(class {
         if (d < 2.2 && pk.z < 2 && sN * pk.x > RINK.GOAL_X - 12) { this.goalieCover(g); return; }
         continue;
       }
-      if (pk.vx * sN <= 0 || pk.z > 6) continue;
+      if (pk.vx * sN <= 0 || pk.z > RINK.NET_H + 2) continue;
       // puk míjí rovinu brankáře (nebo letí přímo do něj)
       const gu = sN * g.x, pu = sN * px, cu = sN * pk.x;
       let lat;
@@ -237,13 +237,13 @@ gameMixin(class {
         const yA = pk.y + pk.vy * tt, zA = pk.z + pk.vz * tt - 0.5 * PH.G * tt * tt;
         onNet = Math.abs(yA) < RINK.NET_W + 0.2 && zA < RINK.NET_H + 0.3;
       }
-      const reach = 3.2 + 0.6 * g.gk;
+      const reach = (this.fb ? 5.2 : 3.2) + 0.6 * g.gk;   // fotbalová branka je širší
       if ((!onNet && lat > 1.2) || lat > reach) { pk.ignore.set(g, this.time + 0.5); continue; }
-      let sv = 0.974 + (g.gk - 1) * 0.6;
+      let sv = (this.fb ? 0.965 : 0.974) + (g.gk - 1) * 0.6;
       if (this.vsHuman) sv += t.cpu ? this.diff.cpuGk : this.diff.myGk;
       sv += [0.025, 0, -0.02][this.tacOf(t)];   // obranná taktika = horší šance soupeře, útočná = víc protiútoků
       sv -= clamp((sp - 60) / 200, 0, 0.22);
-      sv -= clamp((lat - 1.4) * 0.11, -0.05, 0.3);
+      sv -= clamp((lat - 1.4) * (this.fb ? 0.055 : 0.11), -0.05, 0.3);
       if (pk.oneTimer) sv -= 0.09;
       if (pk.reboundT > 0) sv -= 0.03;
       if (pk.deflT > 0) sv -= 0.12;
@@ -331,7 +331,7 @@ gameMixin(class {
     pk.x += pk.vx * h; pk.y += pk.vy * h;
     if (pk.z > 0 || pk.vz > 0) {
       pk.vz -= PH.G * h; pk.z += pk.vz * h;
-      if (pk.z <= 0) { pk.z = 0; if (pk.vz < -5) pk.vz = -pk.vz * 0.3; else pk.vz = 0; }
+      if (pk.z <= 0) { pk.z = 0; if (pk.vz < -5) pk.vz = -pk.vz * PH.BZ; else pk.vz = 0; }
     }
     if (pk.z <= 0.01) {
       // tření a poskakování puku podle stavu ledu (sníh brzdí, nerovnosti puk odrážejí)
