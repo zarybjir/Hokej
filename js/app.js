@@ -4,6 +4,10 @@ const PERIOD_OPTS = [1, 2, 3, 5, 10, 20];
 const ASSIST_NAMES = ['VYPNUTÁ', 'ČÁSTEČNÁ', 'PLNÁ (DĚTI)'];
 const ASSIST_HINT = 'ČÁSTEČNÁ: přepíná na hráče u puku, přesnější střely. PLNÁ: hráč sám napadá, střely míří samy.';
 const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.25];
+const PRACTICE = [['shoot', 'STŘELBA A PŘIHRÁVKY', 'Celá formace proti brankáři, bez soupeřů a bez času. Po gólu nebo zákroku dostaneš puk znovu.'],
+  ['pp', 'PŘESILOVKA 5 NA 4', 'Útočíš v pásmu proti čtyřem bránícím. Když puk vyjede z pásma, začíná se znovu.'],
+  ['so', 'NÁJEZDY – STŘÍLÍŠ', 'Nekonečné nájezdy na brankáře soupeře.'],
+  ['sog', 'NÁJEZDY – CHYTÁŠ', 'Řídíš brankáře: páčka = postavení, X = vypíchnout puk.']];
 const BIND_ACTIONS = [['a', 'PŘIHRÁVKA / PŘEPNUTÍ HRÁČE'], ['x', 'STŘELA / BODYČEK'], ['b', 'KLIČKA / ŠŤOUCHNUTÍ'], ['y', 'LOB / NAHOZENÍ'],
   ['rt', 'SPRINT'], ['lb', 'STŘÍDÁNÍ FORMACE'], ['start', 'PAUZA'], ['back', 'ZOOM']];
 const App = {
@@ -46,20 +50,22 @@ const App = {
         if (M.pressed('a') || M.pressed('start') || (Input.anyEvent && Input.keys.size) || (Touch.visible && Touch.touches.size)) { Sfx.init(); Sfx.resume(); this.go('title'); }
         break;
       case 'title': {
-        const items = 5;
+        const items = 7;
         this.menuMove(0, items, dt);
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 0) this.go('setup');
           else if (this.sel === 1) { this.go('career'); Career.enter(); }
-          else if (this.sel === 2) { this.setCat = 0; this.go('settings'); }
-          else if (this.sel === 3) { this.helpFrom = 'title'; this.go('help'); }
-          else if (this.sel === 4) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
+          else if (this.sel === 2) this.go('practice');
+          else if (this.sel === 3) this.go('ach');
+          else if (this.sel === 4) { this.setCat = 0; this.go('settings'); }
+          else if (this.sel === 5) { this.helpFrom = 'title'; this.go('help'); }
+          else if (this.sel === 6) { try { window.close(); } catch (e) {} this.quitMsg = 3; }
         }
         if (this.quitMsg) this.quitMsg = Math.max(0, this.quitMsg - dt);
         break;
       }
       case 'setup': {
-        this.menuMove(0, 7, dt);
+        this.menuMove(0, 8, dt);
         const d = this.lr(dt);
         if (d) {
           const nx = (v, o) => { v = (v + d + TEAMS.length) % TEAMS.length; return v === o ? (v + d + TEAMS.length) % TEAMS.length : v; };
@@ -69,19 +75,28 @@ const App = {
           if (this.sel === 3) { S.diff = clamp(S.diff + d, 0, DIFF.length - 1); this.kidsAssist(); }
           if (this.sel === 4) S.autoChange = !S.autoChange;
           if (this.sel === 5) S.penalties = S.penalties === false;
+          if (this.sel === 6) S.three = !S.three;
           Sfx.stick(0.4); Settings.save();
         }
         if (M.pressed('y')) { this.rosterTeam = this.sel === 1 ? S.away : S.home; this.rosterFrom = this.sel; this.go('roster'); break; }
         if (M.pressed('a') || M.pressed('start')) {
-          if (this.sel === 6 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
+          if (this.sel === 7 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
           else if (this.sel === 4) { S.autoChange = !S.autoChange; Settings.save(); }
           else if (this.sel === 5) { S.penalties = S.penalties === false; Settings.save(); }
-          else this.sel = Math.min(6, this.sel + 1);
+          else if (this.sel === 6) { S.three = !S.three; Settings.save(); }
+          else this.sel = Math.min(7, this.sel + 1);
         }
         if (M.pressed('b')) this.go('title');
         break;
       }
       case 'career': Career.update(dt); break;
+      case 'practice': {
+        this.menuMove(0, PRACTICE.length + 1, dt);
+        if (M.pressed('a') || M.pressed('start')) { if (this.sel < PRACTICE.length) this.startPractice(PRACTICE[this.sel][0]); else this.go('title', 2); }
+        if (M.pressed('b')) this.go('title', 2);
+        break;
+      }
+      case 'ach': if (M.pressed('a') || M.pressed('b')) this.go('title', 3); break;
       case 'roster': {
         const d = this.lr(dt);
         if (d) { this.rosterTeam = (this.rosterTeam + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
@@ -122,15 +137,15 @@ const App = {
         const cat = cats[this.setCat], n = cat.items.length + 1;
         this.menuMove(0, n, dt);
         const d = this.lr(dt), a = M.pressed('a');
-        if (this.sel === cat.items.length) { if (a) { Settings.save(); this.go('title', 2); break; } }
+        if (this.sel === cat.items.length) { if (a) { Settings.save(); this.go('title', 4); break; } }
         else if (d || a) { const it = cat.items[this.sel]; if (it.set) { it.set(d, a); Settings.save(); } }
-        if (M.pressed('b')) { Settings.save(); this.go('title', 2); }
+        if (M.pressed('b')) { Settings.save(); this.go('title', 4); }
         break;
       }
       case 'teamedit': break; // ovládá se formulářem (myš / dotyk / klávesnice)
       case 'help':
         if (M.pressed('a') || M.pressed('b') || M.pressed('start')) {
-          if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 3);
+          if (this.helpFrom === 'pause') { this.screen = 'game'; } else this.go('title', 5);
         }
         break;
       case 'game': {
@@ -202,7 +217,15 @@ const App = {
       if (s === 1 && humans.length < 4) humans.push({ dev: d, team: 1, assist });
     });
     Sfx.init(); Sfx.resume();
-    this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg() });
+    this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg(), three: !!S.three });
+    this.screen = 'game'; this.sel = 0;
+  },
+  // trénink: všechny ovladače hrají za domácí (tým z Exhibice), soupeř podle druhu cvičení
+  startPractice(kind) {
+    const S = Settings.data; let devs = Input.activeDevices(); if (!devs.length) devs = [Input.merged];
+    const humans = devs.slice(0, 4).map((d, i) => ({ dev: d, team: 0, assist: this.assistFor(d, i) }));
+    Sfx.init(); Sfx.resume();
+    this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg(), practice: kind, penalties: false, injuries: false, offside: false, icing: false, zamboni: 'off', shootout: true });
     this.screen = 'game'; this.sel = 0;
   },
   // pravidla a volby zápasu z Nastavení (exhibice i kariéra)
@@ -232,22 +255,22 @@ const App = {
     const d = this.demo;
     R.updateCam(d.puck.x, dt, d.camSnap, 0, d.puck.y); d.camSnap = false;
     R.drawWorld(d, d.all, d.puck, d.time, dt, { puckSpeed: Math.hypot(d.puck.vx, d.puck.vy) });
-    this.dim(this.screen === 'press' ? 0.35 : this.screen === 'help' || this.screen === 'roster' || this.screen === 'career' ? 0.82 : 0.6);
+    this.dim(this.screen === 'press' ? 0.35 : this.screen === 'help' || this.screen === 'roster' || this.screen === 'career' || this.screen === 'practice' || this.screen === 'ach' ? 0.82 : 0.6);
     if (this.screen === 'press' || this.screen === 'title') this.drawLogo();
     if (this.screen === 'press') {
       if (Math.floor(this.t * 1.6) % 2 === 0) R.chromeText('STISKNI  A  /  START', R.W / 2, 560, 34, '#fff', '#ffd21f');
       ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
       ctx.fillText('1–2 hráči  •  gamepad nebo klávesnice', R.W / 2, 620);
     }
-    if (this.screen === 'title') this.drawList(['EXHIBICE', 'KARIÉRA', 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 450);
+    if (this.screen === 'title') this.drawList(['EXHIBICE', 'KARIÉRA', 'TRÉNINK', 'VÝZVY  ' + Ach.done() + '/' + ACH.length, 'NASTAVENÍ', 'OVLÁDÁNÍ', 'UKONČIT'], 392);
     if ((this.screen === 'title' || this.screen === 'press') && (Upd.newer() || Upd.flash > 0 || Upd.busy && Upd.server && Upd.newer())) {
       const ctx = R.ctx, txt = Upd.flash > 0 || Upd.busy ? Upd.msg : 'K dispozici je nová verze ' + Upd.remote.version + ' – Nastavení → Aktualizace';
-      ctx.font = font(15, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#7dff8a'; ctx.fillText(txt, R.W / 2, 742);
+      ctx.font = font(15, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#7dff8a'; ctx.fillText(txt, R.W / 2, 772);
       if (Upd.flash > 0) Upd.flash -= 1 / 60;
     }
     if (this.screen === 'title' && this.quitMsg) {
       ctx.font = font(15, 'bold'); ctx.fillStyle = '#ffd21f'; ctx.textAlign = 'center';
-      ctx.fillText('Ukonči přes tlačítko Steam → Ukončit hru (nebo Alt+F4)', R.W / 2, 740);
+      ctx.fillText('Ukonči přes tlačítko Steam → Ukončit hru (nebo Alt+F4)', R.W / 2, 772);
     }
     if (this.screen === 'setup') this.drawSetup();
     if (this.screen === 'roster') this.drawRoster();
@@ -255,6 +278,40 @@ const App = {
     if (this.screen === 'ctrl') this.drawCtrl();
     if (this.screen === 'settings') this.drawSettings();
     if (this.screen === 'help') this.drawHelp();
+    if (this.screen === 'practice') this.drawPractice();
+    if (this.screen === 'ach') this.drawAch();
+  },
+  drawPractice() {
+    const ctx = R.ctx, S = Settings.data;
+    R.chromeText('TRÉNINK', R.W / 2, 90, 54);
+    ctx.font = font(15, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center';
+    ctx.fillText('Trénuješ s týmem ' + TEAMS[S.home].city + ' ' + TEAMS[S.home].name + ' (tým vybereš v Exhibici). Všechny ovladače hrají spolu.', R.W / 2, 150);
+    PRACTICE.forEach(([, name, desc], i) => {
+      const y = 220 + i * 92, on = this.sel === i;
+      R.panel(R.W / 2 - 380, y - 34, 760, 76, on ? 0.95 : 0.6);
+      if (on) { ctx.strokeStyle = '#ffd21f'; ctx.lineWidth = 2; ctx.strokeRect(R.W / 2 - 379, y - 33, 758, 74); }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = font(22); ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText(name, R.W / 2 - 355, y - 10);
+      ctx.font = font(14, 'bold'); ctx.fillStyle = '#cfd8ea'; ctx.fillText(desc, R.W / 2 - 355, y + 18);
+    });
+    const yb = 220 + PRACTICE.length * 92, on = this.sel === PRACTICE.length;
+    R.chromeText('ZPĚT', R.W / 2, yb, on ? 34 : 28, on ? '#fff8d0' : '#fff', on ? '#ffcc33' : '#8fa4c8');
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
+    ctx.fillText('↑↓ výběr   A začít   B zpět   •   Trénink skončíš v pauze (START) → UKONČIT', R.W / 2, 770);
+  },
+  drawAch() {
+    const ctx = R.ctx;
+    R.chromeText('VÝZVY', R.W / 2, 50, 46);
+    ctx.font = font(15, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.textAlign = 'center';
+    ctx.fillText('Splněno ' + Ach.done() + ' z ' + ACH.length + ' (platí exhibice, kariéra i trénink, pokud hraješ ty)', R.W / 2, 92);
+    ACH.forEach(([id, name, desc], i) => {
+      const col = i % 2, row = Math.floor(i / 2), x = R.W / 2 - 600 + col * 610, y = 120 + row * 52, got = !!Ach.got[id];
+      R.panel(x, y, 590, 46, got ? 0.92 : 0.5);
+      if (got) { ctx.fillStyle = '#ffd21f'; ctx.fillRect(x, y, 5, 46); }
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = font(17); ctx.fillStyle = got ? '#ffd21f' : '#8a93a6'; ctx.fillText((got ? '★ ' : '☆ ') + name, x + 16, y + 15);
+      ctx.font = font(12, 'bold'); ctx.fillStyle = got ? '#fff' : '#8a93a6'; ctx.fillText(desc, x + 16, y + 34);
+    });
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText('A / B zpět', R.W / 2, 786);
   },
   dim(a) { R.ctx.fillStyle = `rgba(2,6,20,${a})`; R.ctx.fillRect(0, 0, R.W, R.H); },
   drawLogo() {
@@ -325,7 +382,7 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [['DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP']];
+      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], ['FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['FORMÁT', S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
@@ -333,8 +390,8 @@ const App = {
       ctx.font = font(18); ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(n, R.W / 2 - 280, y);
       ctx.textAlign = 'right'; ctx.fillStyle = on ? '#ffd21f' : '#fff'; ctx.fillText((on ? '◄  ' : '') + v + (on ? '  ►' : ''), R.W / 2 + 280, y);
     });
-    const on = this.sel === 6;
-    R.chromeText('POKRAČOVAT  ►', R.W / 2, 640, on ? 38 : 30, on ? '#fff8d0' : '#fff', on ? '#ffcc33' : '#8fa4c8');
+    const on = this.sel === 7;
+    R.chromeText('POKRAČOVAT  ►', R.W / 2, 686, on ? 38 : 30, on ? '#fff8d0' : '#fff', on ? '#ffcc33' : '#8fa4c8');
     ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
     ctx.fillText('↑↓ výběr   ◄► změna   A potvrdit   Y soupiska a statistiky hráčů   B zpět', R.W / 2, 760);
   },
@@ -614,7 +671,7 @@ const App = {
   pauseItems(g) {
     const it = [['go', 'POKRAČOVAT'], ['tac', 'TAKTIKA FORMACÍ']];
     const hum = g.teams.filter((t) => t.humans.length);
-    if (!g.shootout) for (const t of hum) it.push([{ t }, (t.wantPull ? 'VRÁTIT BRANKÁŘE' : 'ODVOLAT BRANKÁŘE') + (hum.length > 1 ? ' ' + t.def.abbr : '')]);
+    if (!g.shootout && !g.practice) for (const t of hum) it.push([{ t }, (t.wantPull ? 'VRÁTIT BRANKÁŘE' : 'ODVOLAT BRANKÁŘE') + (hum.length > 1 ? ' ' + t.def.abbr : '')]);
     it.push(['help', 'OVLÁDÁNÍ'], ['quit', 'UKONČIT ZÁPAS']);
     return it;
   },
@@ -670,7 +727,7 @@ const App = {
     Input.poll(dt);
     try { App.update(dt); } catch (e) { console.error(e); if (!App.errShown) { App.errShown = true; showError('Chyba ve hře: ' + e.message); } }
     R.begin();
-    try { App.draw(dt); if (Touch.visible) Touch.draw(); } catch (e) { console.error(e); }
+    try { App.draw(dt); if (Touch.visible) Touch.draw(); Ach.draw(dt); } catch (e) { console.error(e); }
     R.end();
     requestAnimationFrame(frame);
   }

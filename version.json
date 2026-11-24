@@ -1,12 +1,11 @@
 {
-  "build": 41,
-  "version": "1.41",
+  "build": 42,
+  "version": "1.42",
   "date": "2026-11-24",
   "notes": [
-    "Počítač nahazuje puk po mantinelu a předvídá, kam puk objede (obránce mu jede naproti za branku)",
-    "Dorážky, tečování před brankou a clony (hráč v dráze střely zhoršuje brankáři výhled)",
-    "Přihrávky podle přehledu (PŘE): naslepo a na dálku nahrává lépe šikovnější hráč",
-    "Spoluhráči se nabízejí do volných míst s průchozí přihrávkou",
-    "Souboje o puk u mantinelu (mačkej X/B), krytí puku tělem, tlak v útočném pásmu unavuje soupeře"
+    "Režim 3 na 3 (Exhibice → Formát)",
+    "Trénink: střelba a přihrávky, přesilovka 5 na 4, nájezdy (střílíš i chytáš)",
+    "Výzvy: 24 úspěchů (hattrick, čisté konto, obrat, nájezdy…), seznam v hlavním menu",
+    "Zvuky: puk sjíždějící po mantinelu, bučení při faulu domácích, skandování v přesilovce a při tlaku"
   ]
 }

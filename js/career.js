@@ -249,7 +249,7 @@ const Career = {
     if (ev.k === 'C') {
       const rd = c.cup.rounds[ev.s];
       if (ev.s < 2) c.cup.rounds.push([0, 1].slice(0, rd.length / 2).map((i) => ({ a: rd[i * 2].w, b: rd[i * 2 + 1].w, w: null, s: '' })));
-      else { c.cup.winner = rd[0].w; c.budget[rd[0].w] = r1(c.budget[rd[0].w] + 3); this.news(`Pohár vyhrál tým ${this.teamName(rd[0].w)}!`); }
+      else { c.cup.winner = rd[0].w; c.budget[rd[0].w] = r1(c.budget[rd[0].w] + 3); this.news(`Pohár vyhrál tým ${this.teamName(rd[0].w)}!`); if (rd[0].w === c.user && typeof Ach !== 'undefined') Ach.unlock('cup'); }
     }
     if (c.phase === 'season') {
       c.calPos++;
@@ -294,6 +294,7 @@ const Career = {
     };
     c.history.push({ season: `${c.year}/${String((c.year + 1) % 100).padStart(2, '0')}`, champ, cup: c.cup.winner, rank: c.summary.rank });
     c.phase = 'offseason';
+    if (champ === c.user && typeof Ach !== 'undefined') Ach.unlock('champ');
     this.news(`Mistrem ligy je ${this.teamName(champ)}!${champ === c.user ? ' TO JSME MY!' : ''}`);
   },
   // nová sezóna: stárnutí, vývoj, konec kariér, odchovanci

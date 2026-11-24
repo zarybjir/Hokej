@@ -125,6 +125,35 @@ const Sfx = {
     const tune = tunes[n % tunes.length];
     for (const [s, w, d] of tune) this.organNote(N(s), w, d);
   },
+  // puk sjíždí po mantinelu: krátké šoupnutí s drnčením desek
+  rim(v = 0.3) { this.burst(1100, 'bandpass', 0.22 * v, 0.1, 1.5); this.burst(240, 'lowpass', 0.3 * v, 0.07); },
+  // dav: bučení (nízké „úúú" se zvolna nabíhající hlasitostí)
+  boo(v = 1) {
+    if (!this.ok()) return;
+    const c = this.ctx, t = c.currentTime;
+    for (const [f, q] of [[260, 3], [520, 4]]) {
+      const s = this.src(), fl = c.createBiquadFilter(), g = c.createGain();
+      fl.type = 'bandpass'; fl.frequency.setValueAtTime(f, t); fl.frequency.linearRampToValueAtTime(f * 0.85, t + 1.8); fl.Q.value = q;
+      s.connect(fl); fl.connect(g); g.connect(this.master);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.0);
+      s.start(t, Math.random()); s.stop(t + 2.1);
+    }
+  },
+  // dav skanduje: „DO-TO-HO!" (tři údery hlasů + tleskání), dvakrát
+  chant() {
+    if (!this.ok()) return;
+    const c = this.ctx;
+    for (const rep of [0, 1.5]) for (const [w, f] of [[0, 520], [0.28, 470], [0.56, 620]]) {
+      const t = c.currentTime + rep + w, s = this.src(), fl = c.createBiquadFilter(), g = c.createGain();
+      fl.type = 'bandpass'; fl.frequency.value = f; fl.Q.value = 2.5;
+      s.connect(fl); fl.connect(g); g.connect(this.master);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      s.start(t, Math.random()); s.stop(t + 0.3);
+      const t2 = t + 0.02, s2 = this.src(), f2 = c.createBiquadFilter(), g2 = c.createGain();
+      f2.type = 'bandpass'; f2.frequency.value = 1500; f2.Q.value = 0.7; s2.connect(f2); f2.connect(g2); g2.connect(this.master);
+      this.env(g2, t2, 0.003, 0.18, 0.08); s2.start(t2, Math.random()); s2.stop(t2 + 0.12);
+    }
+  },
   claps() { if (!this.ok()) return; for (const w of [0, 0.3, 0.8, 1.05, 1.3]) setTimeout(() => this.burst(1500, 'bandpass', 0.25, 0.08, 0.7), w * 1000); },
 };
 

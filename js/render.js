@@ -153,7 +153,12 @@ const R = {
       const txt = 'ODLOŽENÉ VYLOUČENÍ ' + g.pending.team.def.abbr;
       LED.panel(ctx, x, py, LED.width(txt, 2.5) + 24, 30, 2.5); LED.text(ctx, txt, x + 12, py + 15, 2.5, { color: '#ff5a46' });
     }
-    if (g.shootout) this.drawShootoutHUD(g, t);
+    if (g.practice) {
+      const P = g.practice, sh = P.kind === 'so' || P.kind === 'sog' ? P.shots : A.shots;
+      const txt = 'TRÉNINK  ' + (P.kind === 'sog' ? 'ZÁKROKY ' + (P.shots - P.goals) + ' / ' + P.shots : 'GÓLY ' + P.goals + ' / STŘELY ' + sh);
+      const w = LED.width(txt, 3) + 30; LED.panel(ctx, this.W / 2 - w / 2, this.H - 100, w, 38, 3); LED.text(ctx, txt, this.W / 2, this.H - 81, 3, { align: 'center', color: '#7dff8a' });
+    }
+    if (g.shootout && !g.practice) this.drawShootoutHUD(g, t);
     // lidští hráči: energie + formace
     if (!g.shootout) g.humans.forEach((h, i) => {
       const pl = h.player; if (!pl) return;
