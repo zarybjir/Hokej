@@ -281,6 +281,12 @@ mocap.cs.cmu.edu, převedené na tuto postavu sadou codepawl/cmu-mocap-glb): př
 golfového švihu, oslava gólu podle „high five“. Bruslení, buly a vedení puku jsou dopočítávané
 (volný záznam bruslení neexistuje). Soubor `models/player.glb` = postava + klipy.
 
+## Vývoj a testy
+
+Herní logika je v `js/game.js` (jádro) a `js/game-*.js` (sestavy, pravidla, akce, fyzika, AI, průběh zápasu).
+Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 20 s) a volitelně
+`node tests/browser.js` (potřebuje Playwright). Pokyny pro úpravy jsou v `CLAUDE.md`.
+
 ## Zdroje
 
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).

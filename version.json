@@ -1,10 +1,9 @@
 {
-  "build": 52,
-  "version": "1.52",
+  "build": 53,
+  "version": "1.53",
   "date": "2026-11-25",
   "notes": [
-    "Oprava: po vhazování v útočném pásmu se mylně pískal ofsajd",
-    "Hůl je při vedení puku vždy přesně u puku, po sebrání puk plynule doklouže na čepel",
-    "Šťouchnutí zasáhne puk jen čepelí nebo spodní částí hole"
+    "Vnitřní úprava: herní kód rozdělen do menších souborů a přidány automatické testy",
+    "Oprava: trestné střílení se nařídí, i když se faulovaný hráč zároveň zraní"
   ]
 }

@@ -11,8 +11,9 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 2. **Nejmenší změna, která funguje.** Žádné refaktory, přejmenovávání ani „úklid“, o které nikdo
    nežádal. Nepřidávej abstrakce pro jedno použití.
 3. **Žádné nové závislosti ani build nástroje.** Hra musí běžet offline jen ze složky repa.
-4. **Nečti celé velké soubory.** `js/game.js` (~120 kB), `js/render3d.js`, `js/career.js` a `js/app.js`
-   jsou velké – grepni název metody a čti jen okolí (Read s offset/limit).
+4. **Nečti celé velké soubory.** `js/render3d.js`, `js/career.js`, `js/app.js` a soubory `js/game*.js`
+   jsou velké – grepni název metody a čti jen okolí (Read s offset/limit). Herní logika je rozdělená
+   podle oblastí (viz Struktura), otevři jen soubor, kterého se změna týká.
 5. **Nikdy nečti** `lib/` (přibalené Three.js), `models/*.glb`, `models/player.glb.b64.txt`
    ani `sounds/` – jsou to binárky nebo cizí kód. Seznam hlášek komentátora je v `sounds/voice/manifest.json`.
 6. Když zadání jde udělat jednodušeji, než bylo popsáno, řekni to dřív, než začneš psát.
@@ -21,12 +22,20 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 
 - `index.html` – jen canvasy a importmap; `js/boot.js` načte Three.js (ES moduly → `window.THREE`,
   `window.PP`…) a pak **klasické skripty v pořadí**:
-  `util, data, audio, input, game, led, render, touch, render3d, players3d, career, ach, update, app`.
+  `util, data, audio, input, game, game-lines, game-rules, game-actions, game-physics, game-ai, game-flow,
+  led, render, touch, render3d, players3d, career, ach, update, app`.
   Skripty nejsou moduly: všechno je globální (`'use strict'`, top-level `const`/`function`).
   Nový soubor = přidat ho do pole `files` v `boot.js` na správné místo.
-- `js/game.js` – herní logika: `class Player`, `class Game` (fyzika bruslení `PH`, puk, střely,
-  bodyčeky, fauly/tresty/zranění, střídání, buly, brankáři, AI `teamThink`/`aiSkater`/`aiCarrier`),
-  obtížnosti `DIFF`.
+- `js/game.js` – jádro hry: konstanty (`DIFF`, `PH`), `class Player`, `class Game` (konstruktor, hlavní
+  smyčka `update`/`step`, vstupy lidských hráčů a asistence). Zbytek třídy `Game` je v souborech
+  `game-*.js`; každý volá `gameMixin(class { … })` a jeho metody se zkopírují na `Game.prototype`:
+  - `game-lines.js` – sestavy, střídání formací, odvolání brankáře
+  - `game-rules.js` – fauly a vyloučení, zranění, rozhodčí, buly, icing, ofsajd
+  - `game-actions.js` – přihrávky, střely, hůl (šťouchnutí, zvednutí), bodyčeky
+  - `game-physics.js` – bruslení a srážky, brankáři, puk
+  - `game-ai.js` – AI (`teamThink`, `aiSkater`, `aiCarrier`), tlak v pásmu, souboje u mantinelu
+  - `game-flow.js` – přerušení, góly, třetiny, rolba, trestné střílení, nájezdy, stav ledu
+  Nová metoda `Game` patří do souboru podle oblasti, ne do `game.js`.
 - `js/app.js` – objekt `App`: obrazovky, menu, nastavení, hlavní smyčka (start na konci souboru).
 - `js/career.js` – objekt `Career`: liga, pohár, play-off, přestupy, smlouvy, draft, vývoj; obrazovky kariéry od sekce „obrazovky kariéry“.
 - `js/render3d.js` – `G3`: Three.js scéna, kluziště, kamera (`ZOOMS`), grafika (`GFX`).
@@ -37,6 +46,7 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 - `js/ach.js` – úspěchy; `js/update.js` – kontrola/instalace aktualizací přes `server.py`.
 - `server.py` + `hokej.sh` – lokální server (port 47098) a spouštěč pro SteamOS, aktualizace z GitHubu.
 - `tools/gen_voice.py` – přegenerování hlášek komentátora (Piper TTS).
+- `tests/` – automatické testy (`run.js` logika v Node, `browser.js` Playwright, `lib.js` zavaděč).
 
 Souřadnice hry: x podél kluziště, y napříč, z nahoru, jednotky **stopy**; render3d je převádí na three.js (x, z, −y).
 
@@ -49,7 +59,14 @@ ať hráčům nezmizí rozehraná kariéra. Přístup vždy v `try/catch` jako v
 ## Spuštění a ověření
 
 - `python3 server.py 47098` a otevřít `http://127.0.0.1:47098/index.html` (z `file://` se skripty nenačtou).
-- Po změně ověř aspoň načtení bez chyb v konzoli (Playwright/Chromium) a že se dá spustit zápas.
+- **Po každé změně herní logiky spusť `node tests/run.js`** (asi 20 s, bez prohlížeče a bez npm): zápasy
+  počítač × počítač s kontrolou rozumných čísel, prodloužení, nájezdy, odvolání brankáře, trestné
+  střílení, trénink, icing, ofsajd, šťouchnutí, mapování ovladače, kariéra a starší uložené pozice.
+  Jeden test pustíš filtrem: `node tests/run.js nájezdy`.
+- Po změně menu, vykreslování nebo vstupu spusť i `node tests/browser.js` (potřebuje Playwright
+  s Chromiem; načte hru, projde obrazovky a odehraje zápas s náhodným ovládáním, hlídá chyby v konzoli).
+- **Když opravíš chybu nebo přidáš pravidlo, přidej k tomu test** do `tests/run.js`, ať se chyba nevrátí.
+  Testy používají pevný seed náhody (`tests/lib.js`), takže jsou opakovatelné.
 - Syntaxi rychle zkontroluješ `node --check js/<soubor>.js`.
 
 ## Vydání verze
