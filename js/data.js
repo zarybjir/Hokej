@@ -178,6 +178,17 @@ function playerBody(role, SIL, rnd = Math.random) {
   const cm = Math.round(clamp(176 + (kg - 85) * 0.55 + (G ? 4 : 0) + (rnd() - 0.5) * 10, 170, 203));
   return { kg, cm };
 }
+// typy hráčů (X-faktory): mají je jen hráči s výrazným atributem (88+, brankář 84+), každý jednu mírnou schopnost
+const TRAITS = { S: 'OSTROSTŘELEC', P: 'TVŮRCE HRY', E: 'SILÁK', R: 'RYCHLÍK', W: 'ZEĎ' };
+const TRAIT_HINT = { S: 'přesnější střela', P: 'přesnější přihrávky', E: 'silnější bodyček a souboje', R: 'rychlejší bruslení', W: 'brankář chytá o kousek víc' };
+function traitOf(p) {
+  const a = p.at || {};
+  if (p.role === 'G') return (a.REF || 0) >= 84 ? 'W' : '';
+  const best = ['PRE', 'RYC', 'SIL'].reduce((x, k) => ((a[k] || 0) > (a[x] || 0) ? k : x), 'PRE');
+  if ((a[best] || 0) < 88) return '';
+  let h = 3; for (const ch of String(p.name) + p.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return best === 'RYC' ? 'R' : best === 'SIL' ? 'E' : h % 2 ? 'S' : 'P';
+}
 function buildRoster(teamIdx) {
   const t = TEAMS[teamIdx], rnd = mulberry32(teamIdx * 7919 + 13), rk = mulberry32(teamIdx * 131 + 5);
   const used = new Set(), nums = new Set();

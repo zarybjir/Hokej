@@ -67,6 +67,21 @@ z vlastní poloviny nenahazuje). Icing jde přepnout na **okamžitý** (píská 
 náhlá smrt). Při nájezdu řídíš střelce (páčka, X střela, B klička); když bráníš, řídíš brankáře
 (páčka = postavení, vyjetí proti střelci, X = vypíchnutí puku). Vše v Nastavení → Hra.
 
+**Trestné střílení:** faul zezadu (napadení, hákování, podrážení, sekání) na hráče v samostatném
+úniku znamená trestné střílení místo vyloučení. Řídíš střelce, nebo brankáře jako u nájezdů.
+
+**Střely a buly:** střela „přes tělo" na straně bez hole je **bekhend** (slabší a méně přesná, ale zblízka
+zaskočí brankáře). Na buly rozhoduje načasování; páčka k soupeřově brance při stisku = vyhrát puk dopředu
+na střelu. Vyrovnané buly občas skončí **vázáním** a volným pukem. Domácí mají **poslední střídání**:
+počítač jako domácí pošle proti tvé 1. formaci svou nejlepší.
+
+**X-faktory a forma:** nejlepší hráči (atribut 88+, brankář 84+) mají jednu mírnou schopnost
+(★ ostrostřelec, tvůrce hry, silák, rychlík, zeď). Forma (▲▼) mění výkon o ±2 %; v kariéře ji
+zvedají body v zápasech.
+
+**Statistiky zápasu:** v pauze nebo na konci zápasu (Y) — mapa střel obou týmů, čas na ledě, +/−,
+střely, úspěšnost na buly, zblokované střely, přesilovky.
+
 **Odvolání brankáře:** počítač odvolá brankáře na konci zápasu, když prohrává o 1–2 góly, a při
 odloženém vyloučení soupeře. Ty v pauze zvolíš *ODVOLAT BRANKÁŘE* (a *VRÁTIT BRANKÁŘE*): brankář dojede
 na střídačku a naskočí šestý hráč. Hráč s volnou dráhou střílí do prázdné branky i z dálky.
@@ -165,9 +180,12 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 |---|---|---|
 | Levá páčka | bruslení | bruslení |
 | RT / RB | sprint | sprint |
-| A | přihrávka ve směru páčky | přepnout hráče / „přihraj mi" |
-| X | střela — ťuknutí = zápěstí, držení = příklep | bodyček |
+| A | přihrávka ve směru páčky (páčka dozadu = nechat puk spoluhráči za sebou) | přepnout hráče / „přihraj mi" / A během přihrávky k tobě = přihrávka z první |
+| LT + A | přihrávka o mantinel | |
+| X | střela — ťuknutí = zápěstí, držení = příklep; páčka od branky = placka k ledu | bodyček (vestoje = bokem) |
+| LT + X | švihovka pod víko | lehnout do střely |
 | B | klička | šťouchnutí holí |
+| LT + B | | zvednout soupeři hokejku |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
 | LB | střídání formace | střídání formace |
 | View (Back) | zoom kamery | zoom kamery |

@@ -282,6 +282,11 @@ const Career = {
       for (const q of res.inj || []) this.injure(q.ti, q.id, q);
     }
     c.lastDay = { label, results: this.day, inj: this.dayInj };
+    // forma hráčů tvého týmu: body v posledním zápase ji zvednou, bez bodů pomalu klesá
+    for (const p of c.teams[c.user].players) {
+      const pts = p.st.g + p.st.a, d = pts - (p.lastPts || 0); p.lastPts = pts;
+      p.form = clamp((p.form || 0) * 0.6 + (d > 0 ? 0.008 * Math.min(d, 2) : -0.003) + gauss() * 0.006, -0.03, 0.03);
+    }
     if (ev.k === 'C') {
       this.develop();
       const rd = c.cup.rounds[ev.s];
@@ -833,6 +838,9 @@ Object.assign(Career, {
     drawFlag(R.ctx, natOf(p), x0 + cols[2], y - 7, 20, 13);
     vals.forEach((v, k) => this.T(v, x0 + cols[k] + (k === 2 ? 26 : 0), y, k === 4 ? 13 : 14, k === 9 ? '#ffd21f' : k === 4 ? '#cfd8ea' : p.inj > 0 && k === 2 ? '#ff9a7a' : me ? '#ffd21f' : '#fff', k === 2 ? 'left' : 'center'));
     if (p.inj > 0) this.injTag(p, x0 + cols[2] + 152, y);
+    const tr = traitOf(p), fm = p.form || 0;
+    if (tr) this.T('★ ' + TRAITS[tr], x0 + cols[3] - 34, y, 10, '#ffd21f', 'right');
+    if (Math.abs(fm) > 0.01) this.T(fm > 0 ? '▲' : '▼', x0 + cols[3] - 22, y, 12, fm > 0 ? '#7dff8a' : '#ff7a5a', 'center');
     if (extra) extra.forEach(([v, x]) => this.T(v, x0 + x, y, 14, '#cfd8ea', 'center'));
   },
   // starší uložené kariéry nemají výšku a váhu: dopočítat (stabilně podle jména a čísla)

@@ -3,10 +3,10 @@
 const BTN = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'up', 'down', 'left', 'right'];
 const KB_MAPS = [
   { name: 'Klávesnice 1', up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
-    a: ['KeyJ'], x: ['KeyK'], b: ['KeyL'], y: ['KeyI'], rt: ['Space', 'ShiftLeft'], start: ['Escape'], back: ['Tab'], lb: ['KeyQ'], rb: ['KeyE'] },
+    a: ['KeyJ'], x: ['KeyK'], b: ['KeyL'], y: ['KeyI'], rt: ['Space', 'ShiftLeft'], start: ['Escape'], back: ['Tab'], lb: ['KeyQ'], rb: ['KeyE'], lt: ['KeyU'] },
   { name: 'Klávesnice 2', up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
     a: ['Numpad1', 'Comma'], x: ['Numpad2', 'Period'], b: ['Numpad3', 'Slash'], y: ['Numpad5', 'Semicolon'],
-    rt: ['Numpad0', 'ShiftRight'], start: ['Enter', 'NumpadEnter'], back: ['Backspace'], lb: ['Numpad4'], rb: ['Numpad6'] },
+    rt: ['Numpad0', 'ShiftRight'], start: ['Enter', 'NumpadEnter'], back: ['Backspace'], lb: ['Numpad4'], rb: ['Numpad6'], lt: ['Numpad7'] },
 ];
 
 // rozložení tlačítek: logické tlačítko → fyzické (číslo tlačítka, nebo osa „a5+“/„a6-“)
