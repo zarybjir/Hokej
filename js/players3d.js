@@ -526,6 +526,7 @@ class HModel {
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce
     const bo = bladeOffset(p.dir, p.hand, p.carry && !wind, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1, p.stk);
+    if (p.carry && p.pkOff && !wind) { bo[0] = p.pkOff[0]; bo[1] = p.pkOff[1]; }   // čepel přesně u puku
     {
       const fx = Math.cos(p.dir), fy = Math.sin(p.dir), lx = -fy, ly = fx;
       // buly: čepel na ledě u bodu vhazování, hůl se mírně chvěje, po vhození rychlé švihnutí dozadu

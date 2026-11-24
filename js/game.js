@@ -508,6 +508,7 @@ class Game {
   // ---------- buly ----------
   setupFaceoff(fx, fy) {
     this.foSpot = [fx, fy]; this.battle = null; for (const t of this.teams) t.zoneT = 0;
+    this.offPrev = fx; this.icePrev = fx;   // puk se na vhazování přenesl: to není přejetí modré ani brankové čáry
     if (this.injWait) { if (this.injWait.p.onIce && !this.toast) this.announceInjury(this.injWait.p); this.injWait = null; }
     for (const t of [this.teams[1], this.teams[0]]) {   // domácí střídají poslední (vidí sestavu hostů)
       this.resetPull(t);
@@ -978,7 +979,9 @@ class Game {
   // čepel je vysunutá: co hůl (úsečka hráč → čepel) opravdu zasáhla?
   pokeResolve(p) {
     const pk = this.puck, o = pk.owner, R = p.reach, b = pokeBlade(p.pokeDir, 0.5, R), bx = p.x + b[0], by = p.y + b[1];
-    const onPuck = pk.z < 1.5 && segDist(pk.x, pk.y, p.x, p.y, bx, by) < 1.7 && Math.hypot(pk.x - p.x, pk.y - p.y) > 1.5;
+    // zásah puku: čepelí (do 2 stop), nebo dolní polovinou hole těsně u puku
+    const sdx = bx - p.x, sdy = by - p.y, along = ((pk.x - p.x) * sdx + (pk.y - p.y) * sdy) / (sdx * sdx + sdy * sdy);
+    const onPuck = pk.z < 1.5 && (Math.hypot(pk.x - bx, pk.y - by) < 2.0 || (along > 0.5 && segDist(pk.x, pk.y, p.x, p.y, bx, by) < 1.1));
     const touches = (q) => Math.hypot(q.x - p.x, q.y - p.y) > 2 && segDist(q.x, q.y, p.x, p.y, bx, by) < PH.PLR + 0.2;   // hůl o tělo / brusle
     if (o && o.team !== p.team) {
       const behind = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > 1.5; // útočí zezadu
@@ -1378,7 +1381,10 @@ class Game {
     if (pk.owner) {
       pk.touchX = pk.owner.x; pk.touchTeam = pk.owner.team; // odkud naposledy tým puk hrál (pro zakázané uvolnění)
       const o = pk.owner, off = bladeOffset(o.dir, o.hand, !(o.winding && o.windT > 0.15) && !(o.swingT > 0), this.time, 0, 0, o.reach, o.ctrl >= 0 ? o.stk : null);   // při nápřahu puk leží tam, kam dopadne čepel
+      // po sebrání puk plynule doklouže na čepel (neskáče)
+      if (pk.snapT > 0) { pk.snapT -= h; const k = Math.max(0, pk.snapT / 0.16); off[0] += (pk.sx - off[0]) * k; off[1] += (pk.sy - off[1]) * k; }
       pk.x = o.x + off[0]; pk.y = o.y + off[1]; pk.z = 0; pk.vx = o.vx; pk.vy = o.vy; pk.vz = 0;
+      o.pkOff = [off[0], off[1]];   // kde je puk vůči hráči: hůl se kreslí přesně k němu
       const c = rinkContact(pk.x, pk.y, PH.PR);
       if (c) { pk.x -= c.nx * c.pen; pk.y -= c.ny * c.pen; }
       for (const sN of [-1, 1]) {
@@ -1525,6 +1531,7 @@ class Game {
     if (last && last.team !== p.team) pk.history = [];
     if (pk.history[pk.history.length - 1] !== p) pk.history.push(p);
     if (pk.history.length > 6) pk.history.shift();
+    pk.sx = pk.x - p.x; pk.sy = pk.y - p.y; pk.snapT = Math.hypot(pk.sx, pk.sy) < 7 ? 0.16 : 0;
     Object.assign(pk, { owner: p, held: null, passTarget: null, shot: null, oneTimer: false, deflT: 0, wasPass: false, lastTouch: p, z: 0, vz: 0 });
     p.lastPuckT = this.time;
     if (this.pending && this.pending.team === p.team && this.state === 'play') { this.whistlePenalty(); return; }
@@ -1977,7 +1984,7 @@ class Game {
       refs: this.refs.map((r) => ({ ref: r, isRef: true, team: r.team, kind: r.kind, x: r.x, y: r.y, dir: r.dir, stride: r.stride, spdN: r.spdN, arm: r.arm, armDir: r.armDir, downT: 0 })),
       pl: this.all.map((p) => ({ ref: p, x: p.x, y: p.y, dir: p.dir, stride: p.stride, spdN: p.spdN, downT: p.downT, lie: p.lie,
         windT: p.winding || p.swingT > 0 ? p.windT : 0, shotFT: p.shotFT || 0, shotSlap: p.shotSlap, passFT: p.passFT || 0, celebT: p.celebT || 0, foTake: p.foTake, foReady: p.foReady, foSwipe: p.foSwipe || 0, pokeA: p.pokeA, stk: p.ctrl >= 0 ? p.stk : null, pokeDir: p.pokeDir, pokeLift: p.pokeLift, actDir: p.actDir, shotBh: p.shotBh, checkT: p.checkT, hip: p.hip, blockT: p.blockT, saveT: p.saveT, saveKind: p.saveKind, isGoalie: p.isGoalie, team: p.team,
-        num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
+        pkOff: p.carry ? p.pkOff : null, num: p.num, hand: p.hand, carry: p.carry, ctrl: -1, role: p.role, reach: p.reach })),
     });
     if (this.rec.length > 330) this.rec.shift();
   }
