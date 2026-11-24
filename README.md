@@ -286,3 +286,4 @@ golfového švihu, oslava gólu podle „high five“. Bruslení, buly a vedení
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).
 - Model postavy: „X Bot“ z [Mixamo](https://www.mixamo.com) (Adobe), převzatý z ukázek Three.js
   (`models/xbot.glb`). Výstroj, barvy dresů a animace bruslení jsou dělané kódem ve hře.
+- Písmo menu: **Barlow Condensed** (The Barlow Project Authors, licence SIL OFL 1.1 – `fonts/OFL.txt`).

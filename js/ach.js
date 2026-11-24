@@ -46,9 +46,9 @@ const Ach = {
     q.t += dt;
     const ctx = R.ctx, w = 430, h = 70, slide = clamp(q.t / 0.3, 0, 1) * clamp((3.6 - q.t) / 0.3, 0, 1), x = R.W - (w + 16) * slide, y = 70;
     R.panel(x, y, w, h, 0.95);
-    ctx.fillStyle = '#ffd21f'; ctx.fillRect(x, y, 6, h);
+    ctx.fillStyle = ACC; ctx.fillRect(x, y, 6, h);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = font(13, 'bold'); ctx.fillStyle = '#9fe3ff'; ctx.fillText('★ VÝZVA SPLNĚNA', x + 20, y + 18);
+    ctx.font = font(13, 'bold'); ctx.fillStyle = '#8fa6c8'; ctx.fillText('★ VÝZVA SPLNĚNA', x + 20, y + 18);
     ctx.font = font(20); ctx.fillStyle = '#fff'; ctx.fillText(q.a[1], x + 20, y + 40);
     ctx.font = font(12, 'bold'); ctx.fillStyle = '#cfd8ea'; ctx.fillText(q.a[2], x + 20, y + 60);
     if (q.t > 3.6) this.queue.shift();

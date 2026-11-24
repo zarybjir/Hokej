@@ -1,7 +1,10 @@
 'use strict';
 // ---------- 2D vrstva: HUD, menu a popisky nad 3D scénou ----------
-const FONT = '"Inter","Segoe UI","Noto Sans","DejaVu Sans","Liberation Sans",system-ui,sans-serif';
-const font = (sz, st = '800') => `${st} ${sz}px ${FONT}`;
+const FONT = '"Barlow Condensed","Inter","Segoe UI","Noto Sans","DejaVu Sans",system-ui,sans-serif';
+const ACC = '#2fd4ff';   // zvýrazňující barva menu (ledová modrá)
+// zúžené sportovní písmo je užší, proto o něco větší; načte se předem (plátno si o písmo samo neřekne)
+const font = (sz, st = '800') => `${st} ${Math.round(sz * 1.16)}px ${FONT}`;
+try { for (const w of [600, 700, 800]) document.fonts.load(w + ' 20px "Barlow Condensed"', 'Ač'); } catch (e) {}
 
 const R = {
   W: 1280, H: 800, cx: 640,
@@ -91,17 +94,54 @@ const R = {
   clockStr(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); },
   panel(x, y, w, h, a = 0.78) {
     // plochá zaoblená karta s jemným okrajem
-    const ctx = this.ctx, r = Math.min(12, h / 4);
-    ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
-    ctx.fillStyle = `rgba(16,22,38,${a})`; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.lineWidth = 1; ctx.stroke();
+    // skleněná karta: tmavý základ, světlejší horní hrana
+    const ctx = this.ctx, r = Math.min(12, h / 4), g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, `rgba(34,48,84,${a * 0.78})`); g.addColorStop(1, `rgba(12,18,36,${a * 0.82})`);
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(150,190,255,0.16)'; ctx.lineWidth = 1; ctx.stroke();
+  },
+  // pozadí menu: tmavá aréna s reflektory, obrysem kluziště a poletujícími krystalky ledu
+  menuBg(t) {
+    const ctx = this.ctx, W = this.W, H = this.H;
+    let g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0b1730'); g.addColorStop(0.55, '#081022'); g.addColorStop(1, '#04070f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const glow = (x, y, r, col) => { const q = ctx.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, col); q.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = q; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
+    glow(W * 0.78 + Math.sin(t * 0.13) * 60, H * 0.42 + Math.cos(t * 0.11) * 30, 620, 'rgba(40,120,255,0.30)');
+    glow(W * 0.12 + Math.cos(t * 0.09) * 50, H * 0.05, 520, 'rgba(47,212,255,0.16)');
+    glow(W * 0.55, H * 1.1, 560, 'rgba(255,60,90,0.10)');
+    // obrys kluziště v perspektivě (jen náznak)
+    ctx.save(); ctx.translate(W * 0.74, H * 0.62); ctx.transform(1, 0, -0.35, 0.42, 0, 0); ctx.rotate(-0.12 + Math.sin(t * 0.05) * 0.02);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(140,190,255,0.10)';
+    ctx.beginPath(); ctx.roundRect(-620, -300, 1240, 600, 170); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 105, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,70,90,0.13)'; ctx.beginPath(); ctx.moveTo(0, -300); ctx.lineTo(0, 300); ctx.stroke();
+    ctx.strokeStyle = 'rgba(60,140,255,0.16)'; for (const x of [-170, 170]) { ctx.beginPath(); ctx.moveTo(x, -300); ctx.lineTo(x, 300); ctx.stroke(); }
+    ctx.restore();
+    // kužely reflektorů
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 4; i++) {
+      const x = W * (0.18 + i * 0.24), sw = Math.sin(t * 0.21 + i * 1.7) * 0.16, q = ctx.createLinearGradient(x, -40, x + sw * 600, H * 0.9);
+      q.addColorStop(0, 'rgba(150,200,255,0.11)'); q.addColorStop(1, 'rgba(150,200,255,0)');
+      ctx.fillStyle = q; ctx.beginPath(); ctx.moveTo(x - 14, -40); ctx.lineTo(x + 14, -40); ctx.lineTo(x + sw * 700 + 170, H); ctx.lineTo(x + sw * 700 - 170, H); ctx.fill();
+    }
+    // krystalky ledu
+    for (let i = 0; i < 46; i++) {
+      const a = i * 127.1, sp = 6 + (i % 7) * 3, x = ((a * 7.3 + t * sp) % (W + 40)) - 20, y = H - ((a * 3.7 + t * sp * 0.6) % (H + 40)) + 20;
+      const tw = 0.25 + 0.75 * Math.abs(Math.sin(t * (0.6 + (i % 5) * 0.2) + i));
+      ctx.fillStyle = `rgba(190,225,255,${0.10 + 0.30 * tw})`; ctx.beginPath(); ctx.arc(x, y, 0.8 + (i % 3) * 0.7, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   },
   // zvýraznění vybrané položky: světlejší výplň a barevný proužek vlevo
   sel(x, y, w, h) {
     const ctx = this.ctx, r = Math.min(12, h / 4);
-    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,210,31,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.roundRect(x + 5, y + 6, 4, h - 12, 2); ctx.fillStyle = '#ffd21f'; ctx.fill();
+    const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, 'rgba(47,212,255,0.34)'); g.addColorStop(1, 'rgba(47,212,255,0.04)');
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(47,212,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x + 5, y + 6, 4, h - 12, 2); ctx.fillStyle = ACC; ctx.fill();
   },
   chromeText(txt, x, y, size, col1 = '#ffffff', col2 = '#9fb4d8', align = 'center') {
     const ctx = this.ctx;
@@ -109,7 +149,9 @@ const R = {
     ctx.save(); ctx.font = font(size); ctx.textAlign = align; ctx.textBaseline = 'middle';
     try { ctx.letterSpacing = size >= 28 ? (size * 0.03).toFixed(1) + 'px' : '0px'; } catch (e) {}
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = size / 3; ctx.shadowOffsetY = 2;
-    ctx.fillStyle = ['#9fb4d8', '#8fa4c8', '#9fc4ff'].includes(col2) ? col1 : col2; ctx.fillText(txt, x, y);
+    ctx.fillStyle = ['#9fb4d8', '#8fa4c8', '#9fc4ff'].includes(col2) ? col1 : col2;
+    if (size >= 30) { ctx.translate(x, y); ctx.transform(1, 0, -0.1, 1, 0, 0); ctx.fillText(txt, 0, 0); }   // nadpisy lehce skloněné
+    else ctx.fillText(txt, x, y);
     ctx.restore();
   },
 

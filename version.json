@@ -1,8 +1,10 @@
 {
-  "build": 50,
-  "version": "1.50",
+  "build": 51,
+  "version": "1.51",
   "date": "2026-11-25",
   "notes": [
-    "Anglický komentátor s živějším hlasem (výchozí); češtinu vrátíš v Nastavení → Zvuk → Jazyk komentáře"
+    "Nové menu: animované pozadí arény s reflektory, sportovní písmo, ledově modré barvy",
+    "Úvodní obrazovka s nabídkou vlevo a znakem tvého týmu",
+    "V menu už neběží ukázkový zápas (šetří baterii)"
   ]
 }
