@@ -187,6 +187,7 @@ u názvu týmu). Počet endů se řídí položkou POČET ENDŮ, při remíze se
 3. **Zametání:** po odhodu drž X – kámen dojede dál a méně zatáčí.
 
 Při hodu počítače můžeš držet A a čekání zrychlit.
+Curling se vždy hraje z pohledu shora za kamenem (nastavení kamery se ho netýká).
 
 ## Legion Go S / Steam Deck (SteamOS)
 

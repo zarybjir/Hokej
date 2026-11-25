@@ -1,10 +1,9 @@
 {
-  "build": 59,
-  "version": "1.59",
-  "date": "2026-11-24",
+  "build": 60,
+  "version": "1.60",
+  "date": "2026-11-25",
   "notes": [
-    "Vodní pólo: bazén, čtyři čtvrtiny, útočný čas 30 s, vyloučení na 20 s, pětimetrové hody",
-    "Curling: míření na koště skipa, rotace, ukazatel síly, zametání, bodování po endech",
-    "Hlavní menu nabízí čtyři sporty: fotbal, hokej, vodní pólo a curling"
+    "Curling: pohled shora za kamenem – při míření je vidět celý dům i čára hodu",
+    "Curling používá tento pohled vždy, nezávisle na nastavení kamery"
   ]
 }

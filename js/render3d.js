@@ -952,7 +952,7 @@ const G3 = {
     if (fb) this.paintPitch(); else this.paintIce();
     this.setReflector(q.refl && sport === 'hockey'); this.wearMesh.visible = q.wear && sport === 'hockey'; this.clearWear();
     this.ice.visible = !fb; this.pitch && (this.pitch.visible = fb);
-    this.zoomMul = sport === 'curling' ? 0.5 : 1;
+    this.zoomMul = 1; if (this.off) this.setView();
   },
   // trávník: vlastní plocha s texturou (pruhy po sekání, ošlapaná místa, čáry) a jemnou strukturou stébel
   buildPitch() {
@@ -1099,12 +1099,12 @@ const G3 = {
     this.setPost(q.post); this.wearMesh.visible = q.wear && !this.fbOn; this.resize();
   },
   setView() {
-    const S = Settings.data, view = S.cam === 'side' ? 'side' : 'top';
+    const S = Settings.data, cu = this.sportOn === 'curling', view = S.cam === 'side' && !cu ? 'side' : 'top';   // curling se hraje vždy shora za kamenem
     const repaint = this.view && this.view !== view;
     this.view = view;
     this.zoomI = clamp(S.zoom == null ? 1 : S.zoom, 0, ZOOMS.length - 1);
     const z = ZOOMS[this.zoomI];
-    this.off = view === 'top' ? [-48 * z, 0, 47 * z] : [0, -78 * z, 40 * z];
+    this.off = cu ? [-17 * z, 0, 50 * z] : view === 'top' ? [-48 * z, 0, 47 * z] : [0, -78 * z, 40 * z];
     if (view === 'top') { VIEW.fx = 1; VIEW.fy = 0; VIEW.rx = 0; VIEW.ry = -1; } else { VIEW.fx = 0; VIEW.fy = 1; VIEW.rx = 1; VIEW.ry = 0; }
     this.glassGroups.forEach((g, i) => { g.grp.visible = !((view === 'top' && i === 0) || (view === 'side' && i === 1)); });
     const clip = view === 'side' ? [this.clipNear] : [];
