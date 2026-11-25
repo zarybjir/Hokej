@@ -35,10 +35,27 @@ class Football extends Game {
     this.wetT += h;
     if (this.wetT > 24 && this.puddles.length < 7) { this.wetT = 0; this.addPuddle(); }
   }
+  moleHit(m, off) {
+    m.peek = false; m.up = 0; m.pt = rand(10, 18); this.moleCards = (this.moleCards || 0) + 1;
+    off.yc = (off.yc || 0) + 1; const red = off.yc >= 2;
+    this.stopBall();
+    if (red && this.penOn && this.outRoles(off.team).length < 2) { this.assess({ team: off.team, player: off, type: 'rough' }); this.penalties[this.penalties.length - 1].left = 1e9; this.reds = (this.reds || 0) + 1; }
+    this.rs = { kind: 'freekick', team: this.other(off.team), spot: [clamp(m.x + (m.x > 0 ? -2.6 : 2.6), -RINK.GOAL_X + 3, RINK.GOAL_X - 3), clamp(m.y, -FB.HW + 2, FB.HW - 2)] };   // kope se kousek vedle krtince
+    this.whistle('TREFIL KRTKA');
+    this.lower = { title: '#' + off.num + ' ' + off.name.toUpperCase() + ' (' + off.team.def.abbr + ')', sub: 'TREFIL KRTKA — ' + (red ? 'ČERVENÁ KARTA' : 'ŽLUTÁ KARTA'), team: off.team, t: 0, dur: 3.2 };
+    this.say(red ? 'Červená karta!' : 'Žlutá karta.', true);
+  }
   // míč na zemi: kaluž ho brzdí, krtinec ho vychýlí a nadhodí
   groundFx(h) {
-    const pk = this.puck; if (pk.owner || pk.z > 0.4) return;
-    const v = Math.hypot(pk.vx, pk.vy);
+    const pk = this.puck, v = Math.hypot(pk.vx, pk.vy);
+    // krtek: občas na chvíli vykoukne z krtince; kdo ho trefí míčem, dostane žlutou kartu
+    for (const m of this.moles) {
+      m.pt = (m.pt == null ? rand(5, 12) : m.pt) - h;
+      if (m.pt <= 0) { m.peek = !m.peek; m.pt = m.peek ? 2.6 : rand(8, 16); }
+      m.up = clamp((m.up || 0) + (m.peek ? 1 : -1) * h * 5, 0, 1);
+      if (m.up > 0.6 && !pk.owner && pk.lastTouch && v > 6 && pk.z < 1.8 && Math.hypot(pk.x - m.x, pk.y - m.y) < 1.2) return this.moleHit(m, pk.lastTouch);
+    }
+    if (pk.owner || pk.z > 0.4) return;
     for (const q of this.puddles) if (Math.hypot(pk.x - q.x, pk.y - q.y) < q.r) {
       const k = Math.exp(-2.2 * h); pk.vx *= k; pk.vy *= k;
       if (v > 12 && this.time - (this.splT || -9) > 0.3) { this.splT = this.time; this.splash = { x: pk.x, y: pk.y, t: this.time }; this.sfx('rim', 0.25); }

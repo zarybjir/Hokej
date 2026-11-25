@@ -1,9 +1,8 @@
 {
-  "build": 66,
-  "version": "1.66",
+  "build": 67,
+  "version": "1.67",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: hřiště je vůči hráčům výrazně větší (poměr jako na skutečném hřišti), kamera blíž",
-    "Kaluže sladěné s trávníkem: voda stojící v trávě s měkkým okrajem a trsy u břehu místo bláta"
+    "Fotbal: z krtince občas vykoukne krtek – kdo ho trefí míčem, dostane žlutou kartu"
   ]
 }
