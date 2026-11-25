@@ -1,8 +1,9 @@
 {
-  "build": 86,
-  "version": "1.86",
+  "build": 87,
+  "version": "1.87",
   "date": "2026-11-25",
   "notes": [
-    "Plynulejší bruslení: dlouhé kroky při rozjezdu, skluz při dojezdu, brzdění bokem na hranách, jízda vzad"
+    "Brankáři: zákrok odpovídá střele – rozklek, vykopnutý beton, lapačka nebo vyrážečka přesně za pukem",
+    "Brankář sleduje puk hlavou i tělem a při nebezpečí jde do hlubšího postoje"
   ]
 }

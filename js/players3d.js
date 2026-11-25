@@ -773,33 +773,37 @@ class HModel {
     }
   }
   poseGoalie(p, t, O, F, Lv, J) {
-    const B = this.b, sv = p.saveT > 0 ? p.saveKind : 0, bf = sv === 1;
-    const sway = Math.sin((p.stride || 0) * 0.8) * 0.05;
-    const drop = bf ? 1.7 : 1.05;
+    // zákrok nabíhá a doznívá plynule (k), postoj se prohlubuje podle blízkosti puku, tělo i hlava puk sledují
+    const B = this.b, sv = p.saveT > 0 ? p.saveKind : 0, k = sv ? clamp((0.5 - p.saveT) / 0.07, 0, 1) * clamp(p.saveT / 0.16, 0, 1) : 0;
+    const bf = sv === 1 ? k : sv === 4 ? k * 0.75 : 0, kick = sv === 4 ? k : 0, sL = p.saveL || 0, sZ = p.saveZ || 0, ks = sL >= 0 ? 1 : -1;
+    const near = p.near == null ? 0.6 : p.near, trk = p.trk || 0, dts = this.dtp || 0;
+    this.gT = (this.gT || 0) + (trk - (this.gT || 0)) * Math.min(1, dts * 6); this.gN = (this.gN == null ? near : this.gN + (near - this.gN) * Math.min(1, dts * 3));
+    const tr = this.gT, nr = this.gN, sway = Math.sin((p.stride || 0) * 0.8) * 0.05 + Math.sin(t * 2.2 + this.phase) * 0.012;
+    const drop = lerp(0.8 + 0.3 * nr, 1.7, bf);
     this.root.position.set(O.x, 0.15 - drop, O.z);
     this.root.updateMatrixWorld(true);
-    rotAxis(B.Hips, Lv, bf ? 0.15 : 0.45);
-    rotAxis(B.Hips, F, sway);
-    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, bf ? -0.02 : 0.05);
-    rotAxis(B.Neck, Lv, bf ? -0.1 : -0.3); rotAxis(B.Head, Lv, -0.15);
-    let fL, fR, poleL, poleR;
-    if (bf) {
-      fL = J(-0.9, 2.15, 0); fR = J(-0.9, -2.15, 0);
-      poleL = F.clone().addScaledVector(UPV, -0.8); poleR = poleL.clone();
-    } else {
-      fL = J(0.1, 1.2, 0); fR = J(0.1, -1.2, 0);
-      poleL = F.clone().addScaledVector(Lv, -0.35); poleR = F.clone().addScaledVector(Lv, 0.35);
-    }
-    this.legs(fL, fR, poleL, poleR, bf ? 1.2 : 0.35, bf ? -1.2 : -0.35, F);
-    const H = wpos(B.Hips), down = new THREE.Vector3(0, -1, 0);
-    let glove = H.clone().addScaledVector(F, 1.25).addScaledVector(Lv, 1.35).add(new THREE.Vector3(0, 0.55, 0));
-    let block = H.clone().addScaledVector(F, 1.3).addScaledVector(Lv, -1.15).add(new THREE.Vector3(0, 0.15, 0));
-    if (sv === 2) glove = H.clone().addScaledVector(F, 0.9).addScaledVector(Lv, 1.6).add(new THREE.Vector3(0, 2.0, 0));
-    if (sv === 3) block = H.clone().addScaledVector(F, 0.9).addScaledVector(Lv, -1.6).add(new THREE.Vector3(0, 1.6, 0));
+    rotAxis(B.Hips, Lv, lerp(0.32 + 0.16 * nr, 0.15, bf));
+    rotAxis(B.Hips, F, sway - tr * 0.1 * (1 - bf) - ks * kick * 0.22);
+    rotAxis(B.Hips, UPV, tr * 0.28 * (1 - bf));                       // natočení ramen za pukem
+    for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lerp(0.05, -0.02, bf));
+    if (sv === 2 || sv === 3) rotAxis(B.Spine1, F, -ks * k * 0.2);  // úklon za rukou
+    rotAxis(B.Neck, Lv, lerp(-0.3, -0.1, bf)); rotAxis(B.Head, Lv, -0.15); rotAxis(B.Neck, UPV, tr * 0.45);
+    // nohy: základní postoj → rozklek (betony do stran na ledě); vykopnutý beton míří tam, kam jde puk
+    const st = 1.2 + 0.25 * nr, fL = J(0.1, st, 0).lerp(J(-0.9, 2.15, 0), bf), fR = J(0.1, -st, 0).lerp(J(-0.9, -2.15, 0), bf);
+    if (kick > 0) (ks > 0 ? fL : fR).lerp(J(0.2, ks * clamp(Math.abs(sL) + 0.6, 2.2, 3.3), 0.05), kick);
+    const poleL = F.clone().addScaledVector(Lv, -0.35).lerp(F.clone().addScaledVector(UPV, -0.8), bf).normalize(), poleR = F.clone().addScaledVector(Lv, 0.35).lerp(F.clone().addScaledVector(UPV, -0.8), bf).normalize();
+    this.legs(fL, fR, poleL, poleR, lerp(0.35, 1.2, bf), lerp(-0.35, -1.2, bf), F);
+    const H = wpos(B.Hips), down = new THREE.Vector3(0, -1, 0), up3 = (y) => new THREE.Vector3(0, y, 0);
+    // ruce: lapačka vlevo, vyrážečka vpravo; při zákroku ruka vyjede přesně do dráhy puku
+    const glove = H.clone().addScaledVector(F, 1.25).addScaledVector(Lv, 1.35 + 0.15 * nr).add(up3(0.55 + 0.15 * nr));
+    const block = H.clone().addScaledVector(F, 1.3).addScaledVector(Lv, -1.15).add(up3(0.15));
+    const hit = (side) => J(0.9, clamp(sL, side > 0 ? 0.3 : -2.6, side > 0 ? 2.6 : -0.3), clamp(sZ, 1.2, 4.6) + 0.25);
+    if (sv === 2) glove.lerp(hit(1), k);
+    if (sv === 3) block.lerp(hit(-1), k);
     ik2(B.LeftArm, B.LeftForeArm, B.LeftHand, glove, down.clone().addScaledVector(Lv, 0.8), this.L.upper, this.L.fore);
     ik2(B.RightArm, B.RightForeArm, B.RightHand, block, down.clone().addScaledVector(Lv, -0.8), this.L.upper, this.L.fore);
     const bh = wpos(B.RightHand);
-    const heel = J(1.95, -0.25, 0.16);
+    const heel = J(1.95, -0.25 + (kick > 0 && ks < 0 ? -0.9 * kick : 0), 0.16);   // hokejka kryje mezeru u vykopnutého betonu
     aimBone(B.RightHand, B.RightHandMiddle1, bh.clone().add(new THREE.Vector3().subVectors(heel, bh).normalize()));
     const pTop = bh.clone().lerp(heel, 0.55);
     seg(this.shaft, pTop, bh.clone().add(new THREE.Vector3(0, 0.3, 0)), F);

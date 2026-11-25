@@ -148,6 +148,8 @@ gameMixin(class {
   goalieMove(g, h) {
     const sN = -g.team.dir, gl = RINK.GOAL_X, gx = sN * gl, pk = this.puck;
     g.saveT = Math.max(0, g.saveT - h); g.carry = false;
+    // sledování puku: kam se dívá a naklání (trk −1…1 = vpravo…vlevo) a jak blízko je nebezpečí (near 0…1 = hlubší postoj)
+    { const dx = pk.x - g.x, dy = pk.y - g.y, d = Math.hypot(dx, dy) || 1; g.trk = clamp((dx * -Math.sin(g.dir) + dy * Math.cos(g.dir)) / Math.max(8, d), -1, 1); g.near = clamp((60 - d) / 45, 0, 1); }
     if (g.leaving) {
       // odvolaný brankář jede k lavici
       const dr = this.benchDoor(g.team), dx = dr.x - g.x, dy = dr.y - g.y, d = Math.hypot(dx, dy) || 1, v = 21;
@@ -280,7 +282,11 @@ gameMixin(class {
     }
     if (onNet && sp > 70) this.impact(0.05, 0.45);
     if (onNet) { g.conf = Math.min(1, (g.conf || 0) + 0.1); this.addMom(g.team, 0.05); if (sp > 70 || pk.oneTimer) this.hl = { t: this.time, what: 'ZÁKROK' }; }
-    g.saveT = 0.5; g.saveKind = pk.z < 1.0 ? 1 : (pk.y - g.y) * sN > 0 ? 2 : 3;
+    // druh zákroku podle toho, kam puk letí vůči brankáři: nízko uprostřed rozklek, nízko stranou vykopnutý beton,
+    // výš lapačka (levá ruka) nebo vyrážečka; ruka i beton jdou přesně za pukem (saveL = stranou, saveZ = výška)
+    const sl = (pk.x - g.x) * -Math.sin(g.dir) + (pk.y - g.y) * Math.cos(g.dir);
+    g.saveT = 0.5; g.saveL = clamp(sl, -3.2, 3.2); g.saveZ = clamp(pk.z, 0, 4.2);
+    g.saveKind = pk.z < 1.0 ? (!this.fb && Math.abs(sl) > 1.3 ? 4 : 1) : this.fb ? ((pk.y - g.y) * sN > 0 ? 2 : 3) : sl > 0 ? 2 : 3;
     if ((sp < 62 && pk.z > 0.7 && Math.random() < 0.55) || (sp < 40 && Math.random() < 0.5)) {
       this.goalieCover(g);
       if (onNet) this.say(pick(['Chytil to!', 'Lapačka!', 'Jistý zákrok.']), false, 0.3);

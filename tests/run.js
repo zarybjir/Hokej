@@ -207,6 +207,16 @@ test('dresy: tým se střihem podle předlohy hraje doma v druhé barvě, soupe�
   const g2 = new G.Game({ home: 0, away: fla, humans: [], silent: true }); ok(g2.teams[0].jersey === g2.teams[0].def.c1, 'tým bez výměny barev změnil dres');
 });
 
+test('brankář: druh zákroku odpovídá střele (rozklek, beton, lapačka, vyrážečka) a sleduje puk', (G) => {
+  const g = new G.Game({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60);
+  const gk = g.teams[0].goalie, pk = g.puck, lx = -Math.sin(gk.dir), ly = Math.cos(gk.dir);
+  const sv = (side, z) => { pk.owner = null; pk.held = null; pk.x = gk.x + lx * side; pk.y = gk.y + ly * side; pk.z = z; pk.vx = 0; pk.vy = 0; pk.shot = null; g.save(gk, 30, false); return gk.saveKind; };
+  ok(sv(0.3, 0.2) === 1, 'nízká střela doprostřed není rozklek'); ok(sv(2.2, 0.2) === 4 && gk.saveL > 1.5, 'nízká střela stranou není vykopnutý beton');
+  ok(sv(1.5, 2.5) === 2 && Math.abs(gk.saveZ - 2.5) < 0.01, 'vysoká střela vlevo není lapačka'); ok(sv(-1.5, 2.5) === 3 && gk.saveL < 0, 'vysoká střela vpravo není vyrážečka');
+  pk.x = gk.x + lx * 30 - Math.cos(gk.dir) * -20; pk.y = gk.y + ly * 30; g.state = 'play'; g.goalieMove(gk, 1 / 60);
+  ok(gk.trk > 0.3 && gk.near > 0 && gk.near <= 1, 'brankář nesleduje puk: ' + gk.trk + ' ' + gk.near);
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {
