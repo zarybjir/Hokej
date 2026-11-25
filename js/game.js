@@ -169,6 +169,11 @@ class Game {
     if (n >= 10) this.acc = 0;
     // efekty
     if (this.banner) { this.banner.t += dt; if (this.banner.t > this.banner.dur) this.banner = null; }
+    // vyloučený hráč odjíždí z místa faulu na trestnou lavici (nezmizí naráz)
+    for (const pn of this.penalties) if (pn.wt != null && pn.wt < 2.8 && !this.silent) {
+      pn.wt += dt; const u = clamp(pn.wt / 2.8, 0, 1), e = u * u * (3 - 2 * u), p = pn.player, D = Math.hypot(pn.bx - pn.fx, pn.by - pn.fy);
+      p.x = lerp(pn.fx, pn.bx, e); p.y = lerp(pn.fy, pn.by, e); p.spdN = D * 6 * u * (1 - u) / 2.8; p.stride += dt * p.spdN * 0.3; p.dir = u < 0.97 ? Math.atan2(pn.by - pn.fy, pn.bx - pn.fx) : Math.PI / 2;
+    }
     if (this.lower) { this.lower.t += dt; if (this.lower.t > this.lower.dur) this.lower = null; }
     if (this.tv) { this.tv.t += dt; if (this.tv.t > this.tv.dur || this.state === 'play' && this.tv.t > 1.5) this.tv = null; }
     for (const p of this.pops) p.t += dt;
@@ -188,6 +193,8 @@ class Game {
         const v = Math.hypot(p.vx, p.vy); sk += v;
         if (dt > 0 && p.sv0 > 15 && (p.sv0 - v) / dt > 55 && this.time - (p.scrT || -9) > 0.7 && !(p.downT > 0)) { p.scrT = this.time; this.sfx('scrape', clamp(p.sv0 / 60, 0.15, 0.5)); }
         p.sv0 = v;
+        // odrazy bruslí hráčů poblíž puku: říznutí při každém kroku
+        const sn = Math.floor((p.stride || 0) / Math.PI); if (sn !== p.strN) { p.strN = sn; if (v > 9 && this.time - (this.strT || 0) > 0.11 && Math.hypot(p.x - this.puck.x, p.y - this.puck.y) < 40) { this.strT = this.time; this.sfx('stride', clamp(v / 90, 0.08, 0.28)); } }
       }
       sk /= Math.max(1, this.all.length) * 22;
     }

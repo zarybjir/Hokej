@@ -1,9 +1,10 @@
 {
-  "build": 93,
-  "version": "1.93",
+  "build": 94,
+  "version": "1.94",
   "date": "2026-11-25",
   "notes": [
-    "Hráči drží hokejku přirozeněji: obě ruce od sebe, hůl delší a položenější",
-    "Zvuk publika z hokejových hal: hukot arény, fanouškovský kotel, řev a pískot po gólu"
+    "Zvuk bruslení: říznutí do ledu při každém odrazu, úder holí je tišší a méně „dřevěný“",
+    "Počítač už nenahazuje puk bez důvodu; tvoji spoluhráči najíždějí dopředu a sprintují na přihrávku",
+    "Vyloučený hráč odjede na trestnou lavici, nezmizí naráz"
   ]
 }

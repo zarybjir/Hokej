@@ -215,7 +215,11 @@ gameMixin(class {
         if (dl < 2.5 && ds < 18 && ds > 5) { this.dive(p); return; }
       }
       tx = o.x + (gx - o.x) * 0.28; ty = o.y * 0.8;
-    } else [tx, ty] = this.spotFor(p);
+    } else {
+      [tx, ty] = this.spotFor(p);
+      // útok vedený člověkem: spoluhráči sprintují na svá místa, ať je komu přihrát
+      if (pk.owner && pk.owner.team === t && pk.owner.ctrl >= 0 && p.role[1] !== 'D') { const dd = Math.hypot(tx - p.x, ty - p.y); if (dd > 6) { urg = true; turbo = dd > 12 && p.stamina > 0.3; } }
+    }
     const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
     if (d < 1.2) { p.inX = 0; p.inY = 0; }
     else { const m = urg ? 1 : p.ai.offer > this.time ? clamp(d / 6, 0.45, 1) : clamp(d / 10, 0.25, 1); p.inX = (dx / d) * m; p.inY = (dy / d) * m; }   // při nabízení se hýbe svižněji
@@ -239,13 +243,16 @@ gameMixin(class {
         const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [dU, 16], RD: [dU, -16], X: [80, Math.sin(ph) > 0 ? 7 : -7] }[p.extra ? 'X' : p.role];
         u = S[0] + Math.sin(tm * 0.6 + ph) * (D ? 3 : 7); v = S[1] + Math.cos(tm * 0.45 + ph * 1.3) * (D ? 6 : 7);
         if (p.role === 'C' && Math.sin(tm * 0.4 + ph) > 0.5) { u = 78; v = Math.sin(ph) > 0 ? 4 : -4; }
+        // člověk vede puk v pásmu: křídlo na vzdálené straně si najede k zadní tyčce, střed do slotu
+        if (owner && owner.ctrl >= 0 && owner !== p && !D && !p.extra) { if (p.role === 'C') { u = 68; v = -sgn(pv || 1) * 5; } else if ((p.role === 'LW') === (pv < 0)) { u = 81; v = -sgn(pv || 1) * 7; } }
         // přesilovka: nacvičené rozestavení 1-3-1 – obránce na modré, dva na hrazení, jeden v mezeře, jeden clonící před brankou
         if (!this.fb && !p.extra && t.skaters.length > this.other(t).skaters.length && t.skaters.length >= 5) {
           const P = { LD: [37, 0], LW: [59, 25], RD: [59, -25], C: [66, pv > 0 ? -3 : 3], RW: [82, pv > 0 ? 3 : -3] }[p.role];
           u = P[0] + Math.sin(tm * 0.5 + ph) * 2; v = P[1] + Math.cos(tm * 0.4 + ph) * 2;
         }
       } else {
-        const S = { C: [pu + 14, -pv * 0.3], LW: [pu + 24, 22], RW: [pu + 24, -22], LD: [pu - 16, 15], RD: [pu - 16, -15], X: [pu + 20, pv > 0 ? -8 : 8] }[p.extra ? 'X' : p.role];
+        const hu = owner && owner.ctrl >= 0 ? 10 : 0;   // před lidským hráčem s pukem jedou útočníci dál dopředu (až k modré), ať má přihrávku do jízdy
+        const S = { C: [pu + 14 + hu * 0.6, -pv * 0.3], LW: [pu + 24 + hu, 22], RW: [pu + 24 + hu, -22], LD: [pu - 16, 15], RD: [pu - 16, -15], X: [pu + 20, pv > 0 ? -8 : 8] }[p.extra ? 'X' : p.role];
         u = S[0]; v = S[1];
         if (!D) u = Math.min(u, 70);
       }
@@ -354,8 +361,11 @@ gameMixin(class {
     if (pressure && p.spdN > 10 && Math.random() < 0.02 && this.dropPass(p)) return;
     const offRisk = this.cfg.offside !== false && t.skaters.some((q) => q !== p && s * q.x > RINK.BLUE_X + 0.5);
     const iceRisk = this.cfg.icing !== false && u < 1 && !(t.skaters.length < opp.skaters.length);
-    if (pressure && u > -15 && u < 28 && !offRisk && !iceRisk && Math.random() < (t.style === 'heavy' ? 0.36 : t.style === 'pass' ? 0.1 : 0.18)) { this.dump(p); return; }   // tvrdý tým nahazuje a dohrává
-    if (t.change && u > -30 && u < 40 && !offRisk && !iceRisk && Math.random() < 0.6) { this.dump(p); return; } // nahoď a střídej
+    // nahození jen z nouze: pod tlakem, bez volného spoluhráče a s obráncem v cestě (šance se losuje každý snímek, proto malá čísla);
+    // spoluhráči lidského hráče puk drží a hledají přihrávku
+    const stuck = pressure && (!best || bs < my + 2) && opp.skaters.some((o) => o.downT <= 0 && s * (o.x - p.x) > 2 && s * (o.x - p.x) < 22 && Math.abs(o.y - p.y) < 9);
+    if (stuck && u > 0 && u < 28 && !offRisk && !iceRisk && Math.random() < (t.style === 'heavy' ? 0.04 : t.style === 'pass' ? 0.006 : 0.015) * (t.humans.length ? 0.3 : 1)) { this.dump(p); return; }
+    if (t.change && u > 2 && u < 40 && !offRisk && !iceRisk && (pressure || !t.humans.length) && Math.random() < 0.05) { this.dump(p); return; } // nahoď a střídej
     if (td < 5.5 && front && Math.random() < 0.25) this.deke(p);
   }
   openScore(q, from) {

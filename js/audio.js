@@ -95,7 +95,8 @@ const Sfx = {
     this.env(g, t, a, vol, dec);
     o.start(t); o.stop(t + a + dec + 0.05);
   },
-  stick(v = 0.5) { if (this.play('stick', 0.55 * v, 1.25)) return; this.burst(2500, 'highpass', 0.35 * v, 0.04); this.tone(900, 'triangle', 0.08 * v, 0.002, 0.03); },
+  stride(v = 0.3) { this.play('stop', v, 1.9); },   // odraz brusle: krátké říznutí do ledu
+  stick(v = 0.5) { this.play('stick', 0.16 * v, 2.1); this.burst(2500, 'highpass', 0.35 * v, 0.04); this.tone(900, 'triangle', 0.08 * v, 0.002, 0.03); },
   slap(v = 1) { this.play('stick', 0.9 * v, 0.8); this.burst(1800, 'highpass', 0.7 * v, 0.06); this.burst(200, 'lowpass', 0.6 * v, 0.12); },
   board(v = 0.6) { if (this.play('board', 0.8 * v, 1.15)) return; this.burst(160, 'lowpass', 0.9 * v, 0.22); this.burst(600, 'bandpass', 0.25 * v, 0.15, 2); },
   post() { this.play('post', 0.55, 1.5); this.tone(1760, 'sine', 0.35, 0.002, 0.7); this.tone(2637, 'sine', 0.18, 0.002, 0.5); this.tone(3520, 'sine', 0.08, 0.002, 0.3); },

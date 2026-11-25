@@ -253,6 +253,31 @@ test('spolukomentátor: po gólu a na konci třetiny vybere postřeh, který exi
   ok(seen.size >= 3 && [...seen].every((t) => man[t]), 'postřeh bez nahrávky: ' + [...seen].filter((t) => !man[t]).join(' | '));
 });
 
+test('útok: počítač nenahazuje bez důvodu, spoluhráči člověka najíždějí dopředu a sprintují', (G) => {
+  // nahození v zápasech počítač × počítač je vzácné
+  let dumps = 0; const d0 = G.Game.prototype.dump; G.Game.prototype.dump = function (p) { dumps++; return d0.call(this, p); };
+  try { for (let n = 0; n < 3; n++) { const g = new G.Game({ home: n * 3, away: n * 3 + 1, humans: [], silent: true, periodLen: 120 }); for (let t = 0; g.state !== 'final' && t < 3000; t += 1 / 60) { g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay(); } } } finally { G.Game.prototype.dump = d0; }
+  ok(dumps / 3 < 14, 'počítač nahazuje moc často: ' + (dumps / 3).toFixed(1) + ' za zápas');
+  // člověk veze puk středním pásmem: křídla jsou před ním a jedou naplno
+  const g = new G.Game({ home: 0, away: 1, humans: [{ dev: idleDev(), team: 0, assist: 0 }], silent: true, offside: false }); while (g.state !== 'play') g.update(1 / 60);
+  const A = g.teams[0], s = A.dir, me = g.humans[0].player, lw = A.skaters.find((p) => p.role === 'LW' && p !== me) || A.skaters.find((p) => p.role === 'RW');
+  for (const q of g.teams[1].skaters) { q.x = -s * 60; q.y = 0; } me.x = 0; me.y = 0; g.puck.owner = me; g.puck.x = 0; g.puck.y = 0; lw.x = -s * 10; lw.y = 15; lw.stamina = 1; lw.ai.spotT = 0;
+  const sp = g.spotFor(lw); ok(s * sp[0] > 28, 'křídlo nenajíždí před hráče s pukem: ' + (s * sp[0]).toFixed(0));
+  g.aiSkater(lw, 1 / 60); ok(lw.turbo && Math.hypot(lw.inX, lw.inY) > 0.9, 'křídlo se do útoku neloudá: turbo ' + lw.turbo);
+});
+
+test('vyloučený hráč nezmizí: z místa faulu odjede na trestnou lavici', (G) => {
+  const sf = G.Game.prototype.sfx, sy = G.Game.prototype.say, sc = G.Game.prototype.color; G.Game.prototype.sfx = () => {}; G.Game.prototype.say = () => {}; G.Game.prototype.color = () => {};
+  try {
+    const g = new G.Game({ home: 0, away: 1, humans: [], periodLen: 300 }); for (let i = 0; i < 60 * 8 && g.state !== 'play'; i++) g.update(1 / 60);
+    const p = g.teams[1].skaters[0]; p.x = 30; p.y = 0; g.assess({ team: p.team, player: p, type: 'hook' });
+    const pn = g.penalties[0]; ok(Math.hypot(p.x - 30, p.y) < 0.1 && g.boxPlayers().includes(p), 'vyloučený hráč se přenesl na lavici naráz');
+    g.update(1 / 60); for (let i = 0; i < 80; i++) g.update(1 / 60); const mid = Math.hypot(p.x - pn.bx, p.y - pn.by);
+    ok(mid > 2 && mid < Math.hypot(30 - pn.bx, pn.by) - 2 && p.spdN > 1, 'hráč na lavici neodjíždí');
+    for (let i = 0; i < 120; i++) g.update(1 / 60); ok(Math.hypot(p.x - pn.bx, p.y - pn.by) < 0.01, 'hráč na trestnou lavici nedojel');
+  } finally { G.Game.prototype.sfx = sf; G.Game.prototype.say = sy; G.Game.prototype.color = sc; }
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

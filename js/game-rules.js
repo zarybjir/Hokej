@@ -41,8 +41,10 @@ gameMixin(class {
     if (i >= 0) { t.skaters.splice(i, 1); this.setPlayers(t); this.rebuildAll(); }
     if (this.puck.owner === p) this.puck.owner = null;
     const k = this.penalties.filter((pn) => pn.team === t).length;
+    const fx = p.x, fy = p.y;
     Object.assign(p, { x: box.x + k * 2.6, y: box.y, vx: 0, vy: 0, dir: Math.PI / 2, spdN: 0, downT: 0, winding: false, windT: 0, pokeA: 0, carry: false });
-    this.penalties.push({ team: t, player: p, role: p.role, left: this.penLen, total: this.penLen, type: pd.type });
+    this.penalties.push({ team: t, player: p, role: p.role, left: this.penLen, total: this.penLen, type: pd.type, fx, fy, bx: p.x, by: p.y, wt: 0 });   // fx…wt: odjezd na trestnou lavici (jen na pohled)
+    if (!this.silent) { p.x = fx; p.y = fy; }
     t.pim++; this.other(t).ppOpp++;
     if (t === this.teams[0]) this.sfx('boo', 1); else { this.sfx('cheer', 0.5); this.sfx('claps'); }
     this.lower = { title: '#' + p.num + ' ' + p.name.toUpperCase() + ' (' + t.def.abbr + ')', sub: FOULS[pd.type] + ' — 2 minuty', team: t, t: 0, dur: 3.4 };
