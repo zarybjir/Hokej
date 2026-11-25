@@ -157,6 +157,8 @@ Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překlád
   střídavě zpoza branky a nízko od mantinelu teleobjektivem.
 - **Srovnání týmů** při přerušení: střely, hity, vyhraná vhazování (ve fotbale rohy a fauly).
 - **Diváci** po gólu vyskakují ze sedadel a hala pohasíná do rytmu, při nástupu se světla rozsvěcují.
+- **Zvuky ledu** jsou nahrávky: brusle (hlasitost podle rychlosti hry), škrábnutí při prudkém zabrzdění,
+  náraz do mantinelu, tyčka, úder holí, píšťalka a klakson po gólu.
 - **Zvuk publika** tvoří skutečné nahrávky hluku davu a potlesku (sílí podle dění na ledě).
 - **Oslavy gólu** jsou tři různé podle hráče (plácnutí, radost, mávání), všechny z motion capture.
 - **Počítač** hraje přesilovku v rozestavení 1-3-1 (obránce na modré, dva na hrazení, jeden v mezeře,
@@ -387,6 +389,10 @@ Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 2
 
 ## Zdroje
 
+- Zvuky ledu a haly (`sounds/fx/`), vše CC0 z [Freesound](https://freesound.org): „Skates on Ice“ (Rehanjo),
+  „Freezer Ice Scrape Knife 10“ (Glitchedtones), „hockey outdoor player checked into boards“ (kyles),
+  „ANI Big Pipe Hit“ (ani_music), „Referee whistle sound“ (Rosa-Orenes256), „Industrial Air Horn“ (mcpable),
+  „Wood impact 1“.
 - Zvuky publika (`sounds/crowd/`): „Crowd Shouting/Speaking Ambience“ (StarNinjas) a „Applause in a large hall
   or church“ (eXpl0it3r), obojí CC0 z [OpenGameArt](https://opengameart.org).
 - Pohyby z motion capture: CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), převedené sadou

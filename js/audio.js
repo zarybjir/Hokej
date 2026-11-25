@@ -31,6 +31,15 @@ const Sfx = {
     this.crowdG.connect(this.master);
     this.crowdF = f1;
     s1.start(); s2.start(0, 1.0);
+    // skutečné nahrávky (CC0 z Freesound, viz README): brusle, brzdění, mantinel, tyčka, hůl, píšťalka, klakson.
+    // Když se soubor nenačte, zůstane syntetický zvuk.
+    this.fx = {};
+    for (const n of ['skate', 'stop', 'board', 'post', 'whistle', 'horn', 'stick']) {
+      fetch('sounds/fx/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())).then((b) => c.decodeAudioData(b)).then((buf) => {
+        this.fx[n] = buf;
+        if (n === 'skate') { this.skG = c.createGain(); this.skG.gain.value = 0; this.skG.connect(this.master); const s = c.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(this.skG); s.start(); }
+      }).catch(() => {});
+    }
     // skutečné nahrávky publika (CC0, viz README): hluk davu a potlesk ve smyčce pod syntetickým šumem
     this.ambG = c.createGain(); this.appG = c.createGain(); this.ambG.gain.value = 0; this.appG.gain.value = 0;
     this.ambG.connect(this.master); this.appG.connect(this.master);
@@ -40,7 +49,13 @@ const Sfx = {
       }).catch(() => {});
     }
   },
-  tick(dt, base) {
+  // přehrání nahrávky; vrací false, když není načtená (volající pak použije syntézu)
+  play(n, vol = 1, rate = 1) {
+    const b = this.fx && this.fx[n]; if (!b || !this.ok()) return false;
+    const c = this.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.playbackRate.value = rate * rand(0.94, 1.06); g.gain.value = vol; s.connect(g); g.connect(this.master); s.start();
+    return true;
+  },
+  tick(dt, base, skate = 0) {
     this.roar = Math.max(0, this.roar - dt * 0.18);
     this.excite = lerp(this.excite, this.target, Math.min(1, dt * 2));
     if (!this.ok()) return;
@@ -49,6 +64,7 @@ const Sfx = {
     this.lastTick = now;
     const v = base * (0.05 + this.excite * 0.07 + this.roar * 0.45);
     this.crowdG.gain.setTargetAtTime(v * (this.realCrowd ? 0.45 : 1), this.ctx.currentTime, 0.1);
+    if (this.skG) this.skG.gain.setTargetAtTime(base * clamp(skate, 0, 1) * 0.5, now, 0.25);   // brusle: hlasitost podle toho, jak rychle se na ledě jezdí
     if (this.ambG) { this.ambG.gain.setTargetAtTime(base * (0.22 + this.excite * 0.5), now, 0.3); this.appG.gain.setTargetAtTime(base * Math.min(1, this.roar * 1.6), now, this.roar > 0.3 ? 0.08 : 0.5); }
     this.crowdF.frequency.setTargetAtTime(800 + this.excite * 500 + this.roar * 900, this.ctx.currentTime, 0.2);
   },
@@ -74,15 +90,16 @@ const Sfx = {
     this.env(g, t, a, vol, dec);
     o.start(t); o.stop(t + a + dec + 0.05);
   },
-  stick(v = 0.5) { this.burst(2500, 'highpass', 0.35 * v, 0.04); this.tone(900, 'triangle', 0.08 * v, 0.002, 0.03); },
-  slap(v = 1) { this.burst(1800, 'highpass', 0.7 * v, 0.06); this.burst(200, 'lowpass', 0.6 * v, 0.12); },
-  board(v = 0.6) { this.burst(160, 'lowpass', 0.9 * v, 0.22); this.burst(600, 'bandpass', 0.25 * v, 0.15, 2); },
-  post() { this.tone(1760, 'sine', 0.35, 0.002, 0.7); this.tone(2637, 'sine', 0.18, 0.002, 0.5); this.tone(3520, 'sine', 0.08, 0.002, 0.3); },
-  hit(v = 1) { this.burst(120, 'lowpass', 1.0 * v, 0.3); this.burst(400, 'bandpass', 0.5 * v, 0.2, 1); this.ooh(v); },
+  stick(v = 0.5) { if (this.play('stick', 0.55 * v, 1.25)) return; this.burst(2500, 'highpass', 0.35 * v, 0.04); this.tone(900, 'triangle', 0.08 * v, 0.002, 0.03); },
+  slap(v = 1) { this.play('stick', 0.9 * v, 0.8); this.burst(1800, 'highpass', 0.7 * v, 0.06); this.burst(200, 'lowpass', 0.6 * v, 0.12); },
+  board(v = 0.6) { if (this.play('board', 0.8 * v, 1.15)) return; this.burst(160, 'lowpass', 0.9 * v, 0.22); this.burst(600, 'bandpass', 0.25 * v, 0.15, 2); },
+  post() { this.play('post', 0.55, 1.5); this.tone(1760, 'sine', 0.35, 0.002, 0.7); this.tone(2637, 'sine', 0.18, 0.002, 0.5); this.tone(3520, 'sine', 0.08, 0.002, 0.3); },
+  hit(v = 1) { this.play('board', 0.9 * v, 0.85); this.burst(120, 'lowpass', 1.0 * v, 0.3); this.burst(400, 'bandpass', 0.5 * v, 0.2, 1); this.ooh(v); },
   ooh(v = 1) { this.target = Math.max(this.target, 0.5); this.roar = Math.max(this.roar, 0.25 * v); },
   cheer(v = 1) { this.roar = Math.max(this.roar, v); },
   whistle() {
     if (!this.ok()) return;
+    if (this.play('whistle', 0.5)) return;
     const c = this.ctx, t = c.currentTime;
     for (const [f, vv] of [[2900, 0.12], [3150, 0.06]]) {
       const o = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
@@ -95,6 +112,7 @@ const Sfx = {
   },
   horn(dur = 2.6) {
     if (!this.ok()) return;
+    this.play('horn', 0.3, 0.8);
     const c = this.ctx, t = c.currentTime, f = c.createBiquadFilter(), g = c.createGain();
     f.type = 'lowpass'; f.frequency.value = 1300; f.connect(g); g.connect(this.master);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.08);
@@ -135,6 +153,7 @@ const Sfx = {
     for (const [s, w, d] of tune) this.organNote(N(s), w, d);
   },
   // puk sjíždí po mantinelu: krátké šoupnutí s drnčením desek
+  scrape(v = 0.4) { this.play('stop', v); },
   rim(v = 0.3) { this.burst(1100, 'bandpass', 0.22 * v, 0.1, 1.5); this.burst(240, 'lowpass', 0.3 * v, 0.07); },
   // dav: bučení (nízké „úúú" se zvolna nabíhající hlasitostí)
   boo(v = 1) {

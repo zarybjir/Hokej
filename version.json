@@ -1,8 +1,9 @@
 {
-  "build": 78,
-  "version": "1.78",
+  "build": 79,
+  "version": "1.79",
   "date": "2026-11-25",
   "notes": [
-    "Hlediště v barvách zápasu: část diváků má dresy domácích, pár hostů"
+    "Skutečné zvuky ledu: brusle, brzdění, mantinel, tyčka, hůl, píšťalka, klakson",
+    "Hlasitost bruslí se řídí tím, jak rychle se na ledě jezdí"
   ]
 }

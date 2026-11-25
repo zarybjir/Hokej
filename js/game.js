@@ -181,7 +181,17 @@ class Game {
     if (pk.shot) ex = 0.9;
     if (this.state === 'goal') ex = 1;
     Sfx.target = ex;
-    Sfx.tick(dt, this.silent ? 0.45 : 1);
+    // zvuk bruslí podle průměrné rychlosti hráčů; prudké zabrzdění hráče škrábne o led (jen hokej)
+    let sk = 0;
+    if (!this.fb && this.state === 'play') {
+      for (const p of this.all) {
+        const v = Math.hypot(p.vx, p.vy); sk += v;
+        if (dt > 0 && p.sv0 > 15 && (p.sv0 - v) / dt > 55 && this.time - (p.scrT || -9) > 0.7 && !(p.downT > 0)) { p.scrT = this.time; this.sfx('scrape', clamp(p.sv0 / 60, 0.15, 0.5)); }
+        p.sv0 = v;
+      }
+      sk /= Math.max(1, this.all.length) * 22;
+    }
+    Sfx.tick(dt, this.silent ? 0.45 : 1, this.silent ? 0 : sk);
   }
   step(h) {
     this.time += h; this.stateT += h;
