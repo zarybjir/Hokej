@@ -840,6 +840,12 @@ const G3 = {
     const pal = ['#c8102e', '#1f3f7a', '#f4c542', '#e6e6e6', '#2b2b2b', '#0b6e3a', '#5b2c83', '#ff7a1a', '#1e9bd7', '#8a8a8a', '#6b3e26', '#d94f8a', '#111111', '#f2f2f2'];
     this.bodyMat = new THREE.MeshStandardMaterial({ roughness: 0.85 });
     this.headMat = new THREE.MeshStandardMaterial({ color: 0xd8a582, roughness: 0.7 });
+    // diváci při gólu vyskakují ze sedadel (každý jinak, podle svého místa)
+    this.cheerU = { uCheer: { value: 0 }, uCT: { value: 0 } };
+    for (const m of [this.bodyMat, this.headMat]) m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, this.cheerU);
+      sh.vertexShader = 'uniform float uCheer; uniform float uCT;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  float ch = fract(instanceMatrix[3].x * 0.37 + instanceMatrix[3].z * 0.61); transformed.y += uCheer * (0.45 + 0.75 * abs(sin(uCT * (7.0 + ch * 5.0) + ch * 40.0))) * step(0.25, ch);');
+    };
     this.bodies = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.48, 0.6, 1.7, 6), this.bodyMat, seats.length);
     this.heads = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.37, 0), this.headMat, seats.length);
     const col = new THREE.Color();
@@ -1341,6 +1347,7 @@ float wH(vec2 p) {
   },
   follow(tx, ty, dt, snap, shake) {
     if (this.fail) return;
+    const rtx = tx, rty = ty;
     tx = clamp(tx, -this.limX, this.limX); ty = clamp(ty * 0.85, -this.limY, this.limY);
     const k = snap ? 1 : Math.min(1, dt * 3.2);
     // dynamický zoom: při rychlé akci (brejk) kamera mírně odjede, v klidné hře v pásmu se přiblíží
@@ -1354,6 +1361,15 @@ float wH(vec2 p) {
     const [ox, oy, oz] = this.off.map((q) => q * this.zf * (this.zoomMul || 1));
     this.cam.position.set(this.camT.x + ox + sx, oz + sy, -(this.camT.y + oy));
     this.cam.lookAt(this.camT.x + sx * 0.5, 0, -this.camT.y);
+    // záznam z druhé kamery: za brankou, nebo nízko od mantinelu; teleobjektiv
+    const rc = this.rcam, fov = rc ? 24 : 36;
+    if (rc) {
+      if (rc.kind === 'net') this.cam.position.set(rc.s * (RINK.GOAL_X + 20), 9, -rty * 0.35);
+      else this.cam.position.set(clamp(rtx - rc.s * 34, -70, 70), 5.5, (this.view === 'side' ? 1 : -1) * (RINK.HW - 2.5));
+      this.rcT = this.rcT && this.rcK === rc.kind ? this.rcT.lerp(_va.set(rtx, 2.2, -rty), Math.min(1, dt * 6)) : new THREE.Vector3(rtx, 2.2, -rty); this.rcK = rc.kind;
+      this.cam.lookAt(this.rcT);
+    } else this.rcK = null;
+    if (this.cam.fov !== fov) { this.cam.fov = fov; this.cam.updateProjectionMatrix(); }
   },
   resize() {
     if (!this.r) return;
@@ -1425,6 +1441,10 @@ float wH(vec2 p) {
       this.stoneM.forEach((m, i) => { const s = g.stones[i]; m.visible = !!s && !s.out; if (!m.visible) return; m.position.set(s.x, 0, -s.y); m.userData.col.color.set(s.team.jersey); if (s.moving) m.rotation.y -= (s.spin || 0) * dt * 1.6; });
     } else if (this.stoneM) for (const m of this.stoneM) m.visible = false;
     this.syncWeather(g, t, dt);
+    // atmosféra: po gólu diváci skáčou a hala pohasne do rytmu, při nástupu se světla rozsvěcují
+    const goal = g && g.state === 'goal' ? 1 : 0; this.cheer = (this.cheer || 0) + (goal - (this.cheer || 0)) * Math.min(1, dt * (goal ? 6 : 1.2));
+    if (this.cheerU) { this.cheerU.uCheer.value = this.cheer; this.cheerU.uCT.value = t; }
+    this.r.toneMappingExposure = (g && g.state === 'intro' ? 0.4 + 0.6 * clamp(g.stateT / 2.2, 0, 1) : 1) * (1 - 0.3 * this.cheer * (0.55 + 0.45 * Math.sin(t * 13)));
     this.syncGrass(g, players, t);
     if (this.ball) {
       // míč se kutálí podle uražené dráhy

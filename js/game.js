@@ -170,6 +170,7 @@ class Game {
     // efekty
     if (this.banner) { this.banner.t += dt; if (this.banner.t > this.banner.dur) this.banner = null; }
     if (this.lower) { this.lower.t += dt; if (this.lower.t > this.lower.dur) this.lower = null; }
+    if (this.tv) { this.tv.t += dt; if (this.tv.t > this.tv.dur || this.state === 'play' && this.tv.t > 1.5) this.tv = null; }
     for (const p of this.pops) p.t += dt;
     this.pops = this.pops.filter((p) => p.t < 1.6);
     this.shake = Math.max(0, this.shake - dt * 2);
@@ -237,8 +238,9 @@ class Game {
         break;
       case 'replay': {
         const r = this.replay;
-        r.f += h * 60 * 0.55;
-        if (r.f >= r.frames.length - 1) this.endReplay();
+        r.f += h * 60 * (r.pass ? 0.34 : 0.55);
+        // druhý průchod: závěr akce znovu, pomaleji a z jiné kamery (za brankou / nízko od mantinelu)
+        if (r.f >= r.frames.length - 1) { if (!r.pass && r.frames.length > 130) { r.pass = 1; r.f = r.frames.length - 110; } else this.endReplay(); }
         break;
       }
       case 'periodEnd':

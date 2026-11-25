@@ -5,6 +5,8 @@ gameMixin(class {
   // ---------- přerušení, góly, třetiny ----------
   whistle(reason, spot) {
     this.icing = null;
+    // přenosová grafika: při přerušení občas srovnání týmů (střely, hity, vhazování…)
+    if (!this.practice && !this.demo && this.time - (this.tvT || -99) > 45 && Math.random() < 0.5) { this.tvT = this.time; this.tv = { k: pick(this.fb ? ['shots', 'corners', 'fouls'] : ['shots', 'hits', 'fo']), t: 0, dur: 4.5 }; }
     if (this.pending) { this.assess(this.pending); this.pending = null; }
     this.state = 'stop'; this.stateT = 0; this.stopSpot = this.practice ? this.practiceSpot() : spot;
     this.sfx('whistle');
@@ -78,7 +80,7 @@ gameMixin(class {
     else this.afterReplay();
   }
   startReplay() {
-    this.replay = { frames: this.rec.slice(-250), f: 0 };
+    this.replay = { frames: this.rec.slice(-250), f: 0, pass: 0, cam: (this.goals.length + (this.replays = (this.replays || 0) + 1)) % 2 ? 'net' : 'low' };
     this.state = 'replay'; this.stateT = 0;
   }
   endReplay() { this.replay = null; this.afterReplay(); }

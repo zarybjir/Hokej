@@ -146,7 +146,9 @@ const R = {
       const fr = g.replay.frames[Math.min(g.replay.frames.length - 1, Math.floor(g.replay.f))];
       players = fr.pl; pk = { x: fr.px, y: fr.py, z: fr.pz, vx: 0, vy: 0 };
       refs = fr.refs || [];
-    }
+      const last = g.replay.frames[g.replay.frames.length - 1];
+      G3.rcam = g.replay.pass ? { kind: g.replay.cam, s: last.px >= 0 ? 1 : -1 } : null;
+    } else G3.rcam = null;
     const lead = g.state === 'play' ? clamp(pk.vx || 0, -30, 30) * 0.3 : 0;
     if (g.state === 'zamboni' && g.zam) { players = []; refs = []; this.updateCam(g.zam.x + Math.cos(g.zam.dir) * 6, dt, false, 0, g.zam.y); }
     else this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
@@ -322,6 +324,18 @@ const R = {
       }
       if (b.sub && reveal >= 1) LED.text(ctx, b.sub, this.W / 2, by + bh - 26, 3, { align: 'center' });
       ctx.restore();
+    }
+    if (g.tv && g.teams[0].roster) {
+      // srovnání týmů jako v televizním přenosu
+      const [A, B] = g.teams, sum = (T, f) => T.roster.reduce((a, p) => a + (p.stats[f] || 0), 0), fo = (T) => { const w = sum(T, 'fw'), l = sum(T, 'fl'); return w + l ? Math.round(100 * w / (w + l)) : 50; };
+      const K = { shots: ['STŘELY NA BRANKU', A.shots, B.shots], hits: ['HITY', A.hits, B.hits], fo: ['VYHRANÁ VHAZOVÁNÍ %', fo(A), fo(B)], corners: ['ROHOVÉ KOPY', A.corners || 0, B.corners || 0], fouls: ['FAULY', A.pim, B.pim] }[g.tv.k];
+      const T = g.tv, sl = clamp(T.t / 0.3, 0, 1) * clamp((T.dur - T.t) / 0.3, 0, 1), w = 520, x = this.W / 2 - w / 2, y = this.H - 150 + (1 - sl) * 120, tot = Math.max(1, K[1] + K[2]);
+      ctx.globalAlpha = sl; LED.panel(ctx, x, y, w, 84, 4, 0.92);
+      LED.text(ctx, K[0], this.W / 2, y + 18, 2.5, { align: 'center', color: '#9fe3ff' });
+      this.chip(A, x + 14, y + 36, 34); this.chip(B, x + w - 20, y + 36, 34);
+      LED.text(ctx, A.def.abbr + '  ' + K[1], x + 32, y + 52, 4); LED.text(ctx, K[2] + '  ' + B.def.abbr, x + w - 32, y + 52, 4, { align: 'right' });
+      const bx = x + 170, bw = w - 340; ctx.fillStyle = A.jersey; ctx.fillRect(bx, y + 46, bw * K[1] / tot, 12); ctx.fillStyle = B.jersey; ctx.fillRect(bx + bw * K[1] / tot, y + 46, bw * K[2] / tot, 12);
+      ctx.fillStyle = '#000'; ctx.fillRect(bx + bw * K[1] / tot - 1, y + 44, 2, 16); ctx.globalAlpha = 1;
     }
     if (g.lower) {
       const L = g.lower, slide = clamp(L.t / 0.3, 0, 1) * clamp((L.dur - L.t) / 0.3, 0, 1);

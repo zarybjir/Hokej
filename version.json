@@ -1,10 +1,10 @@
 {
-  "build": 75,
-  "version": "1.75",
+  "build": 76,
+  "version": "1.76",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: hráči běhají pomaleji, tempo odpovídá jejich velikosti",
-    "Curling: LB/RB nastavuje sílu rotace kamene, Y směr",
-    "Curling: před zápasem výběr z pěti kamenů – váha, vyvážení a tření mění nárazy, přesnost a tvar dráhy"
+    "Záznam gólu podruhé a pomaleji z druhé kamery: zpoza branky nebo nízko od mantinelu",
+    "Přenosová grafika: srovnání týmů při přerušení",
+    "Diváci po gólu vyskakují, světla haly reagují na gól a nástup"
   ]
 }

@@ -169,6 +169,18 @@ test('curling: síla rotace a vlastnosti kamene (váha, vyvážení, tření) m�
   press('lb'); ok(g.aim.spin === 0.5, 'LB neubralo rotaci'); press('lb'); ok(g.aim.spin === 0.5, 'rotace klesla pod nejnižší stupeň'); press('y'); ok(g.aim.spin === -0.5, 'Y neotočilo směr rotace');
 });
 
+test('přenos: záznam má druhý pomalejší průchod z jiné kamery, při přerušení se ukáže srovnání týmů', (G) => {
+  const g = new G.Game({ home: 0, away: 1, humans: [], silent: true });
+  for (let i = 0; i < 400; i++) g.update(1 / 60);
+  while (g.rec.length < 200) g.update(1 / 60);
+  g.startReplay(); ok(g.state === 'replay' && g.replay.pass === 0 && ['net', 'low'].includes(g.replay.cam), 'záznam nezačal');
+  let passes = 0, f1 = 0, n = 0; for (; g.state === 'replay' && n < 5000; n++) { const p0 = g.replay.pass; g.update(1 / 60); if (g.replay && g.replay.pass && !p0) { passes++; f1 = g.replay.f; } }
+  ok(passes === 1 && f1 > 50 && g.state !== 'replay', 'druhý průchod záznamu: ' + passes + ', stav ' + g.state);
+  const h = new G.Game({ home: 0, away: 1, humans: [], silent: true }); while (h.state !== 'play') h.update(1 / 60);
+  const r = Math.random; Math.random = () => 0.1; h.time = 100; h.whistle('test', [0, 0]); Math.random = r;
+  ok(h.tv && ['shots', 'hits', 'fo'].includes(h.tv.k), 'srovnání týmů se neukázalo'); h.tv.t = 0; h.whistle('test', [0, 0]); ok(h.tvT === 100, 'srovnání se opakuje hned znovu');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

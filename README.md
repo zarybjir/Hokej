@@ -151,6 +151,13 @@ hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzděn
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
+## Přenos a atmosféra
+
+- **Záznam gólu a šancí** běží dvakrát: nejdřív z herní kamery, pak závěr akce pomaleji z druhé kamery –
+  střídavě zpoza branky a nízko od mantinelu teleobjektivem.
+- **Srovnání týmů** při přerušení: střely, hity, vyhraná vhazování (ve fotbale rohy a fauly).
+- **Diváci** po gólu vyskakují ze sedadel a hala pohasíná do rytmu, při nástupu se světla rozsvěcují.
+
 ## Fotbal (malá kopaná 5+1)
 
 V hlavním menu je nahoře **FOTBAL**, pod ním **HOKEJ**. Fotbal se hraje ve stejné hale na trávníku
