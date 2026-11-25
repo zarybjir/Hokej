@@ -168,6 +168,9 @@ uvnitř mantinelů: 5 hráčů v poli a brankář, dva poločasy, stejné týmy 
   přerušení občas vyroste nový a míč se od něj odrazí jinam a nadskočí.
   Z krtince občas vykoukne krtek – kdo ho trefí míčem, dostane žlutou kartu a soupeř kope volný kop.
   Kdo přes vykukujícího krtka přeběhne, zakopne, upadne a ztratí míč.
+- **3D tráva a sekání:** na střední a vysoké kvalitě grafiky roste po hřišti skutečná tráva (stébla se
+  vlní, pod hráči se sešlapou). O poločase můžeš tlačítkem Y vyjet s traktůrkem a trávník posekat –
+  posekaný pruh zůstane kratší a světlejší do konce zápasu (řídí se nastavením „Rolba o přestávce“).
 - **Pohyb hráčů:** běh, klus a kop jdou po drahách ze skutečného motion capture (CMU, klipy
   09_01, 16_35 a 10_01 ze sady codepawl/cmu-mocap-glb); skluz a zákroky brankáře jsou dopočítané.
 - Kariéra, trénink a výzvy jsou zatím jen hokejové.

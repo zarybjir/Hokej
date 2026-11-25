@@ -4,9 +4,9 @@
 const ZOOMS = [0.72, 0.86, 1.0, 1.2, 1.45];
 const ZOOM_NAMES = ['VELMI BLÍZKO', 'BLÍZKO', 'STŘEDNÍ', 'DALEKO', 'VELMI DALEKO'];
 const GFX = {
-  low: { name: 'NÍZKÁ', pr: 0.7, shadow: 0, refl: false, ice: 2048, post: false, wear: false },
-  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048, post: false, wear: true },
-  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096, post: true, wear: true },
+  low: { name: 'NÍZKÁ', pr: 0.7, shadow: 0, refl: false, ice: 2048, post: false, wear: false, grass: 0 },
+  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048, post: false, wear: true, grass: 22000 },
+  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096, post: true, wear: true, grass: 45000 },
 };
 const GFX_ORDER = ['low', 'mid', 'high'];
 // barevné ladění „TV přenos“: kontrast, sytost, vinětace (v lineárním HDR před tone mappingem)
@@ -1141,6 +1141,62 @@ float wH(vec2 p) {
     if (this.pitchMat.map) this.pitchMat.map.dispose();
     this.pitchMat.map = canvasTex(c, true, this.aniso); this.pitchMat.needsUpdate = true;
   },
+  // ---------- 3D tráva: trsy stébel po celém hřišti (jedna instancovaná síť), výška podle posekání ----------
+  buildGrass(N) {
+    const rnd = mulberry32(99), BH = 0.52, v = [], B = 5;
+    for (let b = 0; b < B; b++) {   // trs: pět zašpičatělých stébel s náklonem
+      const a = rnd() * TAU, r = rnd() * 0.24, x = Math.cos(a) * r, z = Math.sin(a) * r, d = rnd() * TAU, w = 0.045 + rnd() * 0.03, h = BH * (0.7 + rnd() * 0.3), ln = 0.05 + rnd() * 0.16, la = rnd() * TAU;
+      v.push(x - Math.cos(d) * w, 0, z - Math.sin(d) * w, x + Math.cos(d) * w, 0, z + Math.sin(d) * w, x + Math.cos(la) * ln, h, z + Math.sin(la) * ln);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(v.length / 3).fill([0, 1, 0]).flat(), 3));
+    const U = this.grassU = { uGH: { value: null }, uGM: { value: null }, uGT: { value: 0 }, uGW: { value: 0 }, uGP: { value: Array.from({ length: 14 }, () => new THREE.Vector3()) }, uGPud: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) } };
+    const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = 'uniform sampler2D uGH; uniform sampler2D uGM; uniform float uGT; uniform vec3 uGP[14]; uniform vec4 uGPud[8]; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  vec3 io = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz; vec2 guv = vec2((io.x + 100.0) / 200.0, (42.5 - io.z) / 85.0);
+  float gh0 = texture2D(uGH, guv).r, hk = 0.22 + 0.78 * gh0; vTip = position.y / ${BH.toFixed(2)}; vCut = gh0; vGc = texture2D(uGM, guv).rgb;
+  for (int i = 0; i < 8; i++) if (uGPud[i].z > 0.0 && length(io.xz - uGPud[i].xy) < uGPud[i].z * 0.8) hk *= 0.3;   // v kaluži kouká jen špička
+  for (int i = 0; i < 14; i++) if (uGP[i].z > 0.0) hk *= 1.0 - 0.65 * smoothstep(1.1, 0.25, length(io.xz - uGP[i].xy));   // pod kopačkami je tráva sešlapaná
+  transformed.y *= hk; transformed.x += sin(uGT * 1.7 + io.x * 0.6 + io.z * 0.4) * 0.05 * vTip * hk;`);
+      sh.fragmentShader = 'uniform float uGW; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb = vGc * mix(0.5, 1.4, vTip) * mix(vec3(1.12, 1.08, 0.88), vec3(1.0), vCut) * (1.0 - 0.2 * uGW);')
+        .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n  normal = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);');
+    };
+    const m = this.grassM = new THREE.InstancedMesh(geo, mat, N), o = new THREE.Object3D(), GX = RINK.GOAL_X + 1.5, HW = FB.HW + 1.5;
+    for (let i = 0; i < N; i++) { o.position.set((rnd() * 2 - 1) * GX, 0.02, (rnd() * 2 - 1) * HW); o.rotation.y = rnd() * TAU; const s = 0.75 + rnd() * 0.55; o.scale.set(s, s, s); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }
+    m.frustumCulled = false; m.receiveShadow = true; m.renderOrder = 2; this.grassN = N; this.scene.add(m);
+    this.grassTex = new THREE.DataTexture(new Uint8Array(100 * 43).fill(255), 100, 43, THREE.RedFormat); this.grassTex.magFilter = THREE.LinearFilter; this.grassTex.minFilter = THREE.LinearFilter; this.grassTex.needsUpdate = true;
+    U.uGH.value = this.grassTex;
+  },
+  syncGrass(g, players, t) {
+    const N = this.sportOn === 'football' && g && g.grass && this.pitchMat && this.pitchMat.map ? GFX[this.quality].grass >> (IS_MOBILE ? 1 : 0) : 0;
+    if (this.grassM && this.grassN !== N && N) { this.scene.remove(this.grassM); this.grassM.geometry.dispose(); this.grassM.material.dispose(); this.grassM.dispose(); this.grassTex.dispose(); this.grassM = null; }
+    if (!N) { if (this.grassM) this.grassM.visible = false; return; }
+    if (!this.grassM) this.buildGrass(N);
+    const U = this.grassU, tex = this.grassTex; this.grassM.visible = true;
+    if (tex.image.data !== g.grass || this.grassV !== g.grassV) { tex.image.data = g.grass; this.grassV = g.grassV; tex.needsUpdate = true; }
+    U.uGM.value = this.pitchMat.map; U.uGT.value = t; U.uGW.value = g.rain ? 1 : 0;
+    U.uGP.value.forEach((v, i) => { const p = players[i]; if (p && !p.inBox) v.set(p.x, -p.y, 1); else v.z = 0; });
+    U.uGPud.value.forEach((v, i) => { const q = g.rain && g.puddles[i]; if (q) v.set(q.x, -q.y, q.r, 0); else v.z = 0; });
+  },
+  // traktůrek se sekačkou (o poločase místo rolby)
+  buildMower() {
+    const grp = new THREE.Group(), std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.1, ...o });
+    const red = std(0xc8281e), dark = std(0x1b1d22, { roughness: 0.85 }), yel = std(0xe8b820), steel = std(0x9aa3ad, { metalness: 0.7, roughness: 0.35 }), skin = std(0xe0b090), blue = std(0x2a4a8a);
+    const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; grp.add(o); return o; }, box = (w, h, d, m, x, y, z) => add(new THREE.BoxGeometry(w, h, d), m, x, y, z);
+    box(4.4, 0.5, 2.4, dark, 0.6, 1.3, 0); box(2.6, 1.3, 2.0, red, 2.0, 2.1, 0); box(0.3, 1.0, 1.6, dark, 3.35, 2.0, 0);                 // rám, kapota, maska
+    box(1.5, 0.35, 1.7, dark, -0.9, 1.75, 0); box(0.3, 1.2, 1.7, dark, -1.6, 2.4, 0);                                                     // sedačka
+    box(1.6, 0.25, 0.9, red, -1.0, 2.75, 1.55); box(1.6, 0.25, 0.9, red, -1.0, 2.75, -1.55);                                             // blatníky
+    add(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8), steel, 0.75, 2.9, 0).rotation.z = -0.5; add(new THREE.TorusGeometry(0.42, 0.06, 6, 16), dark, 0.45, 3.4, 0).rotation.y = Math.PI / 2;   // volant
+    add(new THREE.CylinderGeometry(0.1, 0.1, 1.3, 8), steel, 2.9, 3.3, 0.7);                                                              // výfuk
+    this.mowWheels = [];
+    const wheel = (r, w, x, z) => { const o = add(new THREE.CylinderGeometry(r, r, w, 18).rotateX(Math.PI / 2), dark, x, r, z); o.userData.r = r; this.mowWheels.push(o); add(new THREE.CylinderGeometry(r * 0.45, r * 0.45, w + 0.06, 12).rotateX(Math.PI / 2), yel, x, r, z); };
+    wheel(1.45, 0.95, -1.0, 1.6); wheel(1.45, 0.95, -1.0, -1.6); wheel(0.85, 0.6, 2.7, 1.3); wheel(0.85, 0.6, 2.7, -1.3);
+    box(2.6, 0.45, 8.4, yel, -3.6, 0.42, 0); box(1.4, 0.2, 0.25, steel, -2.4, 0.9, 0.9); box(1.4, 0.2, 0.25, steel, -2.4, 0.9, -0.9);     // žací lišta za traktorem
+    add(new THREE.CapsuleGeometry(0.42, 0.8, 4, 10), blue, -0.9, 2.85, 0); add(new THREE.SphereGeometry(0.36, 12, 10), skin, -0.85, 3.9, 0); add(new THREE.CylinderGeometry(0.4, 0.42, 0.2, 12), yel, -0.85, 4.15, 0);   // řidič se slamákem
+    this.mowBeacon = add(new THREE.SphereGeometry(0.22, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 2, 0.2) }), -1.6, 3.2, 0);
+    grp.scale.setScalar(0.85); grp.visible = false; this.scene.add(grp); this.mowGrp = grp;
+  },
   // ---------- počasí ve fotbale: kaluže, krtince, déšť ----------
   buildWeather() {
     // krtinec: kuželovitá hromádka sypké hlíny (hranaté hroudy, nestejně tmavá)
@@ -1266,7 +1322,7 @@ float wH(vec2 p) {
   },
   computeLims() {
     if (!this.off) return;
-    const [ox, oy, oz] = this.off, d = Math.hypot(ox, oy, oz), hv = d * Math.tan((this.cam.fov * Math.PI) / 360), hh = hv * this.cam.aspect;
+    const [ox, oy, oz] = this.off.map((q) => q * (this.zoomMul || 1)), d = Math.hypot(ox, oy, oz), hv = d * Math.tan((this.cam.fov * Math.PI) / 360), hh = hv * this.cam.aspect;
     if (this.view === 'top') {
       const pitch = Math.atan2(oz, Math.abs(ox));
       this.limX = Math.max(0, RINK.HL + 4 - hv / Math.sin(pitch) * 0.8); this.limY = Math.max(0, RINK.HW + 5 - hh);
@@ -1361,6 +1417,7 @@ float wH(vec2 p) {
       this.stoneM.forEach((m, i) => { const s = g.stones[i]; m.visible = !!s && !s.out; if (!m.visible) return; m.position.set(s.x, 0, -s.y); m.userData.col.color.set(s.team.jersey); if (s.moving) m.rotation.y -= (s.spin || 0) * dt * 1.6; });
     } else if (this.stoneM) for (const m of this.stoneM) m.visible = false;
     this.syncWeather(g, t, dt);
+    this.syncGrass(g, players, t);
     if (this.ball) {
       // míč se kutálí podle uražené dráhy
       const b = this.ball, nx = pk.x, nz = -pk.y, dx = nx - b.position.x, dz = nz - b.position.z, d = Math.hypot(dx, dz);
@@ -1394,7 +1451,9 @@ float wH(vec2 p) {
     // rolba mezi třetinami: automaticky smaže vše, při ručním řízení zůstane, co se neuklidilo, vypnutá nic
     if (g && this.wearPeriod !== g.period) { this.wearPeriod = g.period; if (g.iceManual) g.iceManual = false; else if (g.cfg.zamboni !== 'off') this.clearWear(); }
     const zam = g && g.state === 'zamboni' && g.zam;
-    this.zamGrp.visible = !!zam;
+    if (this.fbOn && zam && !this.mowGrp) this.buildMower();
+    this.zamGrp.visible = !!zam && !this.fbOn; if (this.mowGrp) this.mowGrp.visible = !!zam && this.fbOn;
+    if (zam && this.fbOn) { this.mowGrp.position.set(zam.x, 0, -zam.y); this.mowGrp.rotation.y = zam.dir; this.mowBeacon.visible = Math.floor(t * 3) % 2 === 0; for (const w of this.mowWheels) w.rotation.z -= zam.v * dt / w.userData.r; }
     if (zam) {
       if (!this.zamOn) { this.zamOn = true; this.zamPrev = null; this.wear.dirt0 = Math.max(1, this.dirtyCount()); }
       this.zamGrp.position.set(zam.x, 0, -zam.y); this.zamGrp.rotation.y = zam.dir;

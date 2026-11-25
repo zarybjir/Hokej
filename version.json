@@ -1,8 +1,10 @@
 {
-  "build": 70,
-  "version": "1.70",
+  "build": 71,
+  "version": "1.71",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: detailní trávník – viditelná stébla a trsy se světlými špičkami, v pruzích po sekání položená opačně"
+    "Fotbal: skutečná 3D tráva – stébla se vlní a pod hráči se sešlapou (střední a vysoká grafika)",
+    "O poločase můžeš na traktůrku posekat trávník, posekaný pruh zůstane do konce zápasu",
+    "Kamera ve fotbale dojede až k brankám"
   ]
 }

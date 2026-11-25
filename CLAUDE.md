@@ -58,7 +58,8 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 - `tools/gen_voice.py` – přegenerování hlášek komentátora (Piper TTS).
 - `tools/bake_moves.js` – převod klipů motion capture na `models/moves.json` (dráhy chodidel, rukou a pánve
   pro běh, klus a kop; používá je `HModel.poseFoot`, klouby dopočítá IK). Počasí ve fotbale: `Football.groundFx`,
-  `G3.syncWeather`.
+  `G3.syncWeather`. 3D tráva: `G3.buildGrass`/`syncGrass` (instancované trsy, počet v `GFX.grass`), výška po buňkách
+  v `Football.grass`; sekání o poločase je rolba (`updateZamboni`) s traktůrkem `G3.buildMower`.
 - `tests/` – automatické testy (`run.js` logika v Node, `browser.js` Playwright, `lib.js` zavaděč).
 
 Souřadnice hry: x podél kluziště, y napříč, z nahoru, jednotky **stopy**; render3d je převádí na three.js (x, z, −y).

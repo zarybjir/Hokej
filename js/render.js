@@ -386,14 +386,14 @@ const R = {
     if (!g.fb) { const q = Math.round(g.iceQuality()); LED.text(ctx, 'STAV LEDU ' + q + ' %', this.W / 2, y + h - 62, 2.5, { align: 'center', color: q > 70 ? '#7dff8a' : q > 45 ? '#ffd21f' : '#ff8a6a' }); }
     if (Math.floor(t * 1.5) % 2 === 0) LED.text(ctx, 'A - POKRAČOVAT', this.W / 2, y + h - 28, 2.5, { align: 'center', color: '#ffd21f' });
     if (g.humans.length && g.cfg.zamboni !== 'off') LED.panel(ctx, this.W / 2 - 190, y + h + 8, 380, 36, 3, 0.9);
-    if (g.humans.length && g.cfg.zamboni !== 'off') LED.text(ctx, g.cfg.zamboni === 'manual' ? 'ROLBA VYJÍŽDÍ...' : 'Y - ŘÍDIT ROLBU', this.W / 2, y + h + 26, 2.5, { align: 'center', color: '#9fe3ff' });
+    if (g.humans.length && g.cfg.zamboni !== 'off') LED.text(ctx, g.fb ? (g.cfg.zamboni === 'manual' ? 'SEKAČKA VYJÍŽDÍ...' : 'Y - POSEKAT TRÁVNÍK') : g.cfg.zamboni === 'manual' ? 'ROLBA VYJÍŽDÍ...' : 'Y - ŘÍDIT ROLBU', this.W / 2, y + h + 26, 2.5, { align: 'center', color: '#9fe3ff' });
   },
   drawZamboniHUD(g, t) {
     const ctx = this.ctx, w = 430, x = this.W / 2 - w / 2, y = this.H - 104;
     LED.panel(ctx, x, y, w, 86, 4, 0.92);
     const pc = Math.round(g.zamPct());
-    LED.text(ctx, 'ROLBA', x + 20, y + 24, 3, { color: '#9fe3ff' });
-    LED.text(ctx, 'UKLIZENO ' + pc + ' %', x + w - 20, y + 24, 3, { align: 'right', color: pc >= 90 ? '#7dff8a' : '#ffd21f' });
+    LED.text(ctx, g.fb ? 'SEKAČKA' : 'ROLBA', x + 20, y + 24, 3, { color: '#9fe3ff' });
+    LED.text(ctx, (g.fb ? 'POSEKÁNO ' : 'UKLIZENO ') + pc + ' %', x + w - 20, y + 24, 3, { align: 'right', color: pc >= 90 ? '#7dff8a' : '#ffd21f' });
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 20, y + 44, w - 40, 8);
     ctx.fillStyle = pc >= 90 ? '#7dff8a' : '#ffd21f'; ctx.fillRect(x + 20, y + 44, (w - 40) * pc / 100, 8);
     LED.text(ctx, 'PÁČKA = ŘÍZENÍ   B = HOTOVO', this.W / 2, y + 70, 2, { align: 'center', color: '#bfc6d6' });

@@ -351,6 +351,19 @@ test('fotbal: za deště kaluž zbrzdí míč, krtinec ho vychýlí; za jasna ne
   ok(g.puddles.every((q) => q.r <= q.R + 1e-6 && Math.abs(q.x) < G.RINK.GOAL_X && Math.abs(q.y) < G.FB.HW), 'kaluž mimo hřiště nebo přerostlá');
 });
 
+test('fotbal: o poločase jde posekat trávník, pruh za traktůrkem zůstane krátký', (G) => {
+  const g = new G.Football({ home: 0, away: 1, humans: [{ dev: idleDev(), team: 0, assist: 0 }], silent: true, periodLen: 20, zamboni: 'auto' });
+  ok(g.grass.every((v) => v === 255) && g.zamPct() === 0, 'trávník není na začátku neposekaný');
+  for (let t = 0; g.state !== 'periodEnd' && t < 200; t += 1 / 60) { g.update(1 / 60); if (g.state === 'replay') g.endReplay(); }
+  ok(g.state === 'periodEnd' && g.period === 1, 'nenastal poločas (stav ' + g.state + ')');
+  g.startZamboni(); ok(g.state === 'zamboni' && g.zam, 'sekačka nevyjela');
+  g.zam.ix = 1; g.zam.iy = 0; for (let i = 0; i < 60 * 8; i++) g.update(1 / 60);
+  const pc = g.zamPct(); ok(pc > 1 && pc < 40, 'posekáno ' + pc.toFixed(1) + ' %');
+  ok(g.grass.some((v) => v === 40) && g.grass.some((v) => v === 255) && g.grassV > 0, 'za sekačkou nezůstal posekaný pruh');
+  g.endZamboni(); ok(g.period === 2 && g.state !== 'zamboni' && g.grass.some((v) => v === 40), 'po sekání nezačal druhý poločas nebo tráva dorostla');
+  const wp = new G.WaterPolo({ home: 0, away: 1, humans: [], silent: true, zamboni: 'auto' }); ok(wp.cfg.zamboni === 'off', 'v bazénu se nabízí sekačka');
+});
+
 // ---------- vodní pólo ----------
 test('vodní pólo: čtyři čtvrtiny, útočný čas, vyloučení na 20 s', (G) => {
   const N = 4; let goals = 0, bad = '', scMin = 99; const qs = new Set();

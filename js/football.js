@@ -8,9 +8,10 @@ const FB_KO = { C: [-1.5, 0], LW: [-10, 20], RW: [-10, -20], LD: [-42, 12], RD: 
 
 class Football extends Game {
   constructor(cfg) {
-    super({ ...cfg, sport: cfg.sport === 'polo' ? 'polo' : 'football', offside: false, icing: false, zamboni: 'off', sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
+    super({ ...cfg, sport: cfg.sport === 'polo' ? 'polo' : 'football', offside: false, icing: false, zamboni: cfg.sport === 'polo' || !cfg.zamboni ? 'off' : cfg.zamboni, sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
     for (const t of this.teams) for (const p of t.roster) p.reach *= 0.6;   // míč u nohy, dosah nohy místo hole
     this.iceWear = 0;
+    this.grass = new Uint8Array(100 * 43).fill(255); this.grassV = 0;   // výška trávy po buňkách 2×2 stopy (255 = neposekaná)
     // počasí a hřiště (jen fotbal): za deště se dělají kaluže; krtince jsou na dešti nezávislé
     const fbw = this.sport === 'football', wr = cfg.weather === 'random';
     this.rain = fbw && (cfg.weather === 'rain' || (wr && Math.random() < 0.4));
@@ -19,6 +20,19 @@ class Football extends Game {
     if (this.rain) { this.addPuddle(); this.addPuddle(); }
     this.setupFaceoff(0, 0); this.state = 'intro';
   }
+  // ---------- sekání trávníku o poločase: traktůrek jezdí jako rolba, za sebou nechává posekaný pruh ----------
+  updateZamboni(h) {
+    super.updateZamboni(h);
+    const z = this.zam, fx = Math.cos(z.dir), fy = Math.sin(z.dir), cx = z.x - fx * 3.5, cy = z.y - fy * 3.5;
+    for (let k = -4; k <= 4; k += 0.8) for (const b of [-0.8, 0, 0.8]) { const i = this.iceIdx(cx - fy * k + fx * b, cy + fx * k + fy * b); if (this.grass[i] !== 40) { this.grass[i] = 40; this.grassV++; } }
+  }
+  // kolik procent hřiště je posekáno
+  zamPct() {
+    let n = 0, all = 0;
+    for (let j = 0; j < 43; j++) for (let i = 0; i < 100; i++) { if (Math.abs(i * 2 - 99) > RINK.GOAL_X || Math.abs(j * 2 - 41.5) > FB.HW) continue; all++; if (this.grass[j * 100 + i] === 40) n++; }
+    return 100 * n / all;
+  }
+  endZamboni() { if (this.state === 'zamboni') { this.zam = null; this.nextPeriod(); } }
   // ---------- počasí: kaluže a krtince ----------
   // volné místo na hřišti dál od ostatních kaluží a krtinců
   freeSpot(gap) {
@@ -80,7 +94,7 @@ class Football extends Game {
   showBanner(text, sub, dur, color) { super.showBanner(String(text).replace('TŘETINA', 'POLOČAS').replace('TRESTNÉ STŘÍLENÍ', 'PENALTA').replace('NÁJEZDY', 'PENALTY'), sub, dur, color); }
   say(text, prio, chance) {
     const M = { 'Začíná první třetina.': 'Začíná první poločas.', 'Začíná druhá třetina.': 'Začíná druhý poločas.', 'Konec první třetiny.': 'Konec prvního poločasu.', 'Konec druhé třetiny.': 'Konec druhého poločasu.',
-      'Dělovka od modré!': 'Střela!', 'Lapačka!': 'Chytil to!', 'Trestné střílení!': 'Penalta!', 'O vítězi rozhodnou samostatné nájezdy!': 'O vítězi rozhodnou penalty!', 'Nájezd.': null, 'Gól v přesilovce!': null };
+      'Dělovka od modré!': 'Střela!', 'Lapačka!': 'Chytil to!', 'Trestné střílení!': 'Penalta!', 'O vítězi rozhodnou samostatné nájezdy!': 'O vítězi rozhodnou penalty!', 'Nájezd.': null, 'Rolba vyjíždí na led.': null, 'Gól v přesilovce!': null };
     const f = (t) => (t in M ? M[t] : t);
     super.say(Array.isArray(text) ? text.map(f) : f(text), prio, chance);
   }
