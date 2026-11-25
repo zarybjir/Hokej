@@ -443,7 +443,10 @@ const G3 = {
       const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: IS_MOBILE ? 0 : 4 });
       const c = this.comp = new PP.EffectComposer(this.r, rt);
       c.addPass(new PP.RenderPass(this.scene, this.cam));
-      this.bloom = new PP.UnrealBloomPass(new THREE.Vector2(256, 256), this.sportOn === 'curling' ? 0.05 : 0.32, 0.55, 1.6);
+      this.bloom = new PP.UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.55, 1.6);
+      // záře se nepřičítá, ale násobí obrazem: světlé plochy (led, světla) září, hráče a tmavé objekty nepřekrývá závojem
+      const bm = this.bloom.blendMaterial;
+      if (bm) { bm.blending = THREE.CustomBlending; bm.blendEquation = THREE.AddEquation; bm.blendSrc = THREE.DstColorFactor; bm.blendDst = THREE.OneFactor; bm.blendSrcAlpha = THREE.ZeroFactor; bm.blendDstAlpha = THREE.OneFactor; }
       c.addPass(this.bloom);
       c.addPass(new PP.ShaderPass(GRADE_SHADER));
       c.addPass(new PP.OutputPass());
@@ -957,7 +960,6 @@ const G3 = {
     this.setReflector(q.refl && sport === 'hockey'); this.wearMesh.visible = q.wear && sport === 'hockey'; this.clearWear();
     this.ice.visible = !fb; this.pitch && (this.pitch.visible = fb);
     this.zoomMul = 1; if (this.off) this.setView();
-    if (this.bloom) this.bloom.strength = sport === 'curling' ? 0.05 : 0.32;   // velká bílá dráha by v záři přesvítila celý obraz („mlha“)
   },
   // trávník: vlastní plocha s texturou (pruhy po sekání, ošlapaná místa, čáry) a jemnou strukturou stébel
   buildPitch() {
