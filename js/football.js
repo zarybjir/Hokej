@@ -11,8 +11,10 @@ class Football extends Game {
     super({ ...cfg, sport: cfg.sport === 'polo' ? 'polo' : 'football', offside: false, icing: false, zamboni: 'off', sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
     for (const t of this.teams) for (const p of t.roster) p.reach *= 0.6;   // míč u nohy, dosah nohy místo hole
     this.iceWear = 0;
-    // počasí (jen fotbal): za deště se dělají kaluže a občas vyroste krtinec
-    this.rain = this.sport === 'football' && (cfg.weather === 'rain' || (cfg.weather === 'random' && Math.random() < 0.4));
+    // počasí a hřiště (jen fotbal): za deště se dělají kaluže; krtince jsou na dešti nezávislé
+    const fbw = this.sport === 'football', wr = cfg.weather === 'random';
+    this.rain = fbw && (cfg.weather === 'rain' || (wr && Math.random() < 0.4));
+    this.molesOn = fbw && (cfg.moles === true || (wr && Math.random() < 0.5));
     this.puddles = []; this.moles = []; this.wetT = 0;
     if (this.rain) { this.addPuddle(); this.addPuddle(); }
     this.setupFaceoff(0, 0); this.state = 'intro';
@@ -63,7 +65,7 @@ class Football extends Game {
   // ---------- rozehrání: výkop, aut, roh, kop od branky, volný kop ----------
   // Před přerušením se nastaví this.rs = { kind, team, spot }; bez něj je to výkop.
   whistle(reason, spot) {
-    if (this.rain && this.moles.length < 3 && Math.random() < 0.1) { const s = this.freeSpot(5); if (s) this.moles.push({ x: s[0], y: s[1], born: this.time }); }   // krtek vyleze při přerušení
+    if (this.molesOn && this.moles.length < 3 && Math.random() < 0.1) { const s = this.freeSpot(5); if (s) this.moles.push({ x: s[0], y: s[1], born: this.time }); }   // krtek vyleze při přerušení
     if (!this.rs) this.rs = { kind: 'freekick', team: this.teams[spot && spot[0] > 0 ? (this.teams[0].dir < 0 ? 0 : 1) : (this.teams[0].dir < 0 ? 1 : 0)], spot: [clamp(spot ? spot[0] : 0, -80, 80), clamp(spot ? spot[1] : 0, -34, 34)] };
     super.whistle(reason, this.rs.spot);
   }
@@ -112,7 +114,8 @@ class Football extends Game {
     super.updatePuck(h);
     const pk = this.puck;
     if (this.state !== 'play' || pk.inNet || pk.held) return;
-    if (this.rain) { this.updateWeather(h); this.groundFx(h); }
+    if (this.rain) this.updateWeather(h);
+    if (this.rain || this.moles.length) this.groundFx(h);
     const sy = pk.y >= 0 ? 1 : -1, sN = pk.x >= 0 ? 1 : -1, last = pk.owner || pk.lastTouch;
     if (Math.abs(pk.y) > FB.HW + 0.4 && Math.abs(pk.x) <= RINK.GOAL_X + 0.6) {
       this.outs = (this.outs || 0) + 1;

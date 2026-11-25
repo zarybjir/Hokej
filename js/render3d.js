@@ -1147,14 +1147,14 @@ float wH(vec2 p) {
     this.scene.add(this.rainM);
   },
   syncWeather(g, t, dt) {
-    const rain = !!(g && g.rain);
-    if (!rain && !this.moleM) return;
+    const rain = !!(g && g.rain), mo = g && g.moles && g.moles.length ? g.moles : null;
+    if (!rain && !mo && !this.moleM) return;
     if (!this.moleM) this.buildWeather();
     if (!this.pitchMat) return;
     const ud = this.pitchMat.userData; ud.wT.value = t;
     ud.pud.value.forEach((v, i) => { const q = rain && g.puddles[i]; if (q) v.set(q.x, -q.y, q.r, q.rot); else v.z = 0; });   // kaluže kreslí shader trávníku
-    ud.mole.value.forEach((v, i) => { const q = rain && g.moles[i]; if (q) v.set(q.x, -q.y, Math.min(1, (g.time - q.born) * 1.5 + 0.05)); else v.z = 0; });
-    this.moleM.forEach((m, i) => { const q = rain && g.moles[i]; m.visible = !!q; if (q) { const k = Math.min(1, (g.time - q.born) * 1.5 + 0.05); m.position.set(q.x, -0.02, -q.y); m.scale.set(1.15, 0.8 * k, 1.15); m.rotation.y = q.x * 3.1; } });
+    ud.mole.value.forEach((v, i) => { const q = mo && mo[i]; if (q) v.set(q.x, -q.y, Math.min(1, (g.time - q.born) * 1.5 + 0.05)); else v.z = 0; });
+    this.moleM.forEach((m, i) => { const q = mo && mo[i]; m.visible = !!q; if (q) { const k = Math.min(1, (g.time - q.born) * 1.5 + 0.05); m.position.set(q.x, -0.02, -q.y); m.scale.set(1.15, 0.8 * k, 1.15); m.rotation.y = q.x * 3.1; } });
     this.rainM.visible = rain;
     { const w = ud.wet; if (w && w.value !== (rain ? 1 : 0)) { w.value = rain ? 1 : 0; this.pitchMat.roughness = rain ? 0.62 : 0.93; this.pitchMat.envMapIntensity = rain ? 0.4 : 0.12; } }
     if (!rain) return;

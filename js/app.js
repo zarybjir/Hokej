@@ -6,7 +6,7 @@ const ASSIST_HINT = 'ČÁSTEČNÁ: přepíná na hráče u puku, přesnější s
 const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.25];
 // sporty v hlavním menu (pořadí = pořadí položek)
 const SPORTS = [['football', 'FOTBAL'], ['hockey', 'HOKEJ'], ['polo', 'VODNÍ PÓLO'], ['curling', 'CURLING']];
-const WEATHER = ['off', 'rain', 'random'];
+const WEATHER = ['off', 'moles', 'rain', 'rainmoles', 'random'];
 const PRACTICE = [['shoot', 'STŘELBA A PŘIHRÁVKY', 'Celá formace proti brankáři, bez soupeřů a bez času. Po gólu nebo zákroku dostaneš puk znovu.'],
   ['pp', 'PŘESILOVKA 5 NA 4', 'Útočíš v pásmu proti čtyřem bránícím. Když puk vyjede z pásma, začíná se znovu.'],
   ['so', 'NÁJEZDY – STŘÍLÍŠ', 'Nekonečné nájezdy na brankáře soupeře.'],
@@ -259,7 +259,7 @@ const App = {
     const S = Settings.data;
     return { periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), autoChange: S.autoChange !== false, penalties: S.penalties !== false,
       injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, icingMode: S.icingMode || 'touch',
-      weather: S.weather || 'off', ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
+      weather: /^rain/.test(S.weather) ? 'rain' : S.weather === 'random' ? 'random' : 'off', moles: /moles$/.test(S.weather || ''), ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
   },
   toggleFull() {
     try {
@@ -415,7 +415,7 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [sp === 'curling' ? ['POČET ENDŮ', String(CURL_ENDS[S.periodLen] || 3)] : [fb ? 'DÉLKA POLOČASU' : sp === 'polo' ? 'DÉLKA ČTVRTINY' : 'DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], fb ? ['POČASÍ', { off: 'JASNO', rain: 'DÉŠŤ (KALUŽE, KRTINCE)', random: 'NÁHODNĚ' }[S.weather || 'off']] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
+      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], fb ? ['POČASÍ', { off: 'JASNO', moles: 'JASNO + KRTINCE', rain: 'DÉŠŤ (KALUŽE)', rainmoles: 'DÉŠŤ + KRTINCE', random: 'NÁHODNĚ' }[S.weather || 'off'] || 'JASNO'] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);

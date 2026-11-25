@@ -163,9 +163,9 @@ uvnitř mantinelů: 5 hráčů v poli a brankář, dva poločasy, stejné týmy 
 - **Ovládání s míčem:** A přihrávka, Y vysoký míč, X střela (drž = rána, páčkou míříš), B klička,
   pravá páčka vede míč. **Bez míče:** X odebrání ve stoje, B skluz (do hráče = faul, zezadu karta),
   LT obranný postoj.
-- **Počasí** (volba před zápasem): JASNO, DÉŠŤ nebo NÁHODNĚ. Za deště se na hřišti postupně dělají
-  kaluže, které brzdí míč na zemi, a při přerušení občas vyroste krtinec – míč se od něj odrazí
-  jinam a nadskočí.
+- **Počasí a hřiště** (volba před zápasem): JASNO, JASNO + KRTINCE, DÉŠŤ, DÉŠŤ + KRTINCE nebo NÁHODNĚ.
+  Za deště se postupně dělají kaluže, které brzdí míč na zemi. Krtince na dešti nezávisí: při
+  přerušení občas vyroste nový a míč se od něj odrazí jinam a nadskočí.
 - **Pohyb hráčů:** běh, klus a kop jdou po drahách ze skutečného motion capture (CMU, klipy
   09_01, 16_35 a 10_01 ze sady codepawl/cmu-mocap-glb); skluz a zákroky brankáře jsou dopočítané.
 - Kariéra, trénink a výzvy jsou zatím jen hokejové.

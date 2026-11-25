@@ -326,15 +326,17 @@ test('fotbal: za deště kaluž zbrzdí míč, krtinec ho vychýlí; za jasna ne
   const roll = (g, n) => { const pk = g.puck; pk.owner = null; pk.x = -20; pk.y = 0; pk.z = 0; pk.vx = 40; pk.vy = 0; pk.vz = 0; for (let i = 0; i < n; i++) g.updatePuck(1 / 120); return pk; };
   const dry = mk('off'); ok(!dry.rain && !dry.puddles.length && !dry.moles.length, 'za jasna jsou na hřišti kaluže');
   const x0 = roll(dry, 180).x;
-  const wet = mk('rain'); ok(wet.rain && wet.puddles.length >= 2, 'za deště nejsou kaluže');
+  let wet = mk('rain'); ok(wet.rain && wet.puddles.length >= 2, 'za deště nejsou kaluže');
   wet.puddles = [{ x: -8, y: 0, r: 6, R: 6, rot: 0 }]; wet.moles = [];
   const x1 = roll(wet, 180).x;
   ok(x1 < x0 - 3, 'kaluž míč nezbrzdila: ' + x0.toFixed(1) + ' → ' + x1.toFixed(1)); ok(x1 > -14, 'kaluž míč zastavila úplně');
-  wet.puddles = []; wet.moles = [{ x: -10, y: 0, born: 0 }];
+  ok(!wet.molesOn, 'déšť sám zapnul krtince');
+  const mo = mk('off'); ok(!mo.rain, 'krtince zapnuly déšť'); mo.moles = [{ x: -10, y: 0, born: 0 }]; wet = mo;
   const pk = roll(wet, 40); ok(wet.moleHits === 1 && (pk.z > 0 || pk.vz !== 0), 'krtinec míč nenadhodil');
   ok(Math.hypot(pk.vx, pk.vy) < 40 * 0.9, 'krtinec míč nezpomalil');
   // kaluže přibývají a rostou, zápas za deště doběhne
-  const g = fbPlay(G, { home: 2, away: 5, weather: 'rain' });
+  const g = fbPlay(G, { home: 2, away: 5, weather: 'rain', moles: true });
+  const g2 = fbPlay(G, { home: 2, away: 5, moles: true }); ok(!g2.puddles.length && g2.molesOn && g2.moles.length <= 3, 'krtince za jasna: kaluže ' + g2.puddles.length);
   ok(g.state === 'final' && g.puddles.length >= 3 && g.puddles.length <= 7 && g.moles.length <= 3, 'kaluže: ' + g.puddles.length + ', krtince: ' + g.moles.length);
   ok(g.puddles.every((q) => q.r <= q.R + 1e-6 && Math.abs(q.x) < G.RINK.GOAL_X && Math.abs(q.y) < G.FB.HW), 'kaluž mimo hřiště nebo přerostlá');
 });
