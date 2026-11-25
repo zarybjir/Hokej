@@ -416,7 +416,7 @@ class HModel {
       add(B.RightHand, G.hgeo.cuff, G.mat.goalieGear, -0.695, 1.438, -0.05);
     }
     // výška hráče (mírně): vyšší hráč je větší model
-    this.fsc = SPORT === 'football' ? 0.8 : 1;   // fotbal: menší postavy, ať hřiště působí větší
+    this.fsc = SPORT === 'football' ? 0.62 : 1;   // fotbal: menší postavy, ať hřiště působí větší
     this.root.scale.setScalar(this.fsc * FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 0.8 : 1));
     this.root.updateMatrixWorld(true);
     const len = (a, b) => wpos(a).distanceTo(wpos(b));
@@ -469,7 +469,7 @@ class HModel {
     this.yawK = (this.yawK || 0) + ((cs ? cs.yaw * cs.w : 0) - (this.yawK || 0)) * Math.min(1, dtp * 14);
     const d = p.dir - Math.PI / 2 * this.yawK, c = Math.cos(d), s = Math.sin(d);
     const O = new THREE.Vector3(p.x, 0, -p.y), F = new THREE.Vector3(c, 0, -s), Lv = new THREE.Vector3(-s, 0, -c);
-    const J = (a, b, z) => new THREE.Vector3(O.x + F.x * a + Lv.x * b, z, O.z + F.z * a + Lv.z * b);
+    const fs = this.fsc, J = (a, b, z) => new THREE.Vector3(O.x + (F.x * a + Lv.x * b) * fs, z * fs, O.z + (F.z * a + Lv.z * b) * fs);   // menší postava: míry pózy ve stejném poměru
     this.reset();
     this.root.quaternion.setFromAxisAngle(UPV, Math.atan2(F.x, F.z));
     this.stick.position.set(0, 0, 0); this.stick.quaternion.identity();
@@ -643,7 +643,7 @@ class HModel {
     const lunge = p.lunge || 0;   // curling: výpad při odhodu kamene
     // nasnímaný běh a kop: chodidla, ruce a pánev jdou po drahách z motion capture, klouby dopočítá IK
     const MV = this.G.moves, Lg = this.L.thigh + this.L.shin, mvOn = MV && !G && !slide && lunge < 0.3;
-    let mF = null, mH = null, mZ = 0;
+    let mF = null, mH = null, mZ = 0; const fs = this.fsc, Lg1 = Lg / fs;
     if (mvOn) {
       const u = ph / TAU, kr = clamp((spd - 0.45) / 0.3, 0, 1), w = clamp((spd - 0.04) / 0.3, 0, 1), amp = 0.6 + 0.4 * spd;
       const S = (key, c3) => { const a = this.mv(MV.jog, key, u, true), b = this.mv(MV.run, key, u, true); return a.map((v, i) => v + (b[i] - v) * kr); };
@@ -661,7 +661,7 @@ class HModel {
       }
       mH.w = Math.max(w, mH.kick || 0);
     }
-    this.root.position.set(O.x, mZ * Lg + 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd * (1 - lunge) + 0.32 * ready + 0.15 * wind + 1.75 * lunge), O.z);
+    this.root.position.set(O.x, mZ * Lg + fs * 0.15 - fs * (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd * (1 - lunge) + 0.32 * ready + 0.15 * wind + 1.75 * lunge), O.z);
     this.root.updateMatrixWorld(true);
     const lean = slide ? -0.95 : 0.06 + 0.32 * spd + 0.14 * ready + 0.1 * tired - 0.25 * kk;
     rotAxis(B.Hips, Lv, lean * 0.55);
@@ -677,7 +677,7 @@ class HModel {
     // kop: noha u míče se napřáhne dozadu a švihne dopředu
     const kf = wind > 0 ? J(-1.7 * wind, p.hand * 0.5, 1.3 * wind) : kk > 0 ? J(0.5 + 2.2 * kk, p.hand * 0.5, 1.5 * kk) : null;
     if (kf) { if (p.hand >= 0) fL = kf; else fR = kf; }
-    if (mF) { fL = J(mF[0][0] * Lg, mF[0][1] * Lg, mF[0][2] * Lg); fR = J(mF[1][0] * Lg, mF[1][1] * Lg, mF[1][2] * Lg); }
+    if (mF) { fL = J(mF[0][0] * Lg1, mF[0][1] * Lg1, mF[0][2] * Lg1); fR = J(mF[1][0] * Lg1, mF[1][1] * Lg1, mF[1][2] * Lg1); }
     if (slide) { fL = J(2.7, 0.4, 0.3); fR = J(1.3, -0.55, 0.1); }
     if (lunge > 0.3) { fL = J(1.5, 0.4, 0); fR = J(-2.5, -0.35, 0.05); }
     if (sv === 1) { fL = J(-0.2, 1.7, 0); fR = J(-0.2, -1.7, 0); }
@@ -689,11 +689,12 @@ class HModel {
       const [A, Fa, Hd] = sd > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand] : [B.RightArm, B.RightForeArm, B.RightHand];
       const sh = wpos(A), a = sd > 0 ? sw : -sw;
       let tgt = sh.clone().addScaledVector(Lv, sd * 0.3).addScaledVector(F, 0.3 + 1.0 * a).add(new THREE.Vector3(0, -1.35 + 0.55 * Math.abs(a), 0));
-      if (mH && mH.w > 0) { const h = mH[sd > 0 ? 0 : 1]; tgt.lerp(J(h[0] * Lg, h[1] * Lg, h[2] * Lg - (0.1 + 0.2 * spd)), mH.w); }
+      if (mH && mH.w > 0) { const h = mH[sd > 0 ? 0 : 1]; tgt.lerp(J(h[0] * Lg1, h[1] * Lg1, h[2] * Lg1 - (0.1 + 0.2 * spd)), mH.w); }
       if (G) tgt = sh.clone().addScaledVector(Lv, sd * (0.9 + 0.3 * ready)).addScaledVector(F, 0.9).add(new THREE.Vector3(0, -0.7 + ((sv === 2 && sd > 0) || (sv === 3 && sd < 0) ? 1.9 : sv === 1 ? -0.9 : 0), 0));
       if (slide) tgt = sh.clone().addScaledVector(Lv, sd * 0.9).addScaledVector(F, -0.8).add(new THREE.Vector3(0, -0.9, 0));
       if (lunge > 0.3) tgt = sd < 0 ? J(2.5, 0, 0.7) : sh.clone().addScaledVector(Lv, 1.2).add(new THREE.Vector3(0, -0.6, 0));   // pravá ruka drží kámen
       if (this.kit === 'curling' && !p.noBroom && !lunge) continue;   // ruce na koštěti (níže)
+      if (fs !== 1 && !(mH && mH.w > 0)) tgt = sh.clone().add(tgt.sub(sh).multiplyScalar(fs));
       ik2(A, Fa, Hd, tgt, dn.clone().addScaledVector(F, -0.6).addScaledVector(Lv, sd * 0.5), this.L.upper, this.L.fore);
     }
     if (this.kit === 'curling') {

@@ -1,8 +1,9 @@
 {
-  "build": 65,
-  "version": "1.65",
+  "build": 66,
+  "version": "1.66",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: krtince už nezávisí na dešti – volby JASNO, JASNO + KRTINCE, DÉŠŤ, DÉŠŤ + KRTINCE, NÁHODNĚ"
+    "Fotbal: hřiště je vůči hráčům výrazně větší (poměr jako na skutečném hřišti), kamera blíž",
+    "Kaluže sladěné s trávníkem: voda stojící v trávě s měkkým okrajem a trsy u břehu místo bláta"
   ]
 }

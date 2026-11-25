@@ -959,8 +959,8 @@ const G3 = {
     if (fb) this.paintPitch(); else this.paintIce();
     this.setReflector(q.refl && sport === 'hockey'); this.wearMesh.visible = q.wear && sport === 'hockey'; this.clearWear();
     this.ice.visible = !fb; this.pitch && (this.pitch.visible = fb);
-    this.zoomMul = sport === 'football' ? 0.86 : 1; if (this.off) this.setView();   // fotbalisté jsou menší (větší hřiště), kamera o to blíž
-    if (this.ball) this.ball.scale.setScalar(sport === 'football' ? 0.85 : 1);
+    this.zoomMul = sport === 'football' ? 0.74 : 1; if (this.off) this.setView();   // fotbalisté jsou menší (větší hřiště), kamera o to blíž
+    if (this.ball) this.ball.scale.setScalar(sport === 'football' ? 0.68 : 1);
   },
   // trávník: vlastní plocha s texturou (pruhy po sekání, ošlapaná místa, čáry) a jemnou strukturou stébel
   buildPitch() {
@@ -997,10 +997,10 @@ float wH(vec2 p) {
     // hladina kaluže: rovná, s kruhy od dopadajících kapek
     vec2 rp = vWp.xz, rc = floor(rp * 0.7), cc = (rc + 0.5 + (vec2(gh(rc), gh(rc + 7.3)) - 0.5) * 0.6) / 0.7, dv = rp - cc;
     float rph = fract(uT * 0.9 + gh(rc + 3.1)), dl = length(dv) + 0.001, rr = sin((dl - rph * 1.2) * 14.0) * smoothstep(0.25, 0.0, abs(dl - rph * 1.2)) * (1.0 - rph);
-    normal = normalize(mix(normal, normalize((viewMatrix * vec4(normalize(vec3(-dv.x / dl * rr * 0.45, 1.0, -dv.y / dl * rr * 0.45)), 0.0)).xyz), pMask));
-  }`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(mix(roughnessFactor, 0.45, pWet * 0.6), 0.04, smoothstep(0.5, 1.0, pMask));').replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n  reflectedLight.indirectSpecular = min(reflectedLight.indirectSpecular * (1.0 + 9.0 * smoothstep(0.6, 1.0, pMask)), vec3(0.55)); reflectedLight.directSpecular *= 1.0 - 0.75 * pMask;').replace('#include <map_fragment>',
+    normal = normalize(mix(normal, normalize((viewMatrix * vec4(normalize(vec3(-dv.x / dl * rr * 0.1, 1.0, -dv.y / dl * rr * 0.1)), 0.0)).xyz), pMask));
+  }`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(mix(roughnessFactor, 0.45, pWet * 0.6), 0.04, smoothstep(0.5, 1.0, pMask));').replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n  reflectedLight.indirectSpecular = min(reflectedLight.indirectSpecular * (1.0 + 6.0 * smoothstep(0.5, 1.0, pMask)), vec3(0.3 - 0.17 * pMask)); reflectedLight.directSpecular *= 1.0 - 0.75 * pMask;').replace('#include <map_fragment>',
         `#include <map_fragment>
-  vec2 wS = vec2(0.0); float pMask = 0.0, pWet = 0.0;
+  vec2 wS = vec2(0.0); float pMask = 0.0, pWet = 0.0, pDeep = 0.0;
   if (uWat > 0.5) {
     vec2 wp = vWp.xz; float we = 0.2, foam = 0.0;
     wS = vec2(wH(wp + vec2(we, 0.0)) - wH(wp - vec2(we, 0.0)), wH(wp + vec2(0.0, we)) - wH(wp - vec2(0.0, we))) / (2.0 * we);
@@ -1035,11 +1035,15 @@ float wH(vec2 p) {
       vec2 pv = gp - uPud[i].xy; float pa = atan(pv.y, pv.x), pd = length(pv) / uPud[i].z;
       pd *= 1.0 + 0.2 * sin(pa * 3.0 + uPud[i].w) + 0.11 * sin(pa * 5.0 - uPud[i].w * 1.7);
       pd += (gn(gp * 0.9 + uPud[i].w) - 0.5) * 0.35;
-      pWet = max(pWet, smoothstep(1.5, 0.95, pd));
-      pMask = max(pMask, smoothstep(1.0, 0.84, pd + (gn(gp * 7.0) - 0.5) * 0.2));
+      pWet = max(pWet, smoothstep(1.6, 0.9, pd));
+      float pm = smoothstep(1.0, 0.78, pd), pdp = smoothstep(0.95, 0.35, pd);
+      pm *= 1.0 - smoothstep(0.35, 0.9, gn(gp * 3.0)) * (1.0 - pdp) * 0.8;   // u břehu z vody vyčnívají trsy
+      pMask = max(pMask, pm); pDeep = max(pDeep, pdp * pm);
     }
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.58, 0.62, 0.5), pWet * 0.75);
-    diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb * 0.4, vec3(0.13, 0.11, 0.07), 0.55), pMask);
+    // voda stojící v trávě: u okraje tráva prosvítá, ke středu tmavne; žádné bláto, ať kaluž ladí s trávníkem
+    vec3 gcol = diffuseColor.rgb;
+    diffuseColor.rgb = mix(gcol, gcol * vec3(0.62, 0.68, 0.56), pWet * 0.8);
+    diffuseColor.rgb = mix(diffuseColor.rgb, mix(gcol * 0.6, gcol * 0.3 + vec3(0.025, 0.04, 0.045), pDeep), pMask);
     // rozházená hlína kolem krtinců
     for (int i = 0; i < 4; i++) {
       if (uMole[i].z <= 0.0) continue;
