@@ -186,6 +186,14 @@ const R = {
     ctx.strokeStyle = 'rgba(255,70,90,0.13)'; ctx.beginPath(); ctx.moveTo(0, -300); ctx.lineTo(0, 300); ctx.stroke();
     ctx.strokeStyle = 'rgba(60,140,255,0.16)'; for (const x of [-170, 170]) { ctx.beginPath(); ctx.moveTo(x, -300); ctx.lineTo(x, 300); ctx.stroke(); }
     ctx.restore();
+    // fotografie haly jako podklad (gfx/menu-bg.jpg); vlevo ztmavená, ať je text menu čitelný. Bez ní zůstane kreslené pozadí.
+    if (!this.bgImg) { this.bgImg = new Image(); this.bgImg.src = 'gfx/menu-bg.jpg'; }
+    if (this.bgImg.complete && this.bgImg.naturalWidth) {
+      const im = this.bgImg, k = Math.max(W / im.naturalWidth, H / im.naturalHeight) * 1.04, dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+      ctx.drawImage(im, (W - dw) / 2 + Math.sin(t * 0.07) * 12, (H - dh) / 2 + Math.cos(t * 0.05) * 6, dw, dh);
+      const sh = ctx.createLinearGradient(0, 0, W, 0); sh.addColorStop(0, 'rgba(3,7,16,0.78)'); sh.addColorStop(0.5, 'rgba(3,7,16,0.4)'); sh.addColorStop(1, 'rgba(3,7,16,0.2)');
+      ctx.fillStyle = sh; ctx.fillRect(0, 0, W, H);
+    }
     // kužely reflektorů
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 4; i++) {

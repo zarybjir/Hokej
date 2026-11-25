@@ -1,9 +1,10 @@
 {
-  "build": 79,
-  "version": "1.79",
+  "build": 80,
+  "version": "1.80",
   "date": "2026-11-25",
   "notes": [
-    "Skutečné zvuky ledu: brusle, brzdění, mantinel, tyčka, hůl, píšťalka, klakson",
-    "Hlasitost bruslí se řídí tím, jak rychle se na ledě jezdí"
+    "Menu má jako pozadí fotografii potemnělé haly",
+    "Led má jemnou strukturu rýh po bruslích",
+    "Na mantinelech jsou nové obrázkové reklamy"
   ]
 }

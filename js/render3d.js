@@ -614,6 +614,9 @@ const G3 = {
     const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf;
     const rnd = mulberry32(1998);
     g.fillStyle = 'rgb(242,247,251)'; g.fillRect(0, 0, W, H);
+    // jemná struktura ledu z fotografické textury (gfx/ice-detail.jpg, dlaždice 32 stop): rýhy po bruslích a sněhový poprašek
+    if (!this.iceDet) { this.iceDet = new Image(); this.iceDet.onload = () => { if (this.iceMat && !this.fail) this.paintIce(); }; this.iceDet.src = 'gfx/ice-detail.jpg'; }
+    if (this.iceDet.complete && this.iceDet.naturalWidth) { const s = 32 * ppf / this.iceDet.naturalWidth; g.save(); g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.9; g.scale(s, s); g.fillStyle = g.createPattern(this.iceDet, 'repeat'); g.fillRect(0, 0, W / s, H / s); g.restore(); g.fillStyle = 'rgba(255,255,255,0.1)'; g.fillRect(0, 0, W, H); }
     gr.fillStyle = 'rgb(40,40,40)'; gr.fillRect(0, 0, rc.width, rc.height);
     for (let i = 0; i < 110; i++) {
       const x = rnd() * W, y = rnd() * H, r = (4 + rnd() * 24) * ppf, col = rnd() < 0.55 ? [200, 214, 230] : [255, 255, 255];
@@ -722,9 +725,9 @@ const G3 = {
     const [ac, ag] = mkCanvas(AW, 128), ppf = AW / P;
     ag.fillStyle = "#f4f5f6"; ag.fillRect(0, 0, AW, 128);
     const rnd = mulberry32(7);
-    let k = 0;
+    let k = 0; const adSlots = [];
     for (let s = 3; s < P - 12; s += 15, k++) {
-      if (k % 3 === 2) continue;
+      if (k % 3 === 2) { adSlots.push(s * ppf); continue; }
       const [txt, bg, fg] = [['ŽENISTA', '#c8102e', '#fff'], ['LEDOVÁ LIGA', '#0a2a6b', '#ffd21f'], ['PUK MART', '#ffd21f', '#111'],
         ['ICE COLA', '#b00020', '#fff'], ['BRUSLE+', '#111', '#2ee6ff'], ["HOKEJ '98", '#1f3f7a', '#fff'],
         ['PIZZA RÁJ', '#0b6e3a', '#fff'], ['LEDŇÁK', '#e6e6e6', '#0a2a6b'], ['ZIMÁK FM', '#5b2c83', '#fff']][k % 9];
@@ -735,6 +738,8 @@ const G3 = {
     }
     for (let i = 0; i < 900; i++) { ag.fillStyle = `rgba(20,20,20,${0.1 + rnd() * 0.35})`; ag.beginPath(); ag.arc(rnd() * AW, 70 + rnd() * 55, 1 + rnd() * 3, 0, TAU); ag.fill(); }
     const adTex = canvasTex(ac, true, this.aniso);
+    // do volných polí mantinelu obrázkové reklamy smyšlených značek (gfx/ad1–4.jpg)
+    for (let i = 0; i < 4; i++) { const im = new Image(); im.onload = () => { adSlots.forEach((x0, j) => { if (j % 4 === i) ag.drawImage(im, x0, 14, 12 * ppf, 100); }); adTex.needsUpdate = true; }; im.src = 'gfx/ad' + (i + 1) + '.jpg'; }
     const u = (i) => (P - L.s[i]) / P; // zevnitř čteno zleva doprava
     const wall = (z0, z1, off, mat, uvf) => {
       const g = stripGeo(N, (i, kk) => { const p = at(i), n = nr(i); return [p[0] + n[0] * off, p[1] + n[1] * off, kk ? z1 : z0]; }, uvf || ((i, kk) => [u(i), kk]));

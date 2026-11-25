@@ -389,6 +389,8 @@ Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 2
 
 ## Zdroje
 
+- Grafika ve složce `gfx/` (pozadí menu, struktura ledu, reklamy smyšlených značek na mantinelech) je
+  vygenerovaná nástrojem Google Gemini.
 - Zvuky ledu a haly (`sounds/fx/`), vše CC0 z [Freesound](https://freesound.org): „Skates on Ice“ (Rehanjo),
   „Freezer Ice Scrape Knife 10“ (Glitchedtones), „hockey outdoor player checked into boards“ (kyles),
   „ANI Big Pipe Hit“ (ani_music), „Referee whistle sound“ (Rosa-Orenes256), „Industrial Air Horn“ (mcpable),
