@@ -1,10 +1,10 @@
 {
-  "build": 63,
-  "version": "1.63",
+  "build": 64,
+  "version": "1.64",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: běh, klus a kop podle skutečného motion capture",
-    "Fotbal: volba počasí – za deště kaluže brzdí míč a občas vyroste krtinec",
-    "Fotbal: věrnější trávník – nestejně zelená místa, trsy, pruhy po sekání měnící se podle pohledu"
+    "Fotbal: hřiště působí větší – hráči a míč jsou vůči němu menší, kamera je blíž",
+    "Kaluže jako skutečná voda: nepravidelný obrys, bláto, odlesky a kruhy od kapek",
+    "Krtince jako hromádky sypké hlíny s rozházenou zeminou kolem"
   ]
 }

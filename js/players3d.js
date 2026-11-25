@@ -416,7 +416,8 @@ class HModel {
       add(B.RightHand, G.hgeo.cuff, G.mat.goalieGear, -0.695, 1.438, -0.05);
     }
     // výška hráče (mírně): vyšší hráč je větší model
-    this.root.scale.setScalar(FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 0.8 : 1));
+    this.fsc = SPORT === 'football' ? 0.8 : 1;   // fotbal: menší postavy, ať hřiště působí větší
+    this.root.scale.setScalar(this.fsc * FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 0.8 : 1));
     this.root.updateMatrixWorld(true);
     const len = (a, b) => wpos(a).distanceTo(wpos(b));
     this.L = {
@@ -635,7 +636,7 @@ class HModel {
     return o;
   }
   poseFoot(p, t, O, F, Lv, J) {
-    const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 24), ph = (p.stride || 0) * 1.6, wind = Math.min(1, p.windT || 0);
+    const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 24), ph = (p.stride || 0) * 1.6 / this.fsc, wind = Math.min(1, p.windT || 0);
     const slide = p.slideT > 0, sv = G && p.saveT > 0 ? p.saveKind : 0, ready = G ? 1 - spd : 0;
     const kick = Math.max(p.shotFT > 0 ? p.shotFT / (p.shotSlap ? 0.5 : 0.32) : 0, p.passFT > 0 ? p.passFT / 0.3 : 0), kk = Math.sin(clamp(kick, 0, 1) * Math.PI);
     const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;
