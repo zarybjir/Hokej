@@ -454,7 +454,12 @@ class HModel {
   // co právě hraje: střela (golfový švih z mocapu), oslava gólu (plácnutí)
   clipState(p) {
     if (this.isRef || this.goalie || !this.G.clips || p.downT > 0) return null;
-    if (p.celebT > 0) { const k = Math.min(1, p.celebT); return { clip: 'highfive', frac: 0.42 + 0.22 * (0.5 + 0.5 * Math.sin(p.celebT * 5)), w: k, yaw: 0 }; }
+    if (p.celebT > 0) {
+      // oslava gólu: každý hráč má svou (plácnutí, radost, mávání do hlediště)
+      const k = Math.min(1, p.celebT), kind = ['highfive', 'joy', 'wave'][(p.num || 0) % 3], C = this.G.clips[kind];
+      if (kind === 'highfive' || !C) return { clip: 'highfive', frac: 0.42 + 0.22 * (0.5 + 0.5 * Math.sin(p.celebT * 5)), w: k, yaw: 0 };
+      return { clip: kind, frac: (Math.max(0, 3 - p.celebT) / C.duration) % 1, w: k, yaw: 0 };
+    }
     return null;
   }
   reset() { this.bones.forEach((b, i) => { b.quaternion.copy(this.bind[i][0]); b.position.copy(this.bind[i][1]); }); }

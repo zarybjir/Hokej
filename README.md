@@ -157,6 +157,11 @@ Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překlád
   střídavě zpoza branky a nízko od mantinelu teleobjektivem.
 - **Srovnání týmů** při přerušení: střely, hity, vyhraná vhazování (ve fotbale rohy a fauly).
 - **Diváci** po gólu vyskakují ze sedadel a hala pohasíná do rytmu, při nástupu se světla rozsvěcují.
+- **Zvuk publika** tvoří skutečné nahrávky hluku davu a potlesku (sílí podle dění na ledě).
+- **Oslavy gólu** jsou tři různé podle hráče (plácnutí, radost, mávání), všechny z motion capture.
+- **Počítač** hraje přesilovku v rozestavení 1-3-1 (obránce na modré, dva na hrazení, jeden v mezeře,
+  jeden clonící před brankou), v oslabení brání těsným čtvercem a obranu posouvá ke straně, ze které
+  na něj nejčastěji střílíš.
 
 ## Fotbal (malá kopaná 5+1)
 
@@ -382,6 +387,10 @@ Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 2
 
 ## Zdroje
 
+- Zvuky publika (`sounds/crowd/`): „Crowd Shouting/Speaking Ambience“ (StarNinjas) a „Applause in a large hall
+  or church“ (eXpl0it3r), obojí CC0 z [OpenGameArt](https://opengameart.org).
+- Pohyby z motion capture: CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), převedené sadou
+  codepawl/cmu-mocap-glb (`models/moves.json`, `models/clips.json`).
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).
 - Model postavy: „X Bot“ z [Mixamo](https://www.mixamo.com) (Adobe), převzatý z ukázek Three.js
   (`models/xbot.glb`). Výstroj, barvy dresů a animace bruslení jsou dělané kódem ve hře.

@@ -1396,10 +1396,17 @@ float wH(vec2 p) {
     const done = (gl) => {
       this.clips = {};
       for (const a of gl.animations) this.clips[a.name] = prepClip(a);
+      if (this.xclips) Object.assign(this.clips, this.xclips);
       gl.animations = [];
       this.base = gl; this.modelGame = null; // přestavět hráče na nový model
     };
     const fail = (e) => console.warn('Model hráče se nenačetl, používám náhradní', e);
+    // další nasnímané oslavy (models/clips.json): rotace kostí vzorkované po 1/20 s, stejné rozhraní jako klipy z modelu
+    fetch('models/clips.json').then((r) => (r.ok ? r.json() : null)).then((m) => {
+      if (!m) return; this.xclips = {};
+      for (const [name, c] of Object.entries(m)) this.xclips[name] = { duration: c.dur, tracks: Object.entries(c.bones).map(([bone, a]) => ({ bone, interp: { evaluate: (t) => { const n = a.length / 4 - 1, x = clamp(t * c.fps, 0, n), i = Math.min(n - 1, Math.floor(x)), f = x - i, o = [0, 0, 0, 0]; for (let q = 0; q < 4; q++) o[q] = a[i * 4 + q] + (a[i * 4 + 4 + q] - a[i * 4 + q]) * f; const l = Math.hypot(...o) || 1; return o.map((v) => v / l); } } })) };
+      if (this.clips) Object.assign(this.clips, this.xclips);
+    }).catch(() => {});
     // nasnímané dráhy chodidel a rukou pro běh, klus a kop (tools/bake_moves.js); bez nich se běh dopočítá
     fetch('models/moves.json').then((r) => (r.ok ? r.json() : null)).then((m) => { if (m) { for (const c of Object.values(m)) c.pz0 = c.pz.reduce((a, b) => a + b, 0) / c.pz.length; this.moves = m; } }).catch(() => {});
     const parse = (buf) => { const L = new GLTFLoader(); if (window.MeshoptDecoder) L.setMeshoptDecoder(MeshoptDecoder); L.parse(buf, 'models/', done, fail); };

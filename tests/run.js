@@ -181,6 +181,25 @@ test('přenos: záznam má druhý pomalejší průchod z jiné kamery, při pře
   ok(h.tv && ['shots', 'hits', 'fo'].includes(h.tv.k), 'srovnání týmů se neukázalo'); h.tv.t = 0; h.whistle('test', [0, 0]); ok(h.tvT === 100, 'srovnání se opakuje hned znovu');
 });
 
+test('počítač: v přesilovce hraje 1-3-1, v oslabení čtverec, obranu posouvá podle střel člověka', (G) => {
+  const g = new G.Game({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60);
+  const A = g.teams[0], B = g.teams[1], s = A.dir, by = (r) => A.skaters.find((p) => p.role === r);
+  B.skaters.pop();   // soupeř hraje ve čtyřech
+  const c = by('C'); g.puck.owner = c; c.x = s * 60; c.y = 0; g.puck.x = c.x; g.puck.y = 0;
+  const sp = (p) => { p.ai.spotT = 0; const q = g.spotFor(p); return [s * q[0], s * q[1]]; };
+  const ld = sp(by('LD')), rw = sp(by('RW')), lw = sp(by('LW')), rd = sp(by('RD'));
+  ok(ld[0] < 45 && Math.abs(ld[1]) < 9, 'obránce v přesilovce není uprostřed na modré: ' + ld.map((v) => v.toFixed(0)));
+  ok(rw[0] > 74 && Math.abs(rw[1]) < 9, 'nikdo necloní před brankou: ' + rw.map((v) => v.toFixed(0)));
+  ok(lw[1] > 14 && rd[1] < -14, 'hráči nejsou na hrazení: ' + lw[1].toFixed(0) + ' ' + rd[1].toFixed(0));
+  const box = B.skaters.map((p) => { const q = g.spotFor(p); return [B.dir * q[0], B.dir * q[1]]; });
+  ok(box.every((q) => q[0] < -52 && Math.abs(q[1]) < 22), 'oslabení nebrání ve čtverci před brankou: ' + JSON.stringify(box.map((q) => q.map(Math.round))));
+  // učení: člověk střílí pořád z jedné strany
+  const h = new G.Game({ home: 0, away: 1, humans: [{ dev: idleDev(), team: 0, assist: 0 }], silent: true });
+  ok(h.shotSide(h.teams[0]) === 0, 'bez střel není co se učit');
+  for (let i = 0; i < 6; i++) h.shotLog.push({ team: h.teams[0], u: 60, v: 15, res: 'save' });
+  ok(h.shotSide(h.teams[0]) * h.teams[0].dir > 3 && h.shotSide(h.teams[1]) === 0, 'počítač se nenaučil stranu střel (nebo se „učí“ i proti počítači)');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

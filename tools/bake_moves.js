@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path'), { chromium } = require('playwright');
 const dir = process.argv[2];
 const SRC = { run: '09_01-run', jog: '16_35-run-jog', kick: '10_01-soccer-kick-ball' };
-(async () => {
+if (process.argv[3] !== 'clips') (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage(); p.on('pageerror', (e) => console.log('ERR', e.message));
   await p.goto('http://127.0.0.1:47098/index.html?mute=1');
@@ -62,4 +62,29 @@ const SRC = { run: '09_01-run', jog: '16_35-run-jog', kick: '10_01-soccer-kick-b
   }
   fs.writeFileSync(path.join(__dirname, '..', 'models', 'moves.json'), JSON.stringify(res));
   console.log('models/moves.json', fs.statSync(path.join(__dirname, '..', 'models', 'moves.json')).size, 'B');
+})();
+
+// ---------- oslavy: rotace kostí horní poloviny těla jako klipy (models/clips.json) ----------
+// Použití: node tools/bake_moves.js <složka s .glb> clips
+if (process.argv[3] === 'clips') (async () => {
+  const CL = { joy: '142_09-joy', wave: '141_16-wave-hello' };
+  const UP = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'clavicle_l', 'clavicle_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r'];
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage(); await p.goto('http://127.0.0.1:47098/index.html?mute=1', { waitUntil: 'domcontentloaded' });
+  await p.waitForFunction(() => window.GLTFLoader && window.THREE);
+  const res = {};
+  for (const [name, id] of Object.entries(CL)) {
+    const b64 = fs.readFileSync(path.join(dir, id + '.glb')).toString('base64');
+    res[name] = await p.evaluate(async ([b64, UP]) => {
+      const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const L = new GLTFLoader(); if (window.MeshoptDecoder) L.setMeshoptDecoder(MeshoptDecoder);
+      const gl = await new Promise((ok, no) => L.parse(u.buffer, '', ok, no)), clip = gl.animations[0], n = Math.floor(clip.duration * 20), bones = {};
+      for (const t of clip.tracks) { const [bone, prop] = t.name.split('.'); if (prop !== 'quaternion' || !UP.includes(bone)) continue; const it = t.createInterpolant(), a = []; for (let i = 0; i <= n; i++) a.push(...Array.from(it.evaluate(i / 20)).map((v) => Math.round(v * 1000) / 1000)); bones[bone] = a; }
+      return { dur: clip.duration, fps: 20, bones };
+    }, [b64, UP]);
+    console.log(name, res[name].dur.toFixed(2), 's', Object.keys(res[name].bones).length, 'kostí');
+  }
+  await b.close();
+  fs.writeFileSync(path.join(__dirname, '..', 'models', 'clips.json'), JSON.stringify(res));
+  console.log('models/clips.json', fs.statSync(path.join(__dirname, '..', 'models', 'clips.json')).size, 'B');
 })();

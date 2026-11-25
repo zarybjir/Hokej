@@ -31,6 +31,14 @@ const Sfx = {
     this.crowdG.connect(this.master);
     this.crowdF = f1;
     s1.start(); s2.start(0, 1.0);
+    // skutečné nahrávky publika (CC0, viz README): hluk davu a potlesk ve smyčce pod syntetickým šumem
+    this.ambG = c.createGain(); this.appG = c.createGain(); this.ambG.gain.value = 0; this.appG.gain.value = 0;
+    this.ambG.connect(this.master); this.appG.connect(this.master);
+    for (const [f, g] of [['ambience', this.ambG], ['applause', this.appG]]) {
+      fetch('sounds/crowd/' + f + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())).then((b) => c.decodeAudioData(b)).then((buf) => {
+        const src = c.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(g); src.start(); this.realCrowd = true;
+      }).catch(() => {});
+    }
   },
   tick(dt, base) {
     this.roar = Math.max(0, this.roar - dt * 0.18);
@@ -40,7 +48,8 @@ const Sfx = {
     if (now - (this.lastTick || 0) < 0.08) return;
     this.lastTick = now;
     const v = base * (0.05 + this.excite * 0.07 + this.roar * 0.45);
-    this.crowdG.gain.setTargetAtTime(v, this.ctx.currentTime, 0.1);
+    this.crowdG.gain.setTargetAtTime(v * (this.realCrowd ? 0.45 : 1), this.ctx.currentTime, 0.1);
+    if (this.ambG) { this.ambG.gain.setTargetAtTime(base * (0.22 + this.excite * 0.5), now, 0.3); this.appG.gain.setTargetAtTime(base * Math.min(1, this.roar * 1.6), now, this.roar > 0.3 ? 0.08 : 0.5); }
     this.crowdF.frequency.setTargetAtTime(800 + this.excite * 500 + this.roar * 900, this.ctx.currentTime, 0.2);
   },
   env(g, t, a, peak, dec) {

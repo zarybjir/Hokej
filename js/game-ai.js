@@ -218,6 +218,12 @@ gameMixin(class {
     if (d < 4 && !urg) p.faceDir = Math.atan2(pk.y - p.y, pk.x - p.x);
     p.turbo = turbo;
   }
+  // ze které strany lidský tým nejčastěji střílí (průměr posledních střel, kladné = vyšší y)
+  shotSide(T) {
+    if (!T.humans.length) return 0;
+    const L = this.shotLog.filter((q) => q.team === T).slice(-8); if (L.length < 4) return 0;
+    return L.reduce((a, q) => a + clamp(q.v * T.dir, -20, 20), 0) / L.length * 0.35;
+  }
   spotFor(p) {
     const t = p.team, s = t.dir, pk = this.puck, owner = pk.owner || pk.held;
     const pu = s * pk.x, pv = s * pk.y, ph = p.ai.ph, tm = this.time, D = p.role[1] === 'D';
@@ -229,6 +235,11 @@ gameMixin(class {
         const S = { C: [60, 0], LW: [72, 17], RW: [72, -17], LD: [dU, 16], RD: [dU, -16], X: [80, Math.sin(ph) > 0 ? 7 : -7] }[p.extra ? 'X' : p.role];
         u = S[0] + Math.sin(tm * 0.6 + ph) * (D ? 3 : 7); v = S[1] + Math.cos(tm * 0.45 + ph * 1.3) * (D ? 6 : 7);
         if (p.role === 'C' && Math.sin(tm * 0.4 + ph) > 0.5) { u = 78; v = Math.sin(ph) > 0 ? 4 : -4; }
+        // přesilovka: nacvičené rozestavení 1-3-1 – obránce na modré, dva na hrazení, jeden v mezeře, jeden clonící před brankou
+        if (!this.fb && !p.extra && t.skaters.length > this.other(t).skaters.length && t.skaters.length >= 5) {
+          const P = { LD: [37, 0], LW: [59, 25], RD: [59, -25], C: [66, pv > 0 ? -3 : 3], RW: [82, pv > 0 ? 3 : -3] }[p.role];
+          u = P[0] + Math.sin(tm * 0.5 + ph) * 2; v = P[1] + Math.cos(tm * 0.4 + ph) * 2;
+        }
       } else {
         const S = { C: [pu + 14, -pv * 0.3], LW: [pu + 24, 22], RW: [pu + 24, -22], LD: [pu - 16, 15], RD: [pu - 16, -15], X: [pu + 20, pv > 0 ? -8 : 8] }[p.extra ? 'X' : p.role];
         u = S[0]; v = S[1];
@@ -267,6 +278,10 @@ gameMixin(class {
       // ve vlastním pásmu nikdy za branku: útočníci hlídají slot a modrou, obránci brankoviště
       u = Math.max(u, D ? -80 : [-62, -66, -70][tac]);
       if (tac === 0 && !D && pu < -25) v *= 0.6;                     // obranná taktika: zahustit střed
+      // oslabení ve vlastním pásmu: těsný čtverec před brankou, který se posouvá za pukem
+      if (!this.fb && pu < -28 && t.skaters.length < this.other(t).skaters.length) { u = (D ? -77 : -62) + (pu + 60) * 0.12; v = (S[1] >= 0 ? 9 : -9) + pv * 0.3; }
+      // počítač se učí, odkud na něj člověk střílí: obrana se k té straně posune
+      else if (t.cpu && pu < -25) v += clamp(this.shotSide(this.other(t)), -4, 4) * s;
     }
     u = clamp(u, -84, 84);
     const hw = rinkHalfWidthAt(s * u) - 4; v = clamp(v, -hw, hw);
