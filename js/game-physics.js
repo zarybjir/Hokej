@@ -13,7 +13,7 @@ gameMixin(class {
       if (p.checkT > 0) { p.checkT -= h; if (p.checkT <= 0 && !p.checkHit) p.recoverT = 0.3; }
       if (p.blockT > 0) p.blockT -= h;
       if (p.noStick > 0) { p.noStick -= h; if (p.noStick <= 0) this.pop('NOVÁ HŮL', p.x, p.y, '#cfd8ea'); }
-      if (p.cutT > 0) p.cutT -= h; if (p.stagT > 0) p.stagT -= h;
+      if (p.cutT > 0) p.cutT -= h; if (p.stagT > 0) p.stagT -= h; if (p.battleT > 0) p.battleT -= h;
       p.dekeT = Math.max(0, p.dekeT - h); p.recoverT = Math.max(0, p.recoverT - h); if (p.shotFT > 0) p.shotFT -= h; if (p.passFT > 0) p.passFT -= h; if (p.foSwipe > 0) p.foSwipe -= h; if (p.celebT > 0) p.celebT -= h;
       p.carry = pk.owner === p;
       if (p.downT > 0) {

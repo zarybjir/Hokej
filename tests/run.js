@@ -233,6 +233,17 @@ test('nástup a hvězdy zápasu: hráči dojedou na svá místa, po zápase tři
   } finally { G.Game.prototype.sfx = sf; G.Game.prototype.say = sy; }
 });
 
+test('souboj u mantinelu: přetlačování trvá, silnější a mačkající hráč vyhrává častěji, vždy skončí', (G) => {
+  const run = (pa) => { const g = new G.Game({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60); g.thinkAll = () => {};
+    const a = g.teams[0].skaters[0], b = g.teams[1].skaters[0], pk = g.puck; for (const q of g.all) if (q !== a && q !== b && !q.isGoalie) { q.x = 0; q.y = 0; }
+    a.x = 60; a.y = 40; b.x = 61; b.y = 40.5; pk.owner = null; pk.x = 60.5; pk.y = 41; pk.vx = pk.vy = 0; a.chk = b.chk = 1; a.mass = b.mass = 1;
+    g.battle = { a, b, t: 0, pa, pb: 0 }; let n = 0, lean = false; for (; g.battle && n < 400; n++) { g.updateBattle(1 / 60); if (a.battleT > 0 && b.battleT > 0) lean = true; }
+    return { n, lean, win: g.puck.owner === a }; };
+  let wa = 0, wp = 0, tmin = 999, tmax = 0; for (let i = 0; i < 60; i++) { const r = run(0), q = run(4); ok(r.lean, 'hráči se v souboji neopírají'); ok(r.n < 400 && q.n < 400, 'souboj neskončil'); tmin = Math.min(tmin, r.n); tmax = Math.max(tmax, r.n); if (r.win) wa++; if (q.win) wp++; }
+  ok(tmin >= 30 && tmax <= 100, 'délka souboje mimo rozsah: ' + tmin + '–' + tmax + ' snímků');
+  between(wa, 18, 42, 'vyrovnaný souboj není vyrovnaný'); ok(wp > wa + 6, 'mačkání tlačítka nepomáhá: ' + wp + ' × ' + wa);
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

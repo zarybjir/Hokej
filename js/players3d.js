@@ -567,6 +567,7 @@ class HModel {
     const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;   // unavený hráč se hrbí
     const lean = down ? 0.1 : (0.3 + 0.35 * spd * (0.55 + 0.55 * pw)) * (1 - 0.6 * br) * (1 - 0.4 * back) + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk + 0.16 * tired;
     if (p.stagT > 0 && !down) rotAxis(B.Hips, F, Math.sin(p.stagT * 22) * 0.16 * (p.stagT / 0.4));   // zapotácení po srážce
+    if (p.battleT > 0 && !down && p.battleDir != null) { const rel = angDiff(p.dir, p.battleDir), k = Math.min(1, p.battleT / 0.1); rotAxis(B.Hips, UPV, clamp(rel, -1.1, 1.1) * 0.7 * k); rotAxis(B.Hips, Lv, (0.3 + Math.sin(t * 13 + this.phase) * 0.07) * k); }   // souboj: rameno do soupeře, tlačí se a cuká
     if (chk > 0) rotAxis(B.Spine1, UPV, (p.hip ? 0.9 : 0.5) * p.hand * chk);
     if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
     for (const b of [B.Spine, B.Spine1, B.Spine2]) rotAxis(b, Lv, lean / 3 * (1 - cw0));

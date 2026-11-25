@@ -345,6 +345,12 @@ const R = {
       const bx = x + 170, bw = w - 340; ctx.fillStyle = A.jersey; ctx.fillRect(bx, y + 46, bw * K[1] / tot, 12); ctx.fillStyle = B.jersey; ctx.fillRect(bx + bw * K[1] / tot, y + 46, bw * K[2] / tot, 12);
       ctx.fillStyle = '#000'; ctx.fillRect(bx + bw * K[1] / tot - 1, y + 44, 2, 16); ctx.globalAlpha = 1;
     }
+    if (g.battle && g.state === 'play') {
+      // souboj u mantinelu: přetahovaná nad pukem
+      const B = g.battle, q = G3.toScreen(g.puck.x, g.puck.y, 6);
+      if (q) { const w = 120, x = q[0] - w / 2, y = q[1]; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 2, y - 2, w + 4, 12); ctx.fillStyle = B.b.team.jersey; ctx.fillRect(x, y, w, 8); ctx.fillStyle = B.a.team.jersey; ctx.fillRect(x, y, w * (0.5 + 0.5 * (B.m || 0)), 8); ctx.fillStyle = '#fff'; ctx.fillRect(x + w * (0.5 + 0.5 * (B.m || 0)) - 1, y - 3, 3, 14);
+        if (B.a.ctrl >= 0 || B.b.ctrl >= 0) LED.text(ctx, 'MAČKEJ X', q[0], y + 22, 2, { align: 'center', color: '#ffd21f' }); }
+    }
     if (g.lower) {
       const L = g.lower, slide = clamp(L.t / 0.3, 0, 1) * clamp((L.dur - L.t) / 0.3, 0, 1);
       const w = Math.max(LED.width(L.title, 4), LED.width(L.sub, 2.5)) + 60;

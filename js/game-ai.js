@@ -69,11 +69,15 @@ gameMixin(class {
       if (d > 2) { q.vx += dx / d * 20 * h; q.vy += dy / d * 20 * h; }
     }
     pk.vx *= 1 - 3 * h; pk.vy *= 1 - 3 * h;
-    if (B.t > 0.7) {
-      const str = (q, pr) => q.chk * this.fat(q) + (q.mass - 1) * 0.6 + pr * 0.05 + (q.team.cpu && this.vsHuman ? (this.diff.aggr - 1) * 0.05 : 0);
-      const pa = clamp(0.5 + (str(a, B.pa) - str(b, B.pb)) * 1.4, 0.15, 0.85);
-      const w = Math.random() < pa ? a : b, l = w === a ? b : a;
-      this.battle = null; w.pickCD = 0; l.pickCD = 0.45; l.recoverT = 0.3;
+    // přetlačování: ukazatel m (−1 = vyhrává b, +1 = a) se posouvá podle síly, únavy a mačkání tlačítka a náhodně cuká;
+    // hráči se o sebe opírají (battleT pro animaci). Rozhodne se, až jeden druhého přetlačí, nejpozději po 1,6 s.
+    const str = (q, pr) => q.chk * this.fat(q) + (q.mass - 1) * 0.6 + pr * 0.05 + (q.team.cpu && this.vsHuman ? (this.diff.aggr - 1) * 0.05 : 0);
+    B.m = clamp((B.m || 0) + ((str(a, B.pa) - str(b, B.pb)) * 2.4 + gauss() * 2.2) * h, -1, 1);
+    a.battleT = b.battleT = 0.2; a.battleDir = Math.atan2(b.y - a.y, b.x - a.x); b.battleDir = a.battleDir + Math.PI;
+    if (this.time - (B.sT || 0) > 0.35) { B.sT = this.time; this.sfx('board', 0.12); }
+    if (B.t > 0.5 && (Math.abs(B.m) >= 1 || B.t > 1.6)) {
+      const w = B.m > 0 || (B.m === 0 && Math.random() < 0.5) ? a : b, l = w === a ? b : a;
+      this.battle = null; w.pickCD = 0; l.pickCD = 0.45; l.recoverT = 0.3; l.stagT = 0.35;
       this.feel(w, 0.5, 160); this.feel(l, 0.4, 160); this.sfx('board', 0.25);
       this.gain(w);
     }
