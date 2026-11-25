@@ -478,7 +478,7 @@ class HModel {
   reset() { this.bones.forEach((b, i) => { b.quaternion.copy(this.bind[i][0]); b.position.copy(this.bind[i][1]); }); }
   pose(p, t) {
     // rychlost otáčení (pro náklon v zatáčce a překládání)
-    const dtp = clamp(t - (this.lastT == null ? t : this.lastT), 0, 0.1); this.lastT = t;
+    const dtp = clamp(t - (this.lastT == null ? t : this.lastT), 0, 0.1); this.lastT = t; this.dtp = dtp;
     if (this.prevDir != null && dtp > 0) { const tr = angDiff(this.prevDir, p.dir) / dtp; this.turn += (clamp(tr, -6, 6) - this.turn) * Math.min(1, dtp * 8); }
     this.prevDir = p.dir;
     // střela: postoj bokem k cíli (jako při golfovém švihu z mocapu); plynulý přechod
@@ -536,17 +536,36 @@ class HModel {
     // postoj na buly: vhazující hluboko v předklonu s holí na ledě, ostatní v připraveném podřepu
     const take = !down && p.foTake ? 1 : 0, ready = !down && (p.foReady || take) ? 1 : 0, swipe = p.foSwipe > 0 ? p.foSwipe / 0.35 : 0;
     const breathe = Math.sin(t * 2.6 + this.phase) * 0.03 * (1 - spd);
-    const drop = down ? 0.05 : 0.32 + 0.5 * spd + 0.4 * wind + 0.25 * ready + 0.25 * take + breathe;
+    // plynulé bruslení: z pohybu modelu se odhadne zrychlení, brzdění a jízda vzad a póza mezi nimi plynule přechází
+    const dts = this.dtp || 0, K = (r) => Math.min(1, dts * r);
+    if (this.so && dts > 0 && !down) {
+      const vx = (O.x - this.so.x) / dts, vz = (O.z - this.so.z) / dts, v = Math.hypot(vx, vz);
+      if (v < 90) {
+        const a0 = (v - (this.sv || 0)) / dts; this.sv = v;
+        this.sAcc = (this.sAcc || 0) + (clamp(a0, -90, 90) - (this.sAcc || 0)) * K(7);
+        const fwd = v > 2 ? (vx * F.x + vz * F.z) / v : 1, side = v > 2 ? (vx * Lv.x + vz * Lv.z) / v : 0;
+        this.sBack = (this.sBack || 0) + ((fwd < -0.25 ? 1 : 0) - (this.sBack || 0)) * K(6);
+        this.sSide = (this.sSide || 0) + (side - (this.sSide || 0)) * K(6);
+      }
+    }
+    this.so = this.so || new THREE.Vector3(); this.so.copy(O);
+    const acc = down ? 0 : this.sAcc || 0, back = down ? 0 : this.sBack || 0;
+    const push = clamp(0.35 + acc / 22 + (p.turbo ? 0.4 : 0), 0.22, 1.15) * (1 - back * 0.4);   // síla odrazu: při rozjezdu dlouhé kroky, při dojezdu klouže
+    const brake = spd > 0.12 ? clamp((-acc - 14) / 34, 0, 1) : 0, bs = (this.sSide || 0) >= 0 ? 1 : -1;   // prudké brzdění: zastavení hranami bokem
+    this.sPush = (this.sPush == null ? push : this.sPush + (push - this.sPush) * K(5)); this.sBrake = (this.sBrake || 0) + (brake - (this.sBrake || 0)) * K(brake > (this.sBrake || 0) ? 14 : 5);
+    const pw = this.sPush, br = this.sBrake;
+    const drop = down ? 0.05 : 0.32 + 0.5 * spd * (0.75 + 0.3 * pw) + 0.4 * wind + 0.25 * ready + 0.25 * take + breathe + 0.3 * br + 0.12 * back;
     this.root.position.set(O.x, 0.15 - drop, O.z);
     this.root.updateMatrixWorld(true);
     // trup: předklon, kolébání do stran při odrazu
     const cs = this.cs, cw0 = cs ? cs.w : 0;
-    rotAxis(B.Hips, Lv, (down ? 0.05 : 0.38 + 0.32 * spd + 0.15 * wind + 0.18 * ready + 0.22 * take) * (1 - 0.55 * cw0));
-    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd);
+    rotAxis(B.Hips, Lv, (down ? 0.05 : (0.38 + 0.32 * spd * (0.6 + 0.5 * pw) + 0.15 * wind + 0.18 * ready + 0.22 * take) * (1 - 0.75 * br) * (1 - 0.45 * back) - 0.12 * br) * (1 - 0.55 * cw0));
+    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd * pw + bs * br * 1.15);   // při brzdění se boky stočí napříč jízdě
+    if (br > 0) rotAxis(B.Hips, F, -bs * br * 0.3);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
     const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;   // unavený hráč se hrbí
-    const lean = down ? 0.1 : 0.3 + 0.35 * spd + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk + 0.16 * tired;
+    const lean = down ? 0.1 : (0.3 + 0.35 * spd * (0.55 + 0.55 * pw)) * (1 - 0.6 * br) * (1 - 0.4 * back) + 0.15 * wind + 0.2 * ready + 0.3 * take - 0.25 * swipe + 0.35 * chk + 0.16 * tired;
     if (p.stagT > 0 && !down) rotAxis(B.Hips, F, Math.sin(p.stagT * 22) * 0.16 * (p.stagT / 0.4));   // zapotácení po srážce
     if (chk > 0) rotAxis(B.Spine1, UPV, (p.hip ? 0.9 : 0.5) * p.hand * chk);
     if (cs) this.applyClip(cs.clip, cs.frac, cs.w);
@@ -555,7 +574,7 @@ class HModel {
     const headUp = -(0.38 + 0.32 * spd + 0.15 * wind + lean) * 0.8;
     rotAxis(B.Neck, Lv, headUp * 0.55); rotAxis(B.Head, Lv, headUp * 0.45);
     // nohy: střídavé odrazy do stran
-    const sw = Math.sin(ph) * spd, cw = Math.cos(ph);
+    const sw = Math.sin(ph) * spd * clamp(pw, 0.2, 1.1), cw = Math.cos(ph);
     // odraz do strany a dozadu, návrat pod tělo; v zatáčce vnější brusle překračuje vnitřní
     let latL = 0.48 + 0.75 * Math.max(0, -sw) + 0.22 * ready + 0.15 * take, latR = -0.48 - 0.75 * Math.max(0, sw) - 0.22 * ready - 0.15 * take;
     if (cross > 0) {
@@ -563,8 +582,11 @@ class HModel {
       if (ts > 0) { latR = lerp(latR, 0.55 * outerUp - 0.3, cross); latL = lerp(latL, 0.35 - 0.9 * innerPush, cross); }
       else { latL = lerp(latL, -0.55 * outerUp + 0.3, cross); latR = lerp(latR, -0.35 + 0.9 * innerPush, cross); }
     }
-    const fL = J(0.15 - 1.0 * sw, latL, Math.max(0, cw) * 0.45 * spd);
-    const fR = J(0.15 + 1.0 * sw, latR, Math.max(0, -cw) * 0.45 * spd);
+    // jízda vzad: brusle kreslí střídavé obloučky do stran bez zvedání; brzdění: obě brusle napříč před tělem
+    const fw = 1 - 0.85 * back, lift = 0.45 * spd * clamp(pw, 0.2, 1) * (1 - back) * (1 - br);
+    if (back > 0) { latL += 0.35 * back * Math.max(0, cw) * spd; latR -= 0.35 * back * Math.max(0, -cw) * spd; }
+    const fL = J(0.15 - 1.0 * sw * fw, latL, Math.max(0, cw) * lift), fR = J(0.15 + 1.0 * sw * fw, latR, Math.max(0, -cw) * lift);
+    if (br > 0) { fL.lerp(J(0.75 + 0.25 * bs, 0.5 + 0.1 * bs, 0), br); fR.lerp(J(0.75 - 0.25 * bs, -0.5 + 0.1 * bs, 0), br); }
     const poleL = F.clone().addScaledVector(Lv, 0.25), poleR = F.clone().addScaledVector(Lv, -0.25);
     this.legs(fL, fR, poleL, poleR, 0.15 + 0.5 * Math.max(0, -sw), -0.15 - 0.5 * Math.max(0, sw), F);
     // hůl a ruce

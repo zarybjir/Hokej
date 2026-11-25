@@ -1,8 +1,8 @@
 {
-  "build": 85,
-  "version": "1.85",
+  "build": 86,
+  "version": "1.86",
   "date": "2026-11-25",
   "notes": [
-    "Dresy všech 32 týmů podle nové předlohy: sedlo přes ramena a vlastní vzor pruhů"
+    "Plynulejší bruslení: dlouhé kroky při rozjezdu, skluz při dojezdu, brzdění bokem na hranách, jízda vzad"
   ]
 }
