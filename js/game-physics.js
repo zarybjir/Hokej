@@ -363,7 +363,7 @@ gameMixin(class {
         const e = 0.85 * PH.BE * clamp((k - 0.2) / 0.3, 0, 1) * (1 + 0.1 * gauss());
         const vt2 = vt - sgn(vt) * Math.min(Math.abs(vt), 0.2 * (1 + e) * vn + 8 * h);
         pk.vx = vt2 * tx - e * vn * c.nx; pk.vy = vt2 * ty - e * vn * c.ny;
-        if (vn > 10) this.sfx('board', clamp(vn / 90, 0.15, 0.6));
+        if (vn > 10) this.sfx(pk.z > 3.6 && !this.fb ? 'glass' : 'board', clamp(vn / 90, 0.15, 0.6));   // nad mantinelem je plexisklo
         else if (k < 0.3 && Math.abs(vt) > 22 && this.time - (this.rimT || 0) > 0.13) { this.rimT = this.time; this.sfx('rim', clamp(Math.abs(vt) / 80, 0.2, 0.6)); }
         if (vn > 30) pk.shot = null;
       }

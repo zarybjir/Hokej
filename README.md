@@ -394,7 +394,8 @@ Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 2
 - Zvuky ledu a haly (`sounds/fx/`), vše CC0 z [Freesound](https://freesound.org): „Skates on Ice“ (Rehanjo),
   „Freezer Ice Scrape Knife 10“ (Glitchedtones), „hockey outdoor player checked into boards“ (kyles),
   „ANI Big Pipe Hit“ (ani_music), „Referee whistle sound“ (Rosa-Orenes256), „Industrial Air Horn“ (mcpable),
-  „Wood impact 1“.
+  „Wood impact 1“, „Baseball calvary sting“ (vckhaze), „buzzer“ (guitarguy1985), „Group Ooh 1“ (CHallSmith),
+  „boo“ (dr_skitz), „DullThud“ (TriqyStudio).
 - Zvuky publika (`sounds/crowd/`): „Crowd Shouting/Speaking Ambience“ (StarNinjas) a „Applause in a large hall
   or church“ (eXpl0it3r), obojí CC0 z [OpenGameArt](https://opengameart.org).
 - Pohyby z motion capture: CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), převedené sadou

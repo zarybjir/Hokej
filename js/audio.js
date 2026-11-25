@@ -34,7 +34,7 @@ const Sfx = {
     // skutečné nahrávky (CC0 z Freesound, viz README): brusle, brzdění, mantinel, tyčka, hůl, píšťalka, klakson.
     // Když se soubor nenačte, zůstane syntetický zvuk.
     this.fx = {};
-    for (const n of ['skate', 'stop', 'board', 'post', 'whistle', 'horn', 'stick']) {
+    for (const n of ['skate', 'stop', 'board', 'post', 'whistle', 'horn', 'stick', 'organ', 'buzzer', 'ooh', 'boo', 'glass']) {
       fetch('sounds/fx/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())).then((b) => c.decodeAudioData(b)).then((buf) => {
         this.fx[n] = buf;
         if (n === 'skate') { this.skG = c.createGain(); this.skG.gain.value = 0; this.skG.connect(this.master); const s = c.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(this.skG); s.start(); }
@@ -95,7 +95,8 @@ const Sfx = {
   board(v = 0.6) { if (this.play('board', 0.8 * v, 1.15)) return; this.burst(160, 'lowpass', 0.9 * v, 0.22); this.burst(600, 'bandpass', 0.25 * v, 0.15, 2); },
   post() { this.play('post', 0.55, 1.5); this.tone(1760, 'sine', 0.35, 0.002, 0.7); this.tone(2637, 'sine', 0.18, 0.002, 0.5); this.tone(3520, 'sine', 0.08, 0.002, 0.3); },
   hit(v = 1) { this.play('board', 0.9 * v, 0.85); this.burst(120, 'lowpass', 1.0 * v, 0.3); this.burst(400, 'bandpass', 0.5 * v, 0.2, 1); this.ooh(v); },
-  ooh(v = 1) { this.target = Math.max(this.target, 0.5); this.roar = Math.max(this.roar, 0.25 * v); },
+  glass(v = 0.5) { this.play('glass', v, 1.3); },   // puk o plexisklo
+  ooh(v = 1) { this.play('ooh', 0.3 * v); this.target = Math.max(this.target, 0.5); this.roar = Math.max(this.roar, 0.25 * v); },
   cheer(v = 1) { this.roar = Math.max(this.roar, v); },
   whistle() {
     if (!this.ok()) return;
@@ -124,6 +125,7 @@ const Sfx = {
   },
   buzzer() {
     if (!this.ok()) return;
+    if (this.play('buzzer', 0.4)) return;
     this.tone(220, 'square', 0.12, 0.01, 1.4); this.tone(223, 'square', 0.1, 0.01, 1.4);
   },
   organNote(freq, when, dur, vol = 0.07) {
@@ -138,6 +140,7 @@ const Sfx = {
     }
   },
   organ(n) {
+    if (n === 3 && this.play('organ', 0.38, 1)) return;   // jedna ze znělek je nahrávka skutečných varhan
     const N = (s) => 440 * Math.pow(2, (s - 69) / 12);
     const tunes = [
       // „Charge!" fanfára
@@ -158,6 +161,7 @@ const Sfx = {
   // dav: bučení (nízké „úúú" se zvolna nabíhající hlasitostí)
   boo(v = 1) {
     if (!this.ok()) return;
+    if (this.play('boo', 0.45 * v, 1)) return;
     const c = this.ctx, t = c.currentTime;
     for (const [f, q] of [[260, 3], [520, 4]]) {
       const s = this.src(), fl = c.createBiquadFilter(), g = c.createGain();
