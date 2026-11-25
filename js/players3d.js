@@ -124,6 +124,7 @@ vPos = position; vArm = aArm;
 const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
+uniform sampler2D uFab;
 uniform float uRef, uStyle, uYoke, uHasMap, uKit;
 varying vec3 vPos;
 varying float vArm;
@@ -221,10 +222,21 @@ const BODY_FRAG = `
     else if (y <= 0.72 && y > 0.5) { c = uSkin; fab = 1.0; }
     else if (y <= 0.5 && y > 0.115) c = uSock;
   }
+  // struktura látky (gfx/fabric.jpg): síťovina dresu promítnutá zepředu a z boku; kůže ji nemá
+  if (distance(c, uSkin) > 0.02) fab *= 0.72 + 0.56 * mix(texture2D(uFab, vPos.xy * 0.9).r, texture2D(uFab, vPos.zy * 0.9).r, smoothstep(0.12, 0.2, abs(vPos.z)));
   diffuseColor.rgb = c * fab;
 }
 `;
 
+// sdílená textura látky; dokud se nenačte, je jednobarevně šedá (vzhled se nemění)
+let _fabTex = null;
+function fabricTex() {
+  if (_fabTex) return _fabTex;
+  const c = document.createElement('canvas'); c.width = c.height = 2; const g = c.getContext('2d'); g.fillStyle = 'rgb(128,128,128)'; g.fillRect(0, 0, 2, 2);
+  _fabTex = new THREE.Texture(c); _fabTex.wrapS = _fabTex.wrapT = THREE.RepeatWrapping; _fabTex.needsUpdate = true;
+  const im = new Image(); im.onload = () => { _fabTex.dispose(); _fabTex.image = im; _fabTex.needsUpdate = true; }; im.src = 'gfx/fabric.jpg';   // dispose: jiná velikost než zástupná textura
+  return _fabTex;
+}
 function bodyMaterial(T, p) {
   const [c, g] = mkCanvas(1024, 640);
   if (p.isRef) return bodyMaterialFinish(T, p, c, true);
@@ -258,7 +270,7 @@ function bodyMaterialFinish(T, p, c, ref) {
     uInfl: { value: p.isGoalie && SPORT === 'hockey' ? 1.55 : 1 }, uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
     uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : SPORT === 'polo' || SPORT === 'curling' ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
-    uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex },
+    uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex }, uFab: { value: fabricTex() },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
     uHasMap: { value: 0 },
     uStyle: { value: ref ? 0 : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) },
