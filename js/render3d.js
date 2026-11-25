@@ -964,17 +964,23 @@ const G3 = {
   },
   // trávník: vlastní plocha s texturou (pruhy po sekání, ošlapaná místa, čáry) a jemnou strukturou stébel
   buildPitch() {
-    // dlaždicová textura stébel: zelený kanál = světlost, slouží i jako reliéf
-    const [dc, dg] = mkCanvas(256, 256), rnd = mulberry32(77);
-    dg.fillStyle = 'rgb(128,128,128)'; dg.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 9000; i++) {
-      const x = rnd() * 256, y = rnd() * 256, l = 3 + rnd() * 7, a = (rnd() - 0.5) * 0.9, v = Math.round(70 + rnd() * 130);
-      dg.strokeStyle = `rgba(${v},${v},${v},0.55)`; dg.lineWidth = 0.8 + rnd() * 0.8;
-      for (const [ox, oy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) { dg.beginPath(); dg.moveTo(x + ox, y + oy); dg.lineTo(x + ox + Math.sin(a) * l, y + oy - Math.cos(a) * l); dg.stroke(); }
+    // dlaždicová textura stébel (dlaždice asi 6 stop): tmavé kořeny, přes ně tisíce stébel od tmavých po světlé nažloutlé špičky;
+    // průměr je šedá, takže barvu trávníku jen násobí; slouží i jako reliéf
+    const DS = 512, [dc, dg] = mkCanvas(DS, DS), rnd = mulberry32(77);
+    dg.fillStyle = 'rgb(84,92,74)'; dg.fillRect(0, 0, DS, DS); dg.lineCap = 'round';
+    for (let i = 0; i < 15000; i++) {
+      const x = rnd() * DS, y = rnd() * DS, l = 10 + rnd() * 26, a = (rnd() - 0.5) * 2.6, k = i / 15000, v = 0.55 + k * 0.5 + rnd() * 0.45;   // pozdější stébla jsou výš = světlejší
+      const yel = rnd() < 0.12 ? 1.18 : 1, col = `rgb(${Math.min(255, Math.round(118 * v * yel))},${Math.min(255, Math.round(128 * v))},${Math.round(96 * v / yel)})`;
+      for (const [ox, oy] of [[0, 0], [DS, 0], [-DS, 0], [0, DS], [0, -DS]]) {
+        const x0 = x + ox, y0 = y + oy, mx = x0 + Math.sin(a) * l * 0.6 + (rnd() - 0.5) * 3, my = y0 - Math.cos(a) * l * 0.6, x1 = x0 + Math.sin(a * 1.3) * l, y1 = y0 - Math.cos(a * 1.3) * l;
+        if (Math.max(x0, x1) < -4 || Math.min(x0, x1) > DS + 4 || Math.max(y0, y1) < -4 || Math.min(y0, y1) > DS + 4) continue;
+        dg.strokeStyle = col; dg.lineWidth = 2.6; dg.beginPath(); dg.moveTo(x0, y0); dg.lineTo(mx, my); dg.stroke();
+        dg.lineWidth = 1.4; dg.beginPath(); dg.moveTo(mx, my); dg.lineTo(x1, y1); dg.stroke();
+      }
     }
     const det = this.pitchDet = canvasTex(dc, false, this.aniso); det.wrapS = det.wrapT = THREE.RepeatWrapping;
-    const bump = canvasTex(dc, false, this.aniso); bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.set(70, 30);
-    const m = this.pitchMat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0, bumpMap: bump, bumpScale: 0.9, envMapIntensity: 0.12 });
+    const bump = canvasTex(dc, false, this.aniso); bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.set(200 / 6, 85 / 6);
+    const m = this.pitchMat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0, bumpMap: bump, bumpScale: 1.6, envMapIntensity: 0.12 });
     m.onBeforeCompile = (sh) => {
       sh.uniforms.uDet = { value: det }; sh.uniforms.uDetK = m.userData.detK = { value: 1 }; sh.uniforms.uDetO = m.userData.detO = { value: new THREE.Vector2() };
       sh.uniforms.uPud = m.userData.pud; sh.uniforms.uMole = m.userData.mole;
@@ -1016,12 +1022,15 @@ float wH(vec2 p) {
     float crest = smoothstep(1.15, 1.75, length(wS));
     diffuseColor.rgb = mix(bot, vec3(0.93, 0.98, 1.0), clamp(foam * 0.5 * (0.6 + 0.4 * sin(wp.x * 9.0 + wp.y * 7.0 + uT * 5.0)) + crest * 0.25, 0.0, 0.8));
   }
-  diffuseColor.rgb *= mix(1.0, (0.72 + 0.56 * texture2D(uDet, vMapUv * vec2(72.0, 30.6) + uDetO).g) * (0.9 + 0.2 * texture2D(uDet, vMapUv * vec2(9.0, 3.8) + 0.37 - uDetO * 0.3).g), uDetK);
+
   if (uWat < 0.5 && uDetK > 0.5) {
     // živý trávník: nestejně hustá a zelená místa, sušší skvrny, trsy; pruhy po sekání se lesknou podle směru pohledu
     vec2 gp = vWp.xz; float m1 = gn(gp * 0.09) * 0.5 + gn(gp * 0.23) * 0.3 + gn(gp * 0.7) * 0.2;
     diffuseColor.rgb *= mix(vec3(0.7, 0.8, 0.62), vec3(1.2, 1.14, 1.0), smoothstep(0.25, 0.75, m1));
-    diffuseColor.rgb *= 0.8 + 0.4 * texture2D(uDet, gp * 0.11).g;
+    // stébla: dlaždice 6 stop, v každém druhém pruhu po sekání položená opačně; druhá, větší a pootočená vrstva ruší opakování
+    float gpar = mod(floor((gp.x + uHalf.x) / uHalf.z), 2.0) * 2.0 - 1.0;
+    vec3 dA = texture2D(uDet, vMapUv * vec2(200.0 / 6.0, 85.0 / 6.0 * gpar)).rgb, dB = texture2D(uDet, mat2(0.8, -0.6, 0.6, 0.8) * gp / 17.0 + 0.37).rgb;
+    diffuseColor.rgb *= dA * 2.0 * (0.55 + 0.9 * dB.g);
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.28, 1.12, 0.66), smoothstep(0.6, 0.85, gn(gp * 0.05 + 9.0)) * 0.3);
     diffuseColor.rgb *= 0.82 + 0.36 * gn(gp * 2.3) * gn(gp * 5.9 + 4.0) * 2.0;
     if (abs(gp.x) < uHalf.x && abs(gp.y) < uHalf.y) {
@@ -1085,7 +1094,7 @@ float wH(vec2 p) {
     if (!this.pitch) this.buildPitch();
     // povrch podle sportu: voda je hladká a lesklá, tráva matná
     const water = this.sportOn === 'polo', pm = this.pitchMat;
-    pm.roughness = water ? 0.07 : 0.93; pm.envMapIntensity = water ? 1.1 : 0.12; pm.bumpScale = water ? 0 : 0.9;
+    pm.roughness = water ? 0.07 : 0.93; pm.envMapIntensity = water ? 1.1 : 0.12; pm.bumpScale = water ? 0 : 1.6;
     if (pm.userData.detK) pm.userData.detK.value = water ? 0 : 1;
     pm.userData.wOn.value = water ? 1 : 0;
     this.pitchWater = water;
