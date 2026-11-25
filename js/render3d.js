@@ -849,7 +849,8 @@ const G3 = {
     this.bodies = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.48, 0.6, 1.7, 6), this.bodyMat, seats.length);
     this.heads = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.37, 0), this.headMat, seats.length);
     const col = new THREE.Color();
-    seats.forEach((_, i) => { col.set(pal[Math.floor(rnd() * pal.length)]); this.bodies.setColorAt(i, col); });
+    this.seatCol = seats.map(() => pal[Math.floor(rnd() * pal.length)]); this.seatFan = seats.map(() => rnd());
+    seats.forEach((_, i) => { col.set(this.seatCol[i]); this.bodies.setColorAt(i, col); });
     this.placeCrowd(0, 0);
     this.scene.add(this.bodies, this.heads);
   },
@@ -1418,7 +1419,15 @@ float wH(vec2 p) {
         parse(u.buffer);
       }).catch(fail));
   },
+  // hlediště v barvách zápasu: necelá polovina diváků má dres domácích, pár hostů, zbytek civil
+  crowdColors(g) {
+    if (!this.bodies || !this.seatCol || !g.teams || !g.teams[0].jersey) return;
+    const col = new THREE.Color(), [A, B] = g.teams;
+    this.seatCol.forEach((c, i) => { const f = this.seatFan[i]; col.set(f < 0.42 ? A.jersey : f < 0.5 ? B.jersey : c); if (f < 0.5) col.multiplyScalar(0.8 + (f * 37 % 1) * 0.35); this.bodies.setColorAt(i, col); });
+    this.bodies.instanceColor.needsUpdate = true;
+  },
   buildModels(g) {
+    this.crowdColors(g);
     for (const m of this.modelMap.values()) m.dispose();
     this.modelMap = new Map(); this.modelGame = g;
   },
