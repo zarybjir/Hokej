@@ -1,9 +1,10 @@
 {
-  "build": 60,
-  "version": "1.60",
+  "build": 61,
+  "version": "1.61",
   "date": "2026-11-25",
   "notes": [
-    "Curling: pohled shora za kamenem – při míření je vidět celý dům i čára hodu",
-    "Curling používá tento pohled vždy, nezávisle na nastavení kamery"
+    "Vodní pólo: nová hladina – vlny, lom dna, odlesky světel, kruhy a pěna kolem plavců a míče",
+    "Curling: hráči mají koště místo hokejky",
+    "Curling: pryč je bílý opar nad dráhou (záře přesvětlovala obraz), led je matný"
   ]
 }

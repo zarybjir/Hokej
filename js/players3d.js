@@ -429,7 +429,7 @@ class HModel {
     const sm = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; this.stick.add(m); return m; };
     this.shaft = sm(G.geo.shaft, G.mat.shaft);
     if (p.isGoalie) { this.paddle = sm(G.geo.paddle, G.mat.shaft); this.blade = sm(G.geo.gBlade, G.mat.blade); }
-    else { this.blade = sm(G.geo.blade, G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); }
+    else { const cu = SPORT === 'curling'; this.blade = sm(cu ? G.geo.broom : G.geo.blade, cu ? G.mat.broom : G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); this.tape.visible = !cu; }
     G.scene.add(this.root, this.stick);
   }
   setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef && (!this.foot || this.kit === 'curling'); }
@@ -675,7 +675,7 @@ class HModel {
         const top = wpos(B.Spine2).addScaledVector(F, 1.0).add(new THREE.Vector3(0, -0.2, 0)), mid = top.clone().lerp(heel, 0.35);
         ik2(B.LeftArm, B.LeftForeArm, B.LeftHand, top, dn.clone().addScaledVector(Lv, 0.7), this.L.upper, this.L.fore);
         ik2(B.RightArm, B.RightForeArm, B.RightHand, mid, dn.clone().addScaledVector(Lv, -0.7), this.L.upper, this.L.fore);
-        this.placeStick(heel, top, F.clone(), F);
+        this.placeStick(heel, top, F.clone(), F, true); put(this.blade, heel, Lv);   // koště: násada + hlavice napříč
       }
     }
   }
