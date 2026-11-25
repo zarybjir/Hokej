@@ -356,7 +356,8 @@ const R = {
     }
     if (g.state === 'periodEnd') this.drawPeriodEnd(g, t);
     if (g.state === 'zamboni') this.drawZamboniHUD(g, t);
-    if (g.state === 'final') this.drawFinal(g, t);
+    if (g.state === 'final' && g.starShow) this.drawStars(g, t); else if (g.state === 'final') this.drawFinal(g, t);
+    if (g.lineupShow) this.drawLineups(g);
     if (Settings.data.fps) LED.text(ctx, Math.round(App.fps) + ' FPS', this.W - 12, 18, 2, { align: 'right', color: '#7dff8a' });
   },
   // nájezdy: kolečka za každý pokus (zelené = gól, červené = neproměnil)
@@ -419,6 +420,22 @@ const R = {
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 20, y + 44, w - 40, 8);
     ctx.fillStyle = pc >= 90 ? '#7dff8a' : '#ffd21f'; ctx.fillRect(x + 20, y + 44, (w - 40) * pc / 100, 8);
     LED.text(ctx, 'PÁČKA = ŘÍZENÍ   B = HOTOVO', this.W / 2, y + 70, 2, { align: 'center', color: '#bfc6d6' });
+  },
+  // nástup: základní sestavy obou týmů
+  drawLineups(g) {
+    const ctx = this.ctx, k = clamp(g.stateT / 0.5, 0, 1) * clamp((4.4 - g.stateT) / 0.5, 0, 1), w = 330, h = 214;
+    g.teams.forEach((T, i) => {
+      const x = i ? this.W - 20 - w + (1 - k) * 380 : 20 - (1 - k) * 380, y = this.H - h - 70;
+      LED.panel(ctx, x, y, w, h, 3, 0.9); this.chip(T, x + 12, y + 10, 24);
+      LED.text(ctx, T.def.city.toUpperCase(), x + 30, y + 22, 3, { color: '#ffd21f' });
+      T.skaters.slice(0, 5).concat(T.goalie ? [T.goalie] : []).forEach((p, j) => { LED.text(ctx, ROLES[p.role] || p.role, x + 14, y + 54 + j * 26, 2, { color: '#9fe3ff' }); LED.text(ctx, '#' + p.num + ' ' + p.name.toUpperCase(), x + 62, y + 54 + j * 26, 2.5); });
+    });
+  },
+  // tři hvězdy zápasu: jmenovky pod hráči na středu ledu
+  drawStars(g, t) {
+    const ctx = this.ctx, w = 760, x = this.W / 2 - w / 2, y = this.H - 150;
+    LED.panel(ctx, x, y, w, 124, 4, 0.92); LED.text(ctx, 'HVĚZDY ZÁPASU', this.W / 2, y + 20, 3, { align: 'center', color: '#ffd21f' });
+    g.stars.forEach((p, i) => { const cx = x + w * (i + 0.5) / 3; LED.text(ctx, '★'.repeat(3 - i), cx, y + 50, 2.5, { align: 'center', color: '#ffd21f' }); LED.text(ctx, '#' + p.num + ' ' + p.name.toUpperCase(), cx, y + 76, 2.5, { align: 'center' }); LED.text(ctx, p.isGoalie ? p.stats.sv + '/' + p.stats.sa + ' ZÁKR.' : p.stats.g + ' G  ' + p.stats.a + ' A', cx, y + 102, 2, { align: 'center', color: '#aeb6c8' }); });
   },
   drawFinal(g, t) {
     const ctx = this.ctx, w = 680, h = 520, x = this.W / 2 - w / 2, y = 96;

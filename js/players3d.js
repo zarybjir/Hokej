@@ -625,7 +625,7 @@ class HModel {
     const [tA, tF, tH, tM] = topSide > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1] : [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1];
     const [bA, bF, bH, bM] = topSide > 0 ? [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1] : [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1];
     const dn = new THREE.Vector3(0, -1, 0);
-    if (cs && cs.w > 0.5) return; // oslava: ruce nahoře, hůl volně v ruce
+    if (cs && cs.w > 0.5) { this.placeStick(J(0.5, p.hand * 1.1, 0.1), wpos(bH), F.clone(), F); return; }   // oslava: ruce podle klipu, hůl opřená o led u ruky (jinak by zůstala ležet tam, kde byla naposled)
     ik2(tA, tF, tH, topT, dn.clone().addScaledVector(Lv, topSide * 0.9).addScaledVector(F, -0.3), this.L.upper, this.L.fore);
     const top = wpos(tH);
     const sdir = new THREE.Vector3().subVectors(heel, top), slen = sdir.length(); sdir.divideScalar(slen);

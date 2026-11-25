@@ -199,10 +199,18 @@ class Game {
     if (this.state !== 'replay') { this.updateEnergy(h); this.updateRefs(h, false); }
     if (this.toast) { this.toast.t += h; if (this.toast.t > this.toast.dur) this.toast = null; }
     switch (this.state) {
-      case 'intro':
-        this.freeze();
-        if (this.stateT > 2.2) { this.state = this.practice && this.practice.kind === 'shoot' ? 'play' : 'faceoff'; this.stateT = 0; }
+      case 'intro': {
+        // nástup: hráči vyjedou od vlastní branky na svá místa, na obrazovce základní sestavy (A přeskočí)
+        const show = !this.fb && !this.silent && !this.demo && !this.practice, dur = show ? 5 : 2.2;
+        if (show && this.stateT < dur - 0.6) {
+          if (!this.introPos) this.introPos = this.all.filter((p) => !p.isGoalie).map((p, i) => ({ p, tx: p.x, ty: p.y, sx: -p.team.dir * 72, sy: p.y * 0.35 + ((i % 5) - 2) * 2.5 }));
+          const u = clamp(this.stateT / (dur - 0.6), 0, 1), e = u * u * (3 - 2 * u), de = 6 * u * (1 - u) / (dur - 0.6);
+          for (const q of this.introPos) { const p = q.p; p.x = lerp(q.sx, q.tx, e); p.y = lerp(q.sy, q.ty, e); p.spdN = Math.hypot(q.tx - q.sx, q.ty - q.sy) * de; p.vx = p.vy = 0; p.dir = Math.atan2(q.ty - q.sy, q.tx - q.sx); p.stride += h * p.spdN * 0.3; p.carry = false; }
+          this.lineupShow = true;
+        } else { if (this.introPos) { for (const q of this.introPos) { q.p.x = q.tx; q.p.y = q.ty; } this.introPos = null; } this.lineupShow = false; this.freeze(); }
+        if (this.stateT > dur) { this.state = this.practice && this.practice.kind === 'shoot' ? 'play' : 'faceoff'; this.stateT = 0; }
         break;
+      }
       case 'faceoff':
         this.freeze();
         this.goalieMoveAll(h);
@@ -266,6 +274,7 @@ class Game {
         break;
       case 'final':
         if (this.demo && this.stateT > 6) this.over = true;
+        if (this.starShow) { if (this.stateT > 7) this.endStars(); else for (const p of this.all) p.celebT = 3 - (this.stateT % 2.8); }
         break;
     }
   }
@@ -273,6 +282,8 @@ class Game {
     if (this.state === 'replay') this.endReplay();
     else if (this.state === 'goal' && this.stateT > 1.2) this.afterGoal();
     else if (this.state === 'periodEnd' && this.stateT > 1.2) this.nextPeriod();
+    else if (this.state === 'intro' && this.introPos && this.stateT > 0.5) this.stateT = 4.4;
+    else if (this.state === 'final' && this.starShow) { if (this.stateT > 1) this.endStars(); }
     else if (this.state === 'final' && this.stateT > 1.5) this.over = true;
   }
   freeze() {

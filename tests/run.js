@@ -217,6 +217,22 @@ test('brankář: druh zákroku odpovídá střele (rozklek, beton, lapačka, vyr
   ok(gk.trk > 0.3 && gk.near > 0 && gk.near <= 1, 'brankář nesleduje puk: ' + gk.trk + ' ' + gk.near);
 });
 
+test('nástup a hvězdy zápasu: hráči dojedou na svá místa, po zápase tři hvězdy a pak tabulka', (G) => {
+  const sf = G.Game.prototype.sfx, sy = G.Game.prototype.say; G.Game.prototype.sfx = () => {}; G.Game.prototype.say = () => {};
+  try {
+    const g = new G.Game({ home: 0, away: 1, humans: [], periodLen: 20 }); const sk = g.all.filter((p) => !p.isGoalie), tgt = sk.map((p) => [p.x, p.y]);
+    for (let i = 0; i < 60; i++) g.update(1 / 60);
+    ok(g.state === 'intro' && g.lineupShow && sk.some((p, i) => Math.hypot(p.x - tgt[i][0], p.y - tgt[i][1]) > 10), 'hráči při nástupu nevyjíždějí');
+    for (let i = 0; i < 60 * 6 && g.state === 'intro'; i++) g.update(1 / 60);
+    ok(g.state === 'faceoff' && !g.lineupShow && sk.every((p, i) => Math.hypot(p.x - tgt[i][0], p.y - tgt[i][1]) < 0.01), 'po nástupu nejsou hráči na buly');
+    const h = new G.Game({ home: 0, away: 1, humans: [], periodLen: 20 }); for (let i = 0; i < 45; i++) h.update(1 / 60); h.confirm(); for (let i = 0; i < 60 && h.state === 'intro'; i++) h.update(1 / 60); ok(h.state === 'faceoff', 'nástup nejde přeskočit');
+    g.teams[0].score = 2; const n = g.all.length; g.finish();
+    ok(g.state === 'final' && g.starShow && g.all.length === 3 && g.all.every((p) => p.celebT > 0), 'tři hvězdy nevyjely');
+    g.confirm(); ok(g.starShow, 'hvězdy jdou odkliknout hned'); for (let i = 0; i < 70; i++) g.update(1 / 60); g.confirm();
+    ok(!g.starShow && g.all.length === n && !g.over, 'po hvězdách není závěrečná tabulka'); for (let i = 0; i < 100; i++) g.update(1 / 60); g.confirm(); ok(g.over, 'zápas nejde ukončit');
+  } finally { G.Game.prototype.sfx = sf; G.Game.prototype.say = sy; }
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

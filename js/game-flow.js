@@ -334,6 +334,7 @@ gameMixin(class {
     this.sfx('organ', this.period);
     this.say(this.period === 4 ? 'Jdeme do prodloužení!' : 'Začíná ' + ['', 'první', 'druhá', 'třetí'][this.period] + ' třetina.', true);
   }
+  endStars() { this.starShow = false; this.all = this.starAll || this.all; for (const p of this.stars) p.celebT = 0; this.stateT = 0; }
   finish() {
     this.state = 'final'; this.stateT = 0;
     for (const t of this.teams) { t.wantPull = false; if (!this.shootout) { this.resetPull(t); this.instantChange(t, t.line); } }
@@ -356,6 +357,11 @@ gameMixin(class {
       return { p, sc };
     }).sort((x, y) => y.sc - x.sc);
     this.stars = all.slice(0, 3).map((o) => o.p);
+    // tři hvězdy zápasu vyjedou na střed ledu a mávají; teprve potom závěrečná tabulka
+    if (!this.fb && !this.silent && !this.demo && !this.practice && this.stars.length === 3) {
+      this.starShow = true; this.starAll = this.all; this.all = this.stars.slice(); this.refs = []; this.puck.owner = null; this.puck.held = null; this.puck.x = 0; this.puck.y = 0; this.puck.z = 0; this.puck.vx = this.puck.vy = 0; this.camSnap = true;
+      this.stars.forEach((p, i) => { p.x = VIEW.rx * (i - 1) * 7 - VIEW.fx * 3; p.y = VIEW.ry * (i - 1) * 7 - VIEW.fy * 3; p.vx = p.vy = 0; p.spdN = 0; p.dir = Math.atan2(-VIEW.fy, -VIEW.fx); p.downT = 0; p.inBox = false; p.celebT = 3; p.carry = false; p.saveT = 0; });
+    }
     this.sfx('horn', 3.2); this.sfx('cheer', 0.8);
     this.say(win ? ['Konec zápasu! Vítězí', win.def.city] : 'Konec zápasu. Remíza.', true);
   }
