@@ -93,6 +93,10 @@ function emblemSymbol(g, sym) {
     default: C(0, 0, 50);
   }
 }
+// střih dresu podle předlohy: vzor pruhů (0 široký s lemem, 1 dva pruhy, 2 pás s linkou, 3 tři tenké), sedlo, bílý spodní lem,
+// swap = tělo dresu v druhé barvě týmu. Kdo tu není, má vzor podle pořadí týmu.
+const KITS = { BOS: { style: 1, yoke: 1 }, BUF: { style: 1, yoke: 1 }, DET: { style: 3, yoke: 1, hem: 1 }, FLA: { style: 0, yoke: 1, swap: 1 },
+  MTL: { style: 0, yoke: 1 }, OTT: { style: 1, yoke: 1, swap: 1 }, TBM: { style: 0, yoke: 1 }, TOR: { style: 0, yoke: 1 } };
 // obrázková loga týmů (gfx/logos/<zkratka>.png); kdo ho nemá, dostane kreslený kulatý znak
 const LOGOS = {};
 if (typeof Image !== 'undefined') for (const k of TEAMS.map((t) => t.abbr)) { const im = new Image(); im.onload = () => { LOGOS[k] = im; }; im.src = 'gfx/logos/' + k + '.png'; }

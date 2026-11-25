@@ -159,6 +159,7 @@ gameMixin(class {
   setColors() {
     const [h, a] = this.teams;
     h.jersey = h.def.c1; h.stripe = h.def.c2;
+    if ((KITS[h.def.abbr] || {}).swap) { h.jersey = h.def.c2; h.stripe = h.def.c1; }   // domácí dres v druhé barvě (podle předlohy)
     if (lightness(h.def.c1) > 0.7) {
       a.jersey = a.def.c1; a.stripe = a.def.c2;
       if (lightness(a.def.c1) > 0.7) { a.jersey = a.def.c2; a.stripe = a.def.c1; }

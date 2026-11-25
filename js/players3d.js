@@ -125,7 +125,7 @@ const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
 uniform sampler2D uFab;
-uniform float uRef, uStyle, uYoke, uHasMap, uKit;
+uniform float uRef, uStyle, uYoke, uHasMap, uKit, uHem;
 varying vec3 vPos;
 varying float vArm;
 // pruhy (lem dresu, rukávy, štulpny): t = vzdálenost od okraje v metrech
@@ -182,6 +182,7 @@ const BODY_FRAG = `
   } else if (y > 0.99) {
     // dres: lem s pruhy, sedlo s lemovkou, límec do V se šněrováním, znak, záda se jménem a číslem
     c = band(uJersey, y - 0.99);
+    if (uHem > 0.5 && y < 1.012) c = uTrim;                                 // spodní lem v barvě lemovky
     if (uYoke > 0.5) {
       float yk = 1.425 + (vPos.z > 0.0 ? 0.02 : 0.0) - ax * 0.12;
       if (y > yk) c = uStripe; else if (y > yk - 0.009) c = uTrim;
@@ -264,7 +265,7 @@ function bodyMaterialFinish(T, p, c, ref) {
   const tex = canvasTex(c, true, 4);
   const trim = T.trim || '#ffffff';
   const col = (h) => new THREE.Color(h);
-  const idx = TEAMS.indexOf(T.def);
+  const idx = TEAMS.indexOf(T.def), kit = SPORT === 'hockey' && T.def ? KITS[T.def.abbr] : null;
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
     uInfl: { value: p.isGoalie && SPORT === 'hockey' ? 1.55 : 1 }, uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
@@ -273,7 +274,7 @@ function bodyMaterialFinish(T, p, c, ref) {
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex }, uFab: { value: fabricTex() },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
     uHasMap: { value: 0 },
-    uStyle: { value: ref ? 0 : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) },
+    uStyle: { value: ref ? 0 : kit ? kit.style : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : kit ? kit.yoke : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) }, uHem: { value: !ref && kit && kit.hem ? 1 : 0 },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.uniforms);

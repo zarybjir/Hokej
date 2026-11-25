@@ -200,6 +200,13 @@ test('počítač: v přesilovce hraje 1-3-1, v oslabení čtverec, obranu posouv
   ok(h.shotSide(h.teams[0]) * h.teams[0].dir > 3 && h.shotSide(h.teams[1]) === 0, 'počítač se nenaučil stranu střel (nebo se „učí“ i proti počítači)');
 });
 
+test('dresy: tým se střihem podle předlohy hraje doma v druhé barvě, soupeř zůstává rozlišitelný', (G) => {
+  const fla = G.TEAMS.findIndex((t) => t.abbr === 'FLA'), g = new G.Game({ home: fla, away: 0, humans: [], silent: true }), [h, a] = g.teams;
+  ok(h.jersey === h.def.c2 && h.stripe === h.def.c1, 'Florida nehraje doma v námořnické modré');
+  ok(a.jersey !== h.jersey && h.numCol && h.trim && h.helmet, 'barvy dresů nejsou úplné nebo se shodují');
+  const g2 = new G.Game({ home: 0, away: fla, humans: [], silent: true }); ok(g2.teams[0].jersey === g2.teams[0].def.c1, 'tým bez výměny barev změnil dres');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {
