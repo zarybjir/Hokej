@@ -551,7 +551,7 @@ class HModel {
     this.so = this.so || new THREE.Vector3(); this.so.copy(O);
     const acc = down ? 0 : this.sAcc || 0, back = down ? 0 : this.sBack || 0;
     const push = clamp(0.35 + acc / 22 + (p.turbo ? 0.4 : 0), 0.22, 1.15) * (1 - back * 0.4);   // síla odrazu: při rozjezdu dlouhé kroky, při dojezdu klouže
-    const brake = spd > 0.12 ? clamp((-acc - 14) / 34, 0, 1) : 0, bs = (this.sSide || 0) >= 0 ? 1 : -1;   // prudké brzdění: zastavení hranami bokem
+    const brake = spd > 0.2 ? clamp((-acc - 24) / 34, 0, 1) : 0, bs = (this.sSide || 0) >= 0 ? 1 : -1;   // prudké brzdění: zastavení hranami bokem
     this.sPush = (this.sPush == null ? push : this.sPush + (push - this.sPush) * K(5)); this.sBrake = (this.sBrake || 0) + (brake - (this.sBrake || 0)) * K(brake > (this.sBrake || 0) ? 14 : 5);
     const pw = this.sPush, br = this.sBrake;
     const drop = down ? 0.05 : 0.32 + 0.5 * spd * (0.75 + 0.3 * pw) + 0.4 * wind + 0.25 * ready + 0.25 * take + breathe + 0.3 * br + 0.12 * back;
@@ -560,7 +560,7 @@ class HModel {
     // trup: předklon, kolébání do stran při odrazu
     const cs = this.cs, cw0 = cs ? cs.w : 0;
     rotAxis(B.Hips, Lv, (down ? 0.05 : (0.38 + 0.32 * spd * (0.6 + 0.5 * pw) + 0.15 * wind + 0.18 * ready + 0.22 * take) * (1 - 0.75 * br) * (1 - 0.45 * back) - 0.12 * br) * (1 - 0.55 * cw0));
-    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd * pw + bs * br * 1.15);   // při brzdění se boky stočí napříč jízdě
+    rotAxis(B.Hips, UPV, Math.sin(ph) * 0.14 * spd * pw + bs * br * 0.55);   // při brzdění se boky stočí napříč jízdě
     if (br > 0) rotAxis(B.Hips, F, -bs * br * 0.3);
     const turn = down ? 0 : this.turn, cross = clamp(Math.abs(turn) * spd / 2.2, 0, 1), ts = Math.sign(turn);
     rotAxis(B.Hips, F, Math.sin(ph) * 0.06 * spd - clamp(turn * 0.09 * spd, -0.32, 0.32)); // náklon do zatáčky
@@ -622,7 +622,8 @@ class HModel {
     const heel = new THREE.Vector3(O.x + bo[0], bo[2] + 0.1, O.z - bo[1]);
     const H = wpos(B.Hips);
     const topSide = -p.hand; // horní ruka je na opačné straně než čepel
-    const topT = H.clone().addScaledVector(F, 0.85 + poke * 0.6 - wind * 0.5 + ftk * 0.6).addScaledVector(Lv, topSide * (0.5 - ftk * 0.4)).add(new THREE.Vector3(0, -0.15 + wind * 2.1 + ftk * 1.6, 0));
+    // horní ruka drží konec hole u boku těsně před tělem (hůl tak vychází dlouhá a položená, ne krátká a strmá)
+    const topT = H.clone().addScaledVector(F, 0.42 + poke * 0.9 - wind * 0.3 + ftk * 0.9).addScaledVector(Lv, topSide * (0.62 - ftk * 0.5)).add(new THREE.Vector3(0, 0.22 + wind * 1.8 + ftk * 1.3, 0));
     const [tA, tF, tH, tM] = topSide > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1] : [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1];
     const [bA, bF, bH, bM] = topSide > 0 ? [B.RightArm, B.RightForeArm, B.RightHand, B.RightHandMiddle1] : [B.LeftArm, B.LeftForeArm, B.LeftHand, B.LeftHandMiddle1];
     const dn = new THREE.Vector3(0, -1, 0);
@@ -630,7 +631,7 @@ class HModel {
     ik2(tA, tF, tH, topT, dn.clone().addScaledVector(Lv, topSide * 0.9).addScaledVector(F, -0.3), this.L.upper, this.L.fore);
     const top = wpos(tH);
     const sdir = new THREE.Vector3().subVectors(heel, top), slen = sdir.length(); sdir.divideScalar(slen);
-    const freeArm = !p.carry && spd > 0.55 && wind === 0 && poke === 0 && ftk === 0;
+    const freeArm = !p.carry && spd > 0.85 && pw > 0.6 && br < 0.1 && wind === 0 && poke === 0 && ftk === 0;   // jednou rukou jen v plném sprintu
     const sh = wpos(bA);
     if (freeArm) {
       const sw2 = Math.sin(ph + Math.PI) * spd;
@@ -638,7 +639,7 @@ class HModel {
       ik2(bA, bF, bH, tgt, dn.clone().addScaledVector(F, -0.5).addScaledVector(Lv, -topSide * 0.6), this.L.upper, this.L.fore);
     } else {
       // dolní ruka: bod na holi nejblíž rameni (dosažitelný)
-      const tt = clamp(new THREE.Vector3().subVectors(sh, top).dot(sdir) / slen, 0.16, 0.42);
+      const tt = clamp(new THREE.Vector3().subVectors(sh, top).dot(sdir) / slen, 0.3, 0.46);   // spodní ruka zhruba ve třetině až polovině hole
       const tgt = top.clone().addScaledVector(sdir, slen * tt);
       ik2(bA, bF, bH, tgt, dn.clone().addScaledVector(Lv, -topSide * 0.8).addScaledVector(F, -0.2), this.L.upper, this.L.fore);
     }

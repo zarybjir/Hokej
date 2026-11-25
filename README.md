@@ -161,7 +161,8 @@ Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překlád
   zákroku, faulu a na konci třetiny (podle skóre, střel a toho, kdo se trefil).
 - **Zvuky ledu** jsou nahrávky: brusle (hlasitost podle rychlosti hry), škrábnutí při prudkém zabrzdění,
   náraz do mantinelu, tyčka, úder holí, píšťalka a klakson po gólu.
-- **Zvuk publika** tvoří skutečné nahrávky hluku davu a potlesku (sílí podle dění na ledě).
+- **Zvuk publika** jsou nahrávky z hal: hukot arény, fanouškovský kotel, který sílí s děním na ledě, a po gólu
+  řev a pískot.
 - **Oslavy gólu** jsou tři různé podle hráče (plácnutí, radost, mávání), všechny z motion capture.
 - **Počítač** hraje přesilovku v rozestavení 1-3-1 (obránce na modré, dva na hrazení, jeden v mezeře,
   jeden clonící před brankou), v oslabení brání těsným čtvercem a obranu posouvá ke straně, ze které
@@ -400,8 +401,9 @@ Testy se pouštějí bez instalace čehokoli: `node tests/run.js` (logika, asi 2
   „ANI Big Pipe Hit“ (ani_music), „Referee whistle sound“ (Rosa-Orenes256), „Industrial Air Horn“ (mcpable),
   „Wood impact 1“, „Baseball calvary sting“ (vckhaze), „buzzer“ (guitarguy1985), „Group Ooh 1“ (CHallSmith),
   „boo“ (dr_skitz), „DullThud“ (TriqyStudio).
-- Zvuky publika (`sounds/crowd/`): „Crowd Shouting/Speaking Ambience“ (StarNinjas) a „Applause in a large hall
-  or church“ (eXpl0it3r), obojí CC0 z [OpenGameArt](https://opengameart.org).
+- Zvuky publika (`sounds/crowd/`), vše CC0 z Freesoundu: „Fans at Basketball Game“ (phillyfan972), „Hockey Cheering
+  section – Kometa Brno“ (giddster), „crowd large cheer arena stadium hockey game“ a „crowd ext cheering whistling
+  crazy“ (kyles).
 - Pohyby z motion capture: CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), převedené sadou
   codepawl/cmu-mocap-glb (`models/moves.json`, `models/clips.json`).
 - 3D engine: [Three.js](https://threejs.org) (MIT, `lib/THREE-LICENSE`).

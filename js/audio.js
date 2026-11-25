@@ -40,10 +40,11 @@ const Sfx = {
         if (n === 'skate') { this.skG = c.createGain(); this.skG.gain.value = 0; this.skG.connect(this.master); const s = c.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(this.skG); s.start(); }
       }).catch(() => {});
     }
-    // skutečné nahrávky publika (CC0, viz README): hluk davu a potlesk ve smyčce pod syntetickým šumem
-    this.ambG = c.createGain(); this.appG = c.createGain(); this.ambG.gain.value = 0; this.appG.gain.value = 0;
-    this.ambG.connect(this.master); this.appG.connect(this.master);
-    for (const [f, g] of [['ambience', this.ambG], ['applause', this.appG]]) {
+    // skutečné nahrávky publika z hal (CC0, viz README) ve smyčce: hukot arény, fanouškovský kotel (sílí s děním na ledě), řev po gólu
+    this.ambG = c.createGain(); this.appG = c.createGain(); this.chG = c.createGain(); this.ambG.gain.value = 0; this.appG.gain.value = 0; this.chG.gain.value = 0;
+    this.ambG.connect(this.master); this.appG.connect(this.master); this.chG.connect(this.master);
+    fetch('sounds/crowd/whistles.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())).then((b) => c.decodeAudioData(b)).then((buf) => { this.fx = this.fx || {}; this.fx.whistles = buf; }).catch(() => {});
+    for (const [f, g] of [['ambience', this.ambG], ['applause', this.appG], ['chant', this.chG]]) {
       fetch('sounds/crowd/' + f + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject())).then((b) => c.decodeAudioData(b)).then((buf) => {
         const src = c.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(g); src.start(); this.realCrowd = true;
       }).catch(() => {});
@@ -63,9 +64,13 @@ const Sfx = {
     if (now - (this.lastTick || 0) < 0.08) return;
     this.lastTick = now;
     const v = base * (0.05 + this.excite * 0.07 + this.roar * 0.45);
-    this.crowdG.gain.setTargetAtTime(v * (this.realCrowd ? 0.45 : 1), this.ctx.currentTime, 0.1);
+    this.crowdG.gain.setTargetAtTime(v * (this.realCrowd ? 0.3 : 1), this.ctx.currentTime, 0.1);
     if (this.skG) this.skG.gain.setTargetAtTime(base * clamp(skate, 0, 1) * 0.5, now, 0.25);   // brusle: hlasitost podle toho, jak rychle se na ledě jezdí
-    if (this.ambG) { this.ambG.gain.setTargetAtTime(base * (0.22 + this.excite * 0.5), now, 0.3); this.appG.gain.setTargetAtTime(base * Math.min(1, this.roar * 1.6), now, this.roar > 0.3 ? 0.08 : 0.5); }
+    if (this.ambG) {
+      this.ambG.gain.setTargetAtTime(base * (0.3 + this.excite * 0.35), now, 0.3); this.chG.gain.setTargetAtTime(base * clamp(this.excite * 0.9 - 0.12, 0, 0.6), now, 0.8);
+      this.appG.gain.setTargetAtTime(base * Math.min(1.1, this.roar * 1.8), now, this.roar > 0.3 ? 0.08 : 0.6);
+      if (this.roar > 0.75 && now - (this.whT || 0) > 9 && base > 0.6) { this.whT = now; this.play('whistles', 0.5); }   // po gólu pískot a jásot
+    }
     this.crowdF.frequency.setTargetAtTime(800 + this.excite * 500 + this.roar * 900, this.ctx.currentTime, 0.2);
   },
   env(g, t, a, peak, dec) {

@@ -1,8 +1,9 @@
 {
-  "build": 92,
-  "version": "1.92",
+  "build": 93,
+  "version": "1.93",
   "date": "2026-11-25",
   "notes": [
-    "Fotbalový pohár: vyřazovací turnaj osmi týmů (X na obrazovce před fotbalovým zápasem)"
+    "Hráči drží hokejku přirozeněji: obě ruce od sebe, hůl delší a položenější",
+    "Zvuk publika z hokejových hal: hukot arény, fanouškovský kotel, řev a pískot po gólu"
   ]
 }
