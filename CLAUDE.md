@@ -67,7 +67,7 @@ Souřadnice hry: x podél kluziště, y napříč, z nahoru, jednotky **stopy**;
 
 ## Ukládání (localStorage)
 
-Klíče: `hokej98` (Settings), `hokej98-career2` (kariéra), `hokej98-ach` (úspěchy), `TeamNames.KEY`.
+Klíče: `hokej98-cup` (fotbalový pohár, objekt `Cup` ve `football.js`), `hokej98` (Settings), `hokej98-career2` (kariéra), `hokej98-ach` (úspěchy), `TeamNames.KEY`.
 Při změně formátu uložených dat zachovej zpětnou kompatibilitu (doplň chybějící pole výchozí hodnotou),
 ať hráčům nezmizí rozehraná kariéra. Přístup vždy v `try/catch` jako ve stávajícím kódu.
 

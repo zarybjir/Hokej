@@ -82,6 +82,7 @@ const App = {
           if (this.sel === 6) { if (this.sport === 'football') S.weather = WEATHER[(WEATHER.indexOf(S.weather || 'off') + d + WEATHER.length) % WEATHER.length]; else S.three = !S.three; }
           Sfx.stick(0.4); Settings.save();
         }
+        if (this.sport === 'football' && M.pressed('x')) { Cup.load(); this.go('cup'); break; }
         if (M.pressed('y')) { this.rosterTeam = this.sel === 1 ? S.away : S.home; this.rosterFrom = this.sel; this.go('roster'); break; }
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 7 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
@@ -101,6 +102,21 @@ const App = {
         break;
       }
       case 'ach': if (M.pressed('a') || M.pressed('b')) this.go('title', 6); break;
+      case 'cup': {
+        // fotbalový pohár: A = nový turnaj / další zápas, B = zpět
+        const c = Cup.c, opp = Cup.next();
+        if (M.pressed('b')) { this.sport = 'football'; this.go('setup'); break; }
+        if (M.pressed('a') || M.pressed('start')) {
+          if (!c || opp == null) { Cup.start(S.home); Sfx.stick(0.6); }
+          else {
+            let devs = Input.activeDevices(); if (!devs.length) devs = [Input.merged];
+            Sfx.init(); Sfx.resume(); this.sport = 'football'; this.cupMatch = true;
+            this.game = new Football({ home: c.team, away: opp, humans: devs.slice(0, 4).map((d, i) => ({ dev: d, team: 0, assist: this.assistFor(d, i) })), ...this.ruleCfg(), shootout: true });
+            this.screen = 'game'; this.sel = 0;
+          }
+        }
+        break;
+      }
       case 'roster': {
         const d = this.lr(dt);
         if (d) { this.rosterTeam = (this.rosterTeam + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
@@ -199,6 +215,7 @@ const App = {
             else if (k.t) { k.t.wantPull = !k.t.wantPull; g.paused = false; }
             else {
               this.game = null; this.newDemo(); try { speechSynthesis.cancel(); } catch (e) {}
+              this.cupMatch = false;
               if (this.careerMatch) { this.careerMatch = null; this.screen = 'career'; Career.go('hub'); } else this.go('title');
             }
           }
@@ -218,6 +235,7 @@ const App = {
         for (let i = 0; i < this.speed; i++) g.update(dt * (g.state === 'zamboni' ? 1 : Settings.data.gameSpeed || 1));
         if (g.over) {
           if (this.careerMatch) { Career.finishPlayed(g); this.game = null; this.newDemo(); this.screen = 'career'; }
+          else if (this.cupMatch) { this.cupMatch = false; if (g.state === 'final' && g.winner) Cup.advance({ sf: g.teams[0].score, sa: g.teams[1].score, won: g.winner === g.teams[0] }); this.game = null; this.newDemo(); this.go('cup'); }
           else { this.game = null; this.newDemo(); this.go('title'); }
         }
         break;
@@ -318,6 +336,7 @@ const App = {
     if (this.screen === 'help') this.drawHelp();
     if (this.screen === 'practice') this.drawPractice();
     if (this.screen === 'ach') this.drawAch();
+    if (this.screen === 'cup') this.drawCup();
   },
   drawPractice() {
     const ctx = R.ctx, S = Settings.data;
@@ -335,6 +354,33 @@ const App = {
     R.chromeText('ZPĚT', R.W / 2, yb, on ? 34 : 28, on ? '#fff8d0' : '#fff', on ? ACC : '#8fa4c8');
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
     ctx.fillText('↑↓ výběr   A začít   B zpět   •   Trénink skončíš v pauze (START) → UKONČIT', R.W / 2, 770);
+  },
+  // fotbalový pohár: pavouk se třemi koly
+  drawCup() {
+    const ctx = R.ctx, c = Cup.c, opp = Cup.next(), name = (i) => TEAMS[i].city.toUpperCase();
+    R.chromeText('FOTBALOVÝ POHÁR', R.W / 2, 56, 42);
+    ctx.textBaseline = 'middle';
+    if (!c) { ctx.font = font(22); ctx.fillStyle = '#cfd8ea'; ctx.textAlign = 'center'; ctx.fillText('Osm týmů, tři kola na jeden zápas. Hraješ za ' + TEAMS[Settings.data.home].city + ' ' + TEAMS[Settings.data.home].name + '.', R.W / 2, 340); }
+    else {
+      const cols = [c.rounds[0] || null, c.rounds[1] || null, c.rounds[2] || null], n = [4, 2, 1];
+      for (let r = 0; r < 3; r++) {
+        const x = 70 + r * 400, played = cols[r], cur = !played && c.rounds.length === r ? c.alive : null;
+        ctx.font = font(16, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = ACC; ctx.fillText(Cup.NAMES[r], x, 120);
+        for (let m = 0; m < n[r]; m++) {
+          const y = 150 + (m + 0.5) * (480 / n[r]) - 40, M2 = played ? played[m] : cur ? { a: cur[m * 2], b: cur[m * 2 + 1] } : null;
+          R.panel(x, y, 360, 80, 0.75);
+          for (const [k, sy] of [['a', 24], ['b', 56]]) {
+            if (!M2) continue; const t = M2[k], me = t === c.team, win = played && M2.w === t;
+            ctx.font = font(20, me || win ? 'bold' : ''); ctx.textAlign = 'left'; ctx.fillStyle = me ? '#ffd21f' : played && !win ? 'rgba(255,255,255,0.45)' : '#fff'; ctx.fillText(name(t), x + 16, y + sy);
+            if (played) { ctx.textAlign = 'right'; ctx.fillText(String(k === 'a' ? M2.sa : M2.sb), x + 344, y + sy); }
+          }
+        }
+      }
+      ctx.font = font(24, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd21f';
+      ctx.fillText(c.champ != null ? (c.champ === c.team ? 'VYHRÁL JSI POHÁR!' : 'POHÁR VYHRÁL TÝM ' + name(c.champ)) : opp != null ? Cup.NAMES[c.rounds.length] + ': ' + name(c.team) + ' – ' + name(opp) : '', R.W / 2, 670);
+    }
+    ctx.font = font(15); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center';
+    ctx.fillText((!c || opp == null ? 'A nový pohár' : 'A hrát zápas') + '   B zpět', R.W / 2, 760);
   },
   drawAch() {
     const ctx = R.ctx;
@@ -428,7 +474,7 @@ const App = {
     const on = this.sel === 7;
     R.chromeText('POKRAČOVAT  ►', R.W / 2, 686, on ? 38 : 30, on ? '#fff8d0' : '#fff', on ? ACC : '#8fa4c8');
     ctx.font = font(14, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center';
-    ctx.fillText('↑↓ výběr   ◄► změna   A potvrdit   Y soupiska a statistiky hráčů   B zpět', R.W / 2, 760);
+    ctx.fillText('↑↓ výběr   ◄► změna   A potvrdit   Y soupiska a statistiky hráčů   ' + (sp === 'football' ? 'X pohár   ' : '') + 'B zpět', R.W / 2, 760);
   },
   drawRoster() {
     const ctx = R.ctx, T = TEAMS[this.rosterTeam], Rr = buildRoster(this.rosterTeam), RT = teamRatings(this.rosterTeam);

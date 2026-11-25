@@ -18,7 +18,7 @@ function load(seed = 12345) {
   const all = JSON.parse(boot.match(/const files = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
   const logic = all.filter((f) => !['led', 'render', 'touch', 'render3d', 'players3d', 'update', 'app'].includes(f));   // bez vykreslování
   const src = logic.map((f) => fs.readFileSync(path.join(ROOT, 'js', f + '.js'), 'utf8').replace(/^'use strict';/, '')).join('\n');
-  return (0, eval)("'use strict';" + src + '\n;({ Game, Football, WaterPolo, Curling, CURL, STONES, curlPath, curlV0, curlW, FB, Player, DIFF, RINK, PH, TEAMS, ROLES, Settings, Input, Career, Ach, ACH, pokeBlade, bladeOffset, rinkContact, plOvr, buildRoster, files: ' + JSON.stringify(all) + ' })');
+  return (0, eval)("'use strict';" + src + '\n;({ Game, Football, WaterPolo, Cup, Curling, CURL, STONES, curlPath, curlV0, curlW, FB, Player, DIFF, RINK, PH, TEAMS, ROLES, Settings, Input, Career, Ach, ACH, pokeBlade, bladeOffset, rinkContact, plOvr, buildRoster, files: ' + JSON.stringify(all) + ' })');
 }
 
 // odehraje zápas počítač × počítač; each(g) se volá po každém snímku

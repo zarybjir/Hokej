@@ -189,6 +189,8 @@ uvnitř mantinelů: 5 hráčů v poli a brankář, dva poločasy, stejné týmy 
   posekaný pruh zůstane kratší a světlejší do konce zápasu (řídí se nastavením „Rolba o přestávce“).
 - **Pohyb hráčů:** běh, klus a kop jdou po drahách ze skutečného motion capture (CMU, klipy
   09_01, 16_35 a 10_01 ze sady codepawl/cmu-mocap-glb); skluz a zákroky brankáře jsou dopočítané.
+- **Pohár:** na obrazovce před fotbalovým zápasem stiskni X. Vyřazovací turnaj osmi týmů (čtvrtfinále,
+  semifinále, finále), hraješ za svůj domácí tým, ostatní zápasy se dopočítají. Rozehraný pohár se ukládá.
 - Kariéra, trénink a výzvy jsou zatím jen hokejové.
 
 ## Vodní pólo

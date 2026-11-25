@@ -264,3 +264,33 @@ class Football extends Game {
     return this.cfg.shootout !== false && !this.demo ? this.startShootout() : this.finish();
   }
 }
+
+// ---------- fotbalový pohár: vyřazovací turnaj osmi týmů (čtvrtfinále, semifinále, finále) ----------
+// Stav v localStorage `hokej98-cup`: { team, alive: [týmy v pořadí pavouka], rounds: [[{ a, b, sa, sb, w }]], champ }.
+const Cup = {
+  KEY: 'hokej98-cup', c: null, NAMES: ['ČTVRTFINÁLE', 'SEMIFINÁLE', 'FINÁLE'],
+  load() { if (this.c) return this.c; try { const c = JSON.parse(localStorage.getItem(this.KEY) || 'null'); if (c && Array.isArray(c.alive) && Array.isArray(c.rounds)) this.c = c; } catch (e) {} return this.c; },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.c)); } catch (e) {} },
+  start(team) {
+    const rest = TEAMS.map((_, i) => i).filter((i) => i !== team).sort(() => Math.random() - 0.5).slice(0, 7);
+    this.c = { team, alive: [team, ...rest].sort(() => Math.random() - 0.5), rounds: [], champ: null }; this.save(); return this.c;
+  },
+  // soupeř hráčova týmu v dalším kole (null = vypadl nebo je po turnaji)
+  next() { const c = this.c; if (!c || c.champ != null) return null; const i = c.alive.indexOf(c.team); return i < 0 ? null : c.alive[i ^ 1]; },
+  simScore(a, b) { const pa = clamp(0.5 + (teamRatings(a).OVR - teamRatings(b).OVR) * 0.03, 0.15, 0.85), wa = Math.random() < pa, w = 1 + Math.floor(Math.random() * 3), l = Math.floor(Math.random() * w); return wa ? [w, l, a] : [l, w, b]; },
+  // odehraje kolo: hráčův zápas podle výsledku (sa:sb, vítěz w), ostatní se dosimulují; když hráč vypadl, dohraje se turnaj celý
+  advance(res) {
+    const c = this.c; if (!c || c.champ != null) return;
+    do {
+      const round = [], al = [];
+      for (let i = 0; i < c.alive.length; i += 2) {
+        const a = c.alive[i], b = c.alive[i + 1], mine = res && (a === c.team || b === c.team);
+        const [sa, sb, w] = mine ? (a === c.team ? [res.sf, res.sa, res.won ? a : b] : [res.sa, res.sf, res.won ? b : a]) : this.simScore(a, b);
+        round.push({ a, b, sa, sb, w }); al.push(w);
+      }
+      c.rounds.push(round); c.alive = al; res = null;
+      if (al.length === 1) c.champ = al[0];
+    } while (c.champ == null && !c.alive.includes(c.team));
+    this.save();
+  },
+};

@@ -484,6 +484,19 @@ test('fotbal: o poločase jde posekat trávník, pruh za traktůrkem zůstane kr
   const wp = new G.WaterPolo({ home: 0, away: 1, humans: [], silent: true, zamboni: 'auto' }); ok(wp.cfg.zamboni === 'off', 'v bazénu se nabízí sekačka');
 });
 
+test('fotbalový pohár: osm týmů, tři kola, postup podle výsledku, po vyřazení se turnaj dohraje', (G) => {
+  const C = G.Cup; C.c = null; const c = C.start(5);
+  ok(c.alive.length === 8 && new Set(c.alive).size === 8 && c.alive.includes(5) && C.next() != null && C.next() !== 5, 'pavouk není z osmi různých týmů');
+  let opp = C.next(); C.advance({ sf: 2, sa: 1, won: true });
+  ok(C.c.rounds.length === 1 && C.c.rounds[0].length === 4 && C.c.alive.length === 4 && C.c.alive.includes(5) && !C.c.alive.includes(opp), 'po výhře jsem nepostoupil');
+  ok(C.c.rounds[0].some((m) => (m.a === 5 ? m.sa === 2 && m.sb === 1 : m.b === 5 && m.sb === 2 && m.sa === 1) && m.w === 5), 'výsledek mého zápasu se nezapsal');
+  ok(C.c.rounds[0].every((m) => m.sa !== m.sb && m.w === (m.sa > m.sb ? m.a : m.b)), 'simulovaný zápas nemá vítěze podle skóre');
+  C.advance({ sf: 0, sa: 1, won: false });
+  ok(C.c.champ != null && C.c.champ !== 5 && C.c.rounds.length === 3 && C.next() == null, 'po vyřazení se pohár nedohrál');
+  C.start(5); for (let i = 0; i < 3; i++) C.advance({ sf: 1, sa: 0, won: true }); ok(C.c.champ === 5, 'tři výhry nestačí na pohár');
+  C.c = null; ok(C.load() && C.load().champ === 5, 'pohár se neuložil');
+});
+
 // ---------- vodní pólo ----------
 test('vodní pólo: čtyři čtvrtiny, útočný čas, vyloučení na 20 s', (G) => {
   const N = 4; let goals = 0, bad = '', scMin = 99; const qs = new Set();
