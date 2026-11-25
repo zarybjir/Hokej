@@ -1,9 +1,10 @@
 {
-  "build": 62,
-  "version": "1.62",
+  "build": 63,
+  "version": "1.63",
   "date": "2026-11-25",
   "notes": [
-    "Záře světel už nepřekrývá hráče a jiné objekty bílým závojem (platí pro všechny sporty)",
-    "Curling má záři zpět, dráha zůstává čistá"
+    "Fotbal: běh, klus a kop podle skutečného motion capture",
+    "Fotbal: volba počasí – za deště kaluže brzdí míč a občas vyroste krtinec",
+    "Fotbal: věrnější trávník – nestejně zelená místa, trsy, pruhy po sekání měnící se podle pohledu"
   ]
 }

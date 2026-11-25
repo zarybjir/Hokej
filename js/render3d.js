@@ -976,11 +976,14 @@ const G3 = {
     const m = this.pitchMat = new THREE.MeshStandardMaterial({ roughness: 0.93, metalness: 0, bumpMap: bump, bumpScale: 0.9, envMapIntensity: 0.12 });
     m.onBeforeCompile = (sh) => {
       sh.uniforms.uDet = { value: det }; sh.uniforms.uDetK = m.userData.detK = { value: 1 }; sh.uniforms.uDetO = m.userData.detO = { value: new THREE.Vector2() };
+      sh.uniforms.uWet = m.userData.wet; sh.uniforms.uHalf = { value: new THREE.Vector3(RINK.GOAL_X, FB.HW, 2 * RINK.GOAL_X / 12) };
       sh.uniforms.uT = m.userData.wT; sh.uniforms.uWat = m.userData.wOn; sh.uniforms.uRip = m.userData.rip;
       sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       // stébla: jemná struktura zblízka a hrubší skvrny z dálky (ať tráva není jednolitá plocha)
       // voda: vlny jako součet postupných vln (sklon hladiny wS), lom dna, kaustiky, kruhy a pěna kolem plavců
-      sh.fragmentShader = `uniform sampler2D uDet; uniform float uDetK; uniform vec2 uDetO; uniform float uT; uniform float uWat; uniform vec3 uRip[14]; varying vec3 vWp;
+      sh.fragmentShader = `uniform sampler2D uDet; uniform float uDetK; uniform vec2 uDetO; uniform float uT; uniform float uWat; uniform vec3 uRip[14]; varying vec3 vWp; uniform float uWet; uniform vec3 uHalf;
+float gh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float gn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y); }
 float wH(vec2 p) {
   p += 0.7 * vec2(sin(p.y * 0.31 + uT * 0.4), cos(p.x * 0.27 - uT * 0.35));
   return sin(dot(p, vec2(0.9, 0.35)) * 0.55 + uT * 1.3) * 0.5 + sin(dot(p, vec2(-0.4, 0.8)) * 0.9 + uT * 1.7) * 0.3 + sin(dot(p, vec2(0.6, -0.75)) * 1.7 + uT * 2.3) * 0.16
@@ -1004,8 +1007,22 @@ float wH(vec2 p) {
     float crest = smoothstep(1.15, 1.75, length(wS));
     diffuseColor.rgb = mix(bot, vec3(0.93, 0.98, 1.0), clamp(foam * 0.5 * (0.6 + 0.4 * sin(wp.x * 9.0 + wp.y * 7.0 + uT * 5.0)) + crest * 0.25, 0.0, 0.8));
   }
-  diffuseColor.rgb *= mix(1.0, (0.72 + 0.56 * texture2D(uDet, vMapUv * vec2(72.0, 30.6) + uDetO).g) * (0.9 + 0.2 * texture2D(uDet, vMapUv * vec2(9.0, 3.8) + 0.37 - uDetO * 0.3).g), uDetK);`);
+  diffuseColor.rgb *= mix(1.0, (0.72 + 0.56 * texture2D(uDet, vMapUv * vec2(72.0, 30.6) + uDetO).g) * (0.9 + 0.2 * texture2D(uDet, vMapUv * vec2(9.0, 3.8) + 0.37 - uDetO * 0.3).g), uDetK);
+  if (uWat < 0.5 && uDetK > 0.5) {
+    // živý trávník: nestejně hustá a zelená místa, sušší skvrny, trsy; pruhy po sekání se lesknou podle směru pohledu
+    vec2 gp = vWp.xz; float m1 = gn(gp * 0.09) * 0.5 + gn(gp * 0.23) * 0.3 + gn(gp * 0.7) * 0.2;
+    diffuseColor.rgb *= mix(vec3(0.7, 0.8, 0.62), vec3(1.2, 1.14, 1.0), smoothstep(0.25, 0.75, m1));
+    diffuseColor.rgb *= 0.8 + 0.4 * texture2D(uDet, gp * 0.11).g;
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.28, 1.12, 0.66), smoothstep(0.6, 0.85, gn(gp * 0.05 + 9.0)) * 0.3);
+    diffuseColor.rgb *= 0.82 + 0.36 * gn(gp * 2.3) * gn(gp * 5.9 + 4.0) * 2.0;
+    if (abs(gp.x) < uHalf.x && abs(gp.y) < uHalf.y) {
+      float par = mod(floor((gp.x + uHalf.x) / uHalf.z), 2.0) * 2.0 - 1.0; vec2 vd = normalize(cameraPosition.xz - gp);
+      diffuseColor.rgb *= 1.0 + 0.075 * par * (0.35 + 0.65 * vd.x);
+    }
+    diffuseColor.rgb *= 1.0 - 0.2 * uWet;
+  }`);
     };
+    m.userData.wet = { value: 0 };
     m.userData.wT = { value: 0 }; m.userData.wOn = { value: 0 }; m.userData.rip = { value: Array.from({ length: 14 }, () => new THREE.Vector3()) };
     this.pitch = new THREE.Mesh(this.ice.geometry, m); this.pitch.receiveShadow = true; this.pitch.renderOrder = 1; this.pitch.visible = false;
     this.scene.add(this.pitch);
@@ -1051,8 +1068,8 @@ float wH(vec2 p) {
     // pruhy po sekání: podélné pásy a slabší příčné (šachovnice jako na stadionech)
     const nx = 12, bw = 2 * GX / nx, ny = 5, bh = 2 * HW / ny;
     for (let i = 0; i < nx; i++) for (let k = 0; k < ny; k++) {
-      const a = i % 2, b = k % 2, l = 0.5 + (a ? 0.07 : -0.07) + (b ? 0.03 : -0.03);
-      g.fillStyle = `rgb(${Math.round(64 * l * 1.55)},${Math.round(128 * l * 1.55)},${Math.round(46 * l * 1.55)})`;
+      const a = i % 2, b = k % 2, l = 0.5 + (a ? 0.025 : -0.025) + (b ? 0.03 : -0.03);
+      g.fillStyle = `rgb(${Math.round(80 * l * 1.55)},${Math.round(122 * l * 1.55)},${Math.round(56 * l * 1.55)})`;
       g.fillRect(X(-GX + i * bw), Y(HW - k * bh), bw * ppf + 1, bh * ppf + 1);
     }
     // nepravidelnosti: světlejší a tmavší mapy, sušší místa
@@ -1084,6 +1101,40 @@ float wH(vec2 p) {
     const vg = g.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.28)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     if (this.pitchMat.map) this.pitchMat.map.dispose();
     this.pitchMat.map = canvasTex(c, true, this.aniso); this.pitchMat.needsUpdate = true;
+  },
+  // ---------- počasí ve fotbale: kaluže, krtince, déšť ----------
+  buildWeather() {
+    const [c, x] = mkCanvas(128, 128), rnd = mulberry32(5);
+    for (let i = 0; i < 26; i++) {   // nepravidelný tvar kaluže s měkkým okrajem
+      const a = rnd() * TAU, d = rnd() * 26, r = 18 + rnd() * 22, q = x.createRadialGradient(64 + Math.cos(a) * d, 64 + Math.sin(a) * d, 0, 64 + Math.cos(a) * d, 64 + Math.sin(a) * d, r);
+      q.addColorStop(0, 'rgba(255,255,255,0.16)'); q.addColorStop(0.5, 'rgba(255,255,255,0.1)'); q.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = q; x.fillRect(0, 0, 128, 128);
+    }
+    const am = canvasTex(c, false, 1), pg = new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2);
+    const pm = new THREE.MeshStandardMaterial({ color: 0x6f8a80, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.8, alphaMap: am, depthWrite: false, envMapIntensity: 2.2 });
+    this.puddleM = Array.from({ length: 8 }, () => { const m = new THREE.Mesh(pg, pm); m.renderOrder = 2; m.visible = false; this.scene.add(m); return m; });
+    const mg = new THREE.SphereGeometry(1, 14, 8, 0, TAU, 0, Math.PI / 2), mm = new THREE.MeshStandardMaterial({ color: 0x4a3424, roughness: 1 });
+    const pos = mg.attributes.position; for (let i = 0; i < pos.count; i++) { const k = 0.85 + rnd() * 0.3; pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * (0.8 + rnd() * 0.4), pos.getZ(i) * k); } mg.computeVertexNormals();
+    this.moleM = Array.from({ length: 4 }, () => { const m = new THREE.Mesh(mg, mm); m.castShadow = true; m.visible = false; this.scene.add(m); return m; });
+    const N = 700, rp = new Float32Array(N * 6); this.rainP = Array.from({ length: N }, () => [rand(-70, 70), rand(0, 50), rand(-50, 50), rand(46, 62)]);
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+    this.rainM = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0xc4d6e8, transparent: true, opacity: 0.32, depthWrite: false })); this.rainM.frustumCulled = false; this.rainM.visible = false; this.rainM.renderOrder = 6;
+    this.scene.add(this.rainM);
+  },
+  syncWeather(g, t, dt) {
+    const rain = !!(g && g.rain);
+    if (!rain && !this.puddleM) return;
+    if (!this.puddleM) this.buildWeather();
+    this.puddleM.forEach((m, i) => { const q = rain && g.puddles[i]; m.visible = !!q; if (q) { m.position.set(q.x, 0.035, -q.y); m.scale.set(q.r, 1, q.r * 0.8); m.rotation.y = q.rot; } });
+    this.moleM.forEach((m, i) => { const q = rain && g.moles[i]; m.visible = !!q; if (q) { const k = Math.min(1, (g.time - q.born) * 1.5 + 0.05); m.position.set(q.x, -0.05, -q.y); m.scale.set(1.15, 0.6 * k, 1.15); } });
+    this.rainM.visible = rain;
+    if (this.pitchMat) { const w = this.pitchMat.userData.wet; if (w && w.value !== (rain ? 1 : 0)) { w.value = rain ? 1 : 0; this.pitchMat.roughness = rain ? 0.62 : 0.93; this.pitchMat.envMapIntensity = rain ? 0.4 : 0.12; } }
+    if (!rain) return;
+    const a = this.rainM.geometry.attributes.position, cx = this.camT.x, cz = -this.camT.y;
+    this.rainP.forEach((p, i) => {
+      p[1] -= p[3] * dt; if (p[1] < 0) { p[1] += 50; p[0] = rand(-70, 70); p[2] = rand(-50, 50); }
+      a.setXYZ(i * 2, cx + p[0], p[1], cz + p[2]); a.setXYZ(i * 2 + 1, cx + p[0] + 0.25, p[1] + 1.6, cz + p[2]);
+    });
+    a.needsUpdate = true;
   },
   buildPuck() {
     this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.45 }));
@@ -1211,6 +1262,8 @@ float wH(vec2 p) {
       this.base = gl; this.modelGame = null; // přestavět hráče na nový model
     };
     const fail = (e) => console.warn('Model hráče se nenačetl, používám náhradní', e);
+    // nasnímané dráhy chodidel a rukou pro běh, klus a kop (tools/bake_moves.js); bez nich se běh dopočítá
+    fetch('models/moves.json').then((r) => (r.ok ? r.json() : null)).then((m) => { if (m) { for (const c of Object.values(m)) c.pz0 = c.pz.reduce((a, b) => a + b, 0) / c.pz.length; this.moves = m; } }).catch(() => {});
     const parse = (buf) => { const L = new GLTFLoader(); if (window.MeshoptDecoder) L.setMeshoptDecoder(MeshoptDecoder); L.parse(buf, 'models/', done, fail); };
     // .glb, nebo záložně base64 text (kde server .glb neposílá)
     fetch('models/player.glb').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then(parse)
@@ -1249,6 +1302,7 @@ float wH(vec2 p) {
       if (!this.stoneM) this.buildStones();
       this.stoneM.forEach((m, i) => { const s = g.stones[i]; m.visible = !!s && !s.out; if (!m.visible) return; m.position.set(s.x, 0, -s.y); m.userData.col.color.set(s.team.jersey); if (s.moving) m.rotation.y -= (s.spin || 0) * dt * 1.6; });
     } else if (this.stoneM) for (const m of this.stoneM) m.visible = false;
+    this.syncWeather(g, t, dt);
     if (this.ball) {
       // míč se kutálí podle uražené dráhy
       const b = this.ball, nx = pk.x, nz = -pk.y, dx = nx - b.position.x, dz = nz - b.position.z, d = Math.hypot(dx, dz);

@@ -11,7 +11,45 @@ class Football extends Game {
     super({ ...cfg, sport: cfg.sport === 'polo' ? 'polo' : 'football', offside: false, icing: false, zamboni: 'off', sticks: false, three: false, practice: null, ot: cfg.ot === 'off' ? 'off' : '5v5' });
     for (const t of this.teams) for (const p of t.roster) p.reach *= 0.6;   // míč u nohy, dosah nohy místo hole
     this.iceWear = 0;
+    // počasí (jen fotbal): za deště se dělají kaluže a občas vyroste krtinec
+    this.rain = this.sport === 'football' && (cfg.weather === 'rain' || (cfg.weather === 'random' && Math.random() < 0.4));
+    this.puddles = []; this.moles = []; this.wetT = 0;
+    if (this.rain) { this.addPuddle(); this.addPuddle(); }
     this.setupFaceoff(0, 0); this.state = 'intro';
+  }
+  // ---------- počasí: kaluže a krtince ----------
+  // volné místo na hřišti dál od ostatních kaluží a krtinců
+  freeSpot(gap) {
+    for (let i = 0; i < 30; i++) {
+      const x = rand(-1, 1) * (RINK.GOAL_X - 7), y = rand(-1, 1) * (FB.HW - 5);
+      if (this.puddles.concat(this.moles).every((q) => Math.hypot(q.x - x, q.y - y) > gap + (q.R || 2))) return [x, y];
+    }
+    return null;
+  }
+  addPuddle() { const s = this.freeSpot(7); if (s) this.puddles.push({ x: s[0], y: s[1], r: 1, R: rand(3.5, 6.5), rot: rand(0, TAU) }); }
+  updateWeather(h) {
+    if (!this.rain) return;
+    for (const q of this.puddles) q.r = Math.min(q.R, q.r + h * 0.1);
+    this.wetT += h;
+    if (this.wetT > 24 && this.puddles.length < 7) { this.wetT = 0; this.addPuddle(); }
+  }
+  // míč na zemi: kaluž ho brzdí, krtinec ho vychýlí a nadhodí
+  groundFx(h) {
+    const pk = this.puck; if (pk.owner || pk.z > 0.4) return;
+    const v = Math.hypot(pk.vx, pk.vy);
+    for (const q of this.puddles) if (Math.hypot(pk.x - q.x, pk.y - q.y) < q.r) {
+      const k = Math.exp(-2.2 * h); pk.vx *= k; pk.vy *= k;
+      if (v > 12 && this.time - (this.splT || -9) > 0.3) { this.splT = this.time; this.splash = { x: pk.x, y: pk.y, t: this.time }; this.sfx('rim', 0.25); }
+      break;
+    }
+    for (const m of this.moles) {
+      const d = Math.hypot(pk.x - m.x, pk.y - m.y);
+      if (d > 1.9) { if (pk.mole === m) pk.mole = null; continue; }
+      if (d > 1.3 || pk.mole === m || v < 5) continue;
+      const a = Math.atan2(pk.vy, pk.vx) + rand(-0.6, 0.6); pk.mole = m;
+      pk.vx = Math.cos(a) * v * 0.75; pk.vy = Math.sin(a) * v * 0.75; pk.vz = 2 + v * 0.16; pk.z = Math.max(pk.z, 0.05);
+      this.moleHits = (this.moleHits || 0) + 1; this.sfx('stick', 0.4); this.pop('KRTINEC!', m.x, m.y, '#d8b27a');
+    }
   }
   // ---------- texty ----------
   showBanner(text, sub, dur, color) { super.showBanner(String(text).replace('TŘETINA', 'POLOČAS').replace('TRESTNÉ STŘÍLENÍ', 'PENALTA').replace('NÁJEZDY', 'PENALTY'), sub, dur, color); }
@@ -25,6 +63,7 @@ class Football extends Game {
   // ---------- rozehrání: výkop, aut, roh, kop od branky, volný kop ----------
   // Před přerušením se nastaví this.rs = { kind, team, spot }; bez něj je to výkop.
   whistle(reason, spot) {
+    if (this.rain && this.moles.length < 3 && Math.random() < 0.1) { const s = this.freeSpot(5); if (s) this.moles.push({ x: s[0], y: s[1], born: this.time }); }   // krtek vyleze při přerušení
     if (!this.rs) this.rs = { kind: 'freekick', team: this.teams[spot && spot[0] > 0 ? (this.teams[0].dir < 0 ? 0 : 1) : (this.teams[0].dir < 0 ? 1 : 0)], spot: [clamp(spot ? spot[0] : 0, -80, 80), clamp(spot ? spot[1] : 0, -34, 34)] };
     super.whistle(reason, this.rs.spot);
   }
@@ -73,6 +112,7 @@ class Football extends Game {
     super.updatePuck(h);
     const pk = this.puck;
     if (this.state !== 'play' || pk.inNet || pk.held) return;
+    if (this.rain) { this.updateWeather(h); this.groundFx(h); }
     const sy = pk.y >= 0 ? 1 : -1, sN = pk.x >= 0 ? 1 : -1, last = pk.owner || pk.lastTouch;
     if (Math.abs(pk.y) > FB.HW + 0.4 && Math.abs(pk.x) <= RINK.GOAL_X + 0.6) {
       this.outs = (this.outs || 0) + 1;

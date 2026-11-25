@@ -628,13 +628,39 @@ class HModel {
     }
   }
   // ---------- fotbal: běh, kop, skluz, brankář ----------
+  // vzorek nasnímaného pohybu: dráha `key` v čase u (0–1), `loop` = cyklus; vrací [dopředu, do strany, nahoru] v délkách nohy
+  mv(c, key, u, loop) {
+    const a = c[key], n = c.n, k = key === 'pz' || key === 'ln' ? 1 : 3, x = loop ? ((u % 1) + 1) % 1 * n : clamp(u, 0, 1) * (n - 1), i = Math.floor(x), j = loop ? (i + 1) % n : Math.min(n - 1, i + 1), f = x - i, o = [];
+    for (let q = 0; q < k; q++) o.push(a[i * k + q] + (a[j * k + q] - a[i * k + q]) * f);
+    return o;
+  }
   poseFoot(p, t, O, F, Lv, J) {
     const B = this.b, G = this.goalie, spd = Math.min(1, (p.spdN || 0) / 24), ph = (p.stride || 0) * 1.6, wind = Math.min(1, p.windT || 0);
     const slide = p.slideT > 0, sv = G && p.saveT > 0 ? p.saveKind : 0, ready = G ? 1 - spd : 0;
     const kick = Math.max(p.shotFT > 0 ? p.shotFT / (p.shotSlap ? 0.5 : 0.32) : 0, p.passFT > 0 ? p.passFT / 0.3 : 0), kk = Math.sin(clamp(kick, 0, 1) * Math.PI);
     const tired = p.stamina != null ? 1 - clamp(p.stamina / 0.45, 0, 1) : 0;
     const lunge = p.lunge || 0;   // curling: výpad při odhodu kamene
-    this.root.position.set(O.x, 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd * (1 - lunge) + 0.32 * ready + 0.15 * wind + 1.75 * lunge), O.z);
+    // nasnímaný běh a kop: chodidla, ruce a pánev jdou po drahách z motion capture, klouby dopočítá IK
+    const MV = this.G.moves, Lg = this.L.thigh + this.L.shin, mvOn = MV && !G && !slide && lunge < 0.3;
+    let mF = null, mH = null, mZ = 0;
+    if (mvOn) {
+      const u = ph / TAU, kr = clamp((spd - 0.45) / 0.3, 0, 1), w = clamp((spd - 0.04) / 0.3, 0, 1), amp = 0.6 + 0.4 * spd;
+      const S = (key, c3) => { const a = this.mv(MV.jog, key, u, true), b = this.mv(MV.run, key, u, true); return a.map((v, i) => v + (b[i] - v) * kr); };
+      const foot = (q, sd) => { const r = lerp(sd * 0.42 / Lg, q[1], w); return [(q[0] - 0.13) * amp * w + 0.02, r, Math.max(0, q[2] - 0.045) * w]; };
+      mF = [foot(S('fl'), 1), foot(S('fr'), -1)]; mH = [S('hl'), S('hr')]; mZ = (lerp(S('pz')[0], this.mv(MV.run, 'pz', u, true)[0], 0) - lerp(MV.jog.pz0, MV.run.pz0, kr)) * w;
+      const wk = Math.max(wind, Math.min(1, kick * 4));
+      if (wk > 0) {
+        // kop: napřažení při držení, švih po uvolnění; klip je kopnutý pravou nohou, pro leváka se zrcadlí
+        const K = MV.kick, uk = kick > 0 ? 0.32 + 0.68 * Math.pow(1 - clamp(kick, 0, 1), 0.6) : 0.08 + 0.2 * wind, mir = p.hand >= 0 ? (K.foot < 0) : (K.foot > 0);
+        const g = (key) => { const q = this.mv(K, mir ? key[0] + (key[1] === 'l' ? 'r' : 'l') : key, uk); if (mir) q[1] = -q[1]; return q; };
+        const kf = [g('fl'), g('fr')].map((q) => [q[0] - 0.13, q[1], Math.max(0, q[2] - 0.03)]), kh = [g('hl'), g('hr')];
+        for (let i = 0; i < 2; i++) for (let c = 0; c < 3; c++) { mF[i][c] = lerp(mF[i][c], kf[i][c], wk); mH[i][c] = lerp(mH[i][c], kh[i][c], w > 0 ? wk : 1); }
+        mZ = lerp(mZ, this.mv(K, 'pz', uk)[0] - K.pz[0], wk);
+        mH.kick = wk;
+      }
+      mH.w = Math.max(w, mH.kick || 0);
+    }
+    this.root.position.set(O.x, mZ * Lg + 0.15 - (slide ? 2.0 : sv === 1 ? 1.0 : 0.1 + 0.2 * spd * (1 - lunge) + 0.32 * ready + 0.15 * wind + 1.75 * lunge), O.z);
     this.root.updateMatrixWorld(true);
     const lean = slide ? -0.95 : 0.06 + 0.32 * spd + 0.14 * ready + 0.1 * tired - 0.25 * kk;
     rotAxis(B.Hips, Lv, lean * 0.55);
@@ -650,6 +676,7 @@ class HModel {
     // kop: noha u míče se napřáhne dozadu a švihne dopředu
     const kf = wind > 0 ? J(-1.7 * wind, p.hand * 0.5, 1.3 * wind) : kk > 0 ? J(0.5 + 2.2 * kk, p.hand * 0.5, 1.5 * kk) : null;
     if (kf) { if (p.hand >= 0) fL = kf; else fR = kf; }
+    if (mF) { fL = J(mF[0][0] * Lg, mF[0][1] * Lg, mF[0][2] * Lg); fR = J(mF[1][0] * Lg, mF[1][1] * Lg, mF[1][2] * Lg); }
     if (slide) { fL = J(2.7, 0.4, 0.3); fR = J(1.3, -0.55, 0.1); }
     if (lunge > 0.3) { fL = J(1.5, 0.4, 0); fR = J(-2.5, -0.35, 0.05); }
     if (sv === 1) { fL = J(-0.2, 1.7, 0); fR = J(-0.2, -1.7, 0); }
@@ -661,6 +688,7 @@ class HModel {
       const [A, Fa, Hd] = sd > 0 ? [B.LeftArm, B.LeftForeArm, B.LeftHand] : [B.RightArm, B.RightForeArm, B.RightHand];
       const sh = wpos(A), a = sd > 0 ? sw : -sw;
       let tgt = sh.clone().addScaledVector(Lv, sd * 0.3).addScaledVector(F, 0.3 + 1.0 * a).add(new THREE.Vector3(0, -1.35 + 0.55 * Math.abs(a), 0));
+      if (mH && mH.w > 0) { const h = mH[sd > 0 ? 0 : 1]; tgt.lerp(J(h[0] * Lg, h[1] * Lg, h[2] * Lg - (0.1 + 0.2 * spd)), mH.w); }
       if (G) tgt = sh.clone().addScaledVector(Lv, sd * (0.9 + 0.3 * ready)).addScaledVector(F, 0.9).add(new THREE.Vector3(0, -0.7 + ((sv === 2 && sd > 0) || (sv === 3 && sd < 0) ? 1.9 : sv === 1 ? -0.9 : 0), 0));
       if (slide) tgt = sh.clone().addScaledVector(Lv, sd * 0.9).addScaledVector(F, -0.8).add(new THREE.Vector3(0, -0.9, 0));
       if (lunge > 0.3) tgt = sd < 0 ? J(2.5, 0, 0.7) : sh.clone().addScaledVector(Lv, 1.2).add(new THREE.Vector3(0, -0.6, 0));   // pravá ruka drží kámen

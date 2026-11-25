@@ -56,6 +56,9 @@ Cíl: Steam Deck / Legion Go S (SteamOS, Chromium v kiosku), funguje i na mobilu
 - `js/ach.js` – úspěchy; `js/update.js` – kontrola/instalace aktualizací přes `server.py`.
 - `server.py` + `hokej.sh` – lokální server (port 47098) a spouštěč pro SteamOS, aktualizace z GitHubu.
 - `tools/gen_voice.py` – přegenerování hlášek komentátora (Piper TTS).
+- `tools/bake_moves.js` – převod klipů motion capture na `models/moves.json` (dráhy chodidel, rukou a pánve
+  pro běh, klus a kop; používá je `HModel.poseFoot`, klouby dopočítá IK). Počasí ve fotbale: `Football.groundFx`,
+  `G3.syncWeather`.
 - `tests/` – automatické testy (`run.js` logika v Node, `browser.js` Playwright, `lib.js` zavaděč).
 
 Souřadnice hry: x podél kluziště, y napříč, z nahoru, jednotky **stopy**; render3d je převádí na three.js (x, z, −y).

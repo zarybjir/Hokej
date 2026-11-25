@@ -6,6 +6,7 @@ const ASSIST_HINT = 'ČÁSTEČNÁ: přepíná na hráče u puku, přesnější s
 const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.25];
 // sporty v hlavním menu (pořadí = pořadí položek)
 const SPORTS = [['football', 'FOTBAL'], ['hockey', 'HOKEJ'], ['polo', 'VODNÍ PÓLO'], ['curling', 'CURLING']];
+const WEATHER = ['off', 'rain', 'random'];
 const PRACTICE = [['shoot', 'STŘELBA A PŘIHRÁVKY', 'Celá formace proti brankáři, bez soupeřů a bez času. Po gólu nebo zákroku dostaneš puk znovu.'],
   ['pp', 'PŘESILOVKA 5 NA 4', 'Útočíš v pásmu proti čtyřem bránícím. Když puk vyjede z pásma, začíná se znovu.'],
   ['so', 'NÁJEZDY – STŘÍLÍŠ', 'Nekonečné nájezdy na brankáře soupeře.'],
@@ -77,7 +78,7 @@ const App = {
           if (this.sel === 3) { S.diff = clamp(S.diff + d, 0, DIFF.length - 1); this.kidsAssist(); }
           if (this.sel === 4) S.autoChange = !S.autoChange;
           if (this.sel === 5) S.penalties = S.penalties === false;
-          if (this.sel === 6) S.three = !S.three;
+          if (this.sel === 6) { if (this.sport === 'football') S.weather = WEATHER[(WEATHER.indexOf(S.weather || 'off') + d + WEATHER.length) % WEATHER.length]; else S.three = !S.three; }
           Sfx.stick(0.4); Settings.save();
         }
         if (M.pressed('y')) { this.rosterTeam = this.sel === 1 ? S.away : S.home; this.rosterFrom = this.sel; this.go('roster'); break; }
@@ -85,7 +86,7 @@ const App = {
           if (this.sel === 7 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
           else if (this.sel === 4) { S.autoChange = !S.autoChange; Settings.save(); }
           else if (this.sel === 5) { S.penalties = S.penalties === false; Settings.save(); }
-          else if (this.sel === 6) { S.three = !S.three; Settings.save(); }
+          else if (this.sel === 6) { if (this.sport === 'football') S.weather = WEATHER[(WEATHER.indexOf(S.weather || 'off') + 1) % WEATHER.length]; else S.three = !S.three; Settings.save(); }
           else this.sel = Math.min(7, this.sel + 1);
         }
         if (M.pressed('b')) this.go('title', Math.max(0, SPORTS.findIndex((q) => q[0] === this.sport)));
@@ -258,7 +259,7 @@ const App = {
     const S = Settings.data;
     return { periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), autoChange: S.autoChange !== false, penalties: S.penalties !== false,
       injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, icingMode: S.icingMode || 'touch',
-      ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
+      weather: S.weather || 'off', ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
   },
   toggleFull() {
     try {
@@ -414,7 +415,7 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [sp === 'curling' ? ['POČET ENDŮ', String(CURL_ENDS[S.periodLen] || 3)] : [fb ? 'DÉLKA POLOČASU' : sp === 'polo' ? 'DÉLKA ČTVRTINY' : 'DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], ['FORMÁT', fb ? 'MALÁ KOPANÁ 5+1' : sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
+      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], fb ? ['POČASÍ', { off: 'JASNO', rain: 'DÉŠŤ (KALUŽE, KRTINCE)', random: 'NÁHODNĚ' }[S.weather || 'off']] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
