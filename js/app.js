@@ -418,7 +418,7 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [sp === 'curling' ? ['POČET ENDŮ', String(CURL_ENDS[S.periodLen] || 3)] : [fb ? 'DÉLKA POLOČASU' : sp === 'polo' ? 'DÉLKA ČTVRTINY' : 'DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ...(sp === 'curling' ? [['KÁMEN', STONES[S.stone | 0].name], ['VLASTNOSTI', this.stoneInfo(STONES[S.stone | 0])]] : [['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP']]), fb ? ['POČASÍ', { off: 'JASNO', moles: 'JASNO + KRTINCE', rain: 'DÉŠŤ (KALUŽE)', rainmoles: 'DÉŠŤ + KRTINCE', random: 'NÁHODNĚ' }[S.weather || 'off'] || 'JASNO'] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
+      ...(sp === 'curling' ? [['KÁMEN', STONES[S.stone | 0].name], ['', this.stoneInfo(STONES[S.stone | 0])]] : [['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP']]), fb ? ['POČASÍ', { off: 'JASNO', moles: 'JASNO + KRTINCE', rain: 'DÉŠŤ (KALUŽE)', rainmoles: 'DÉŠŤ + KRTINCE', random: 'NÁHODNĚ' }[S.weather || 'off'] || 'JASNO'] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
