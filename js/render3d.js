@@ -1145,12 +1145,19 @@ float wH(vec2 p) {
     mg.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const mm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
     this.moleM = Array.from({ length: 4 }, () => { const m = new THREE.Mesh(mg, mm); m.castShadow = true; m.receiveShadow = true; m.visible = false; this.scene.add(m); return m; });
-    // krtek: tmavé tělo, růžový čumák a tlapky; vykukuje z vrcholu krtince
-    const fur = new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: 0.75 }), pink = new THREE.MeshStandardMaterial({ color: 0xe59aa0, roughness: 0.6 });
-    const bg = new THREE.SphereGeometry(0.4, 14, 10).scale(1, 1.25, 1), sg = new THREE.ConeGeometry(0.15, 0.36, 10).rotateX(Math.PI / 2), ng = new THREE.SphereGeometry(0.07, 8, 6), pwg = new THREE.SphereGeometry(0.13, 8, 6).scale(1, 0.5, 1.3);
+    // krtek: válcovité tělo zapuštěné do krtince (ven kouká jen hlava a hruď), čumák, oči, tlapky s drápy opřené o hlínu
+    const std = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r }), fur = std(0x4b4039, 0.85), belly = std(0x6a5c52, 0.9), pink = std(0xf0a3a8, 0.55), eyeM = std(0x0a0a0a, 0.15), claw = std(0xf3ead8, 0.5);
+    const bg = new THREE.CapsuleGeometry(0.38, 1.5, 6, 16), hg = new THREE.SphereGeometry(0.4, 16, 12).scale(1, 0.95, 1.05), sg = new THREE.ConeGeometry(0.2, 0.5, 12).rotateX(Math.PI / 2), ng = new THREE.SphereGeometry(0.1, 10, 8);
+    const eg = new THREE.SphereGeometry(0.05, 8, 6), pwg = new THREE.SphereGeometry(0.2, 10, 8).scale(1.15, 0.4, 1.5), cg = new THREE.ConeGeometry(0.035, 0.2, 6).rotateX(Math.PI / 2), blg = new THREE.SphereGeometry(0.3, 12, 8).scale(1, 1.3, 0.5);
     this.moleA = Array.from({ length: 4 }, () => {
-      const grp = new THREE.Group(), add = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; grp.add(o); };
-      add(bg, fur, 0, 0, 0); add(sg, fur, 0, 0.18, 0.45); add(ng, pink, 0, 0.18, 0.64); add(pwg, pink, 0.36, -0.12, 0.3); add(pwg, pink, -0.36, -0.12, 0.3);
+      const grp = new THREE.Group(), add = (geo, mat, x, y, z, rx = 0) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.rotation.x = rx; o.castShadow = true; grp.add(o); return o; };
+      add(bg, fur, 0, -0.95, 0); add(hg, fur, 0, 0, 0.04); add(blg, belly, 0, -0.5, 0.26);
+      add(sg, fur, 0, -0.04, 0.5, -0.12); add(ng, pink, 0, 0, 0.76);
+      for (const sd of [-1, 1]) {
+        add(eg, eyeM, sd * 0.17, 0.14, 0.34);
+        add(pwg, pink, sd * 0.5, -0.5, 0.42, 0.25);
+        for (const k of [-1, 0, 1]) add(cg, claw, sd * 0.5 + k * 0.11, -0.53, 0.76, 0.25);
+      }
       grp.visible = false; this.scene.add(grp); return grp;
     });
     const N = 700, rp = new Float32Array(N * 6); this.rainP = Array.from({ length: N }, () => [rand(-70, 70), rand(0, 50), rand(-50, 50), rand(46, 62)]);
@@ -1167,7 +1174,7 @@ float wH(vec2 p) {
     ud.pud.value.forEach((v, i) => { const q = rain && g.puddles[i]; if (q) v.set(q.x, -q.y, q.r, q.rot); else v.z = 0; });   // kaluže kreslí shader trávníku
     ud.mole.value.forEach((v, i) => { const q = mo && mo[i]; if (q) v.set(q.x, -q.y, Math.min(1, (g.time - q.born) * 1.5 + 0.05)); else v.z = 0; });
     this.moleM.forEach((m, i) => { const q = mo && mo[i]; m.visible = !!q; if (q) { const k = Math.min(1, (g.time - q.born) * 1.5 + 0.05); m.position.set(q.x, -0.02, -q.y); m.scale.set(1.15, 0.8 * k, 1.15); m.rotation.y = q.x * 3.1; } });
-    this.moleA.forEach((a, i) => { const q = mo && mo[i], u = q ? q.up || 0 : 0; a.visible = u > 0.03; if (a.visible) { a.position.set(q.x, 0.3 + u * 0.95, -q.y); a.scale.setScalar(1.35); a.rotation.y = Math.atan2(g.puck.x - q.x, -g.puck.y + q.y) + Math.sin(t * 3 + i) * 0.3; } });   // krtek kouká po míči
+    this.moleA.forEach((a, i) => { const q = mo && mo[i], u = q ? q.up || 0 : 0; a.visible = u > 0.03; if (a.visible) { a.position.set(q.x, -0.25 + u * 1.3, -q.y); a.scale.setScalar(1.15); a.rotation.y = Math.atan2(this.cam.position.x - q.x, this.cam.position.z + q.y) + Math.sin(t * 2.2 + i) * 0.5; } });   // krtek je čelem ke kameře a rozhlíží se
     this.rainM.visible = rain;
     { const w = ud.wet; if (w && w.value !== (rain ? 1 : 0)) { w.value = rain ? 1 : 0; this.pitchMat.roughness = rain ? 0.62 : 0.93; this.pitchMat.envMapIntensity = rain ? 0.4 : 0.12; } }
     if (!rain) return;
