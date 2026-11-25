@@ -381,8 +381,7 @@ const App = {
     const ctx = R.ctx;
     ctx.save(); ctx.translate(x, y);
     ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12 * s; ctx.shadowOffsetY = 4 * s;
-    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 80 * s, 0, TAU); ctx.fill();
-    ctx.shadowColor = 'transparent';
+    if (!LOGOS[T.abbr]) { ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 80 * s, 0, TAU); ctx.fill(); ctx.shadowColor = 'transparent'; }   // obrázkové logo má jen stín, bez podkladového kruhu
     drawEmblem(ctx, T, 160 * s);
     ctx.restore();
   },

@@ -93,8 +93,12 @@ function emblemSymbol(g, sym) {
     default: C(0, 0, 50);
   }
 }
+// obrázková loga týmů (gfx/logos/<zkratka>.png); kdo ho nemá, dostane kreslený kulatý znak
+const LOGOS = {};
+if (typeof Image !== 'undefined') for (const k of ['BOS', 'BUF', 'DET', 'FLA', 'MTL', 'OTT', 'TBM', 'TOR']) { const im = new Image(); im.onload = () => { LOGOS[k] = im; }; im.src = 'gfx/logos/' + k + '.png'; }
 // kulatý znak: obruč s názvem města, uprostřed symbol
 function drawEmblem(g, T, size) {
+  if (LOGOS[T.abbr]) { const d = size * 1.12; g.drawImage(LOGOS[T.abbr], -d / 2, -d / 2, d, d); return; }
   const s = size / 200;
   g.save(); g.scale(s, s);
   const dark = lightness(T.c1) < 0.5, ring = T.c2, inner = T.c1;
