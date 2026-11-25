@@ -278,6 +278,17 @@ test('vyloučený hráč nezmizí: z místa faulu odjede na trestnou lavici', (G
   } finally { G.Game.prototype.sfx = sf; G.Game.prototype.say = sy; G.Game.prototype.color = sc; }
 });
 
+test('arkádový režim: rozdíly mezi hráči jsou zhruba trojnásobné, běžný režim se nemění', (G) => {
+  const mk = (arcade) => new G.Game({ home: 0, away: 1, humans: [], silent: true, arcade }), a = mk(false), b = mk(true);
+  const sp = (g, k) => { const v = g.teams[0].roster.filter((p) => !p.isGoalie).map((p) => p[k]); return Math.max(...v) - Math.min(...v); };
+  for (const k of ['spd', 'pow', 'acc']) between(sp(b, k) / sp(a, k), 2.7, 3.3, 'rozpětí ' + k);
+  between(sp(b, 'chk') / sp(a, 'chk'), 2, 3.3, 'rozpětí chk');   // sílu v soubojích dál upravují povahy hráčů
+  ok(a.teams[0].roster.every((p) => p.spd > 0.9 && p.spd < 1.09), 'běžný režim má jiné rozpětí rychlosti');
+  ok(b.teams[0].roster.concat(b.teams[1].roster).every((p) => p.spd > 0.7 && p.spd < 1.25 && p.gk == null || (p.gk > 0.92 && p.gk <= 1.036)), 'arkádové hodnoty mimo rozumné meze');
+  const g = b; for (let t = 0; g.state !== 'final' && t < 3000; t += 1 / 60) { g.update(1 / 60); if (g.state === 'periodEnd') g.nextPeriod(); if (g.state === 'replay') g.endReplay(); }
+  ok(g.state === 'final' && g.all.every((p) => isFinite(p.x + p.y)), 'arkádový zápas nedoběhl');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

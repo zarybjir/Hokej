@@ -151,6 +151,13 @@ hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzděn
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
+## Arkádový vliv statistik
+
+V Nastavení → pravidla je přepínač **VLIV STATISTIK HRÁČŮ**. Výchozí MÍRNÝ: atributy hráčů hru jen lehce
+ovlivňují a rozhoduje šikovnost. ARKÁDOVÝ (SILNÝ): rozdíly v rychlosti, střele, přesnosti, soubojích, výdrži
+a kvalitě brankářů jsou zhruba třikrát větší, takže hvězdy jsou znát a silný tým slabý opravdu přehrává.
+Platí pro hokej, fotbal i vodní pólo, v exhibici i v kariéře.
+
 ## Přenos a atmosféra
 
 - **Záznam gólu a šancí** běží dvakrát: nejdřív z herní kamery, pak závěr akce pomaleji z druhé kamery –

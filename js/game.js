@@ -47,7 +47,7 @@ function lightness(hex) {
 }
 
 class Player {
-  constructor(team, info) {
+  constructor(team, info, arcade) {
     Object.assign(this, { team, id: info.id, role: info.role, name: info.name, first: info.first, num: info.num, hand: info.hand, line: info.line || 0 });
     this.isGoalie = info.role === 'G'; this.cap = !!info.cap;
     // atributy (40–99) → herní parametry
@@ -56,6 +56,8 @@ class Player {
     if (this.isGoalie) { this.gk = 0.99 + ((A.REF || 78) - 78) * 0.002; this.gkMove = n(A.RYC, 0.97, 1.03); this.spd = 1; this.pow = 1; this.acc = 1; this.pas = 0.95; this.chk = 0.9; }
     else { this.spd = n(A.RYC, 0.92, 1.07); this.pow = n(A.SIL, 0.92, 1.08); this.chk = n(A.SIL, 0.92, 1.1); this.acc = n(A.PRE, 0.9, 1.08); this.pas = this.acc; }
     this.staMul = 0.8 - ((A.STA || 75) - 75) * 0.008;
+    // arkádový režim: rozdíly mezi hráči jsou třikrát větší – hvězda je znát, silný tým opravdu přehrává slabý
+    if (arcade) { for (const k of ['spd', 'pow', 'chk', 'acc', 'pas', 'gkMove']) if (this[k] != null) this[k] = 1 + (this[k] - 1) * 3; if (this.isGoalie) this.gk = clamp(0.99 + (this.gk - 0.99) * 2.5, 0.93, 1.035); this.pas = this.isGoalie ? this.pas : this.acc; this.staMul = 0.8 + (this.staMul - 0.8) * 2; }
     // hmotnost: těžší hráč vyhrává souboje a hůř se mu bere puk, ale pomaleji zrychluje
     if (!info.kg) { let h = 7; for (const ch of String(info.name) + info.num) h = (h * 31 + ch.charCodeAt(0)) >>> 0; Object.assign(info, playerBody(this.role, A.SIL, mulberry32(h))); }
     this.kg = info.kg; this.cm = info.cm; this.mass = this.kg / 88;
@@ -141,8 +143,8 @@ class Game {
     const t = { style: teamStyle(idx), mom: 0, idx, def, side, dir: 1, players: [], skaters: [], goalie: null, score: 0, shots: 0, hits: 0, humans: [],
       chaser: null, presser: null, presser2: null, marks: new Map(), tactics: ((this.cfg.tactics && this.cfg.tactics[side]) || [1, 1, 1]).slice(), thinkT: Math.random() * 0.15, cpu: true, spdMod: 1, line: 0, change: null, pim: 0, ppg: 0, ppOpp: 0 };
     const R = (this.cfg.rosters && this.cfg.rosters[side]) || buildRoster(idx);
-    t.lines = R.lines.map((l) => l.map((r) => new Player(t, r)));
-    t.goalies = R.goalies.map((r) => new Player(t, r));
+    t.lines = R.lines.map((l) => l.map((r) => new Player(t, r, this.cfg.arcade)));
+    t.goalies = R.goalies.map((r) => new Player(t, r, this.cfg.arcade));
     t.goalie = t.goalies[0]; t.goalie.onIce = true;
     t.roster = [...t.lines.flat(), ...t.goalies];
     t.skaters = t.lines[0].slice(); t.skaters.forEach((p) => (p.onIce = true));
