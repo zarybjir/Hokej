@@ -1,8 +1,8 @@
 {
-  "build": 90,
-  "version": "1.90",
+  "build": 91,
+  "version": "1.91",
   "date": "2026-11-25",
   "notes": [
-    "Souboje u mantinelu: hráči se přetlačují, nad pukem je ukazatel přetahované, pomáhá mačkání X"
+    "Spolukomentátor: druhý hlas s postřehem po gólu, zákroku, faulu a na konci třetiny (anglický komentář)"
   ]
 }

@@ -207,7 +207,19 @@ const Voice = {
     this.bufs.set(t, p);
     return p;
   },
-  stop() { for (const s of this.srcs) { try { s.stop(); } catch (e) {} } this.srcs = []; this.busyUntil = 0; try { speechSynthesis.cancel(); } catch (e) {} },
+  // spolukomentátor (druhý hlas, jen k anglickému komentáři): počká, až hlavní hlas domluví, a přidá postřeh
+  color(text, delay = 1.2, tries = 8) {
+    if (!Settings.data.comm || Settings.data.commLang === 'cs' || !Sfx.ctx) return;
+    if (!this.man2) { this.man2 = {}; this.buf2 = new Map(); fetch('sounds/voice-en2/manifest.json').then((r) => r.json()).then((m) => { this.man2 = m; }).catch(() => {}); }
+    clearTimeout(this.colT);
+    this.colT = setTimeout(() => {
+      const ctx = Sfx.ctx, f = this.man2[text]; if (!f || !this.gain) return;
+      if (ctx.currentTime < this.busyUntil + 0.25) { if (tries > 0) this.color(text, 0.4, tries - 1); return; }
+      if (!this.buf2.has(text)) this.buf2.set(text, fetch('sounds/voice-en2/' + f).then((r) => r.arrayBuffer()).then((ab) => new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej))).catch(() => null));
+      this.buf2.get(text).then((b) => { if (!b || ctx.currentTime < this.busyUntil) return; const s = ctx.createBufferSource(); s.buffer = b; s.connect(this.gain); s.start(); this.srcs.push(s); s.onended = () => { this.srcs = this.srcs.filter((q) => q !== s); }; this.busyUntil = ctx.currentTime + b.duration; this.last = performance.now(); });
+    }, delay * 1000);
+  },
+  stop() { clearTimeout(this.colT); for (const s of this.srcs) { try { s.stop(); } catch (e) {} } this.srcs = []; this.busyUntil = 0; try { speechSynthesis.cancel(); } catch (e) {} },
   say(parts, prio = false, chance = 1) {
     if (!Settings.data.comm) return;
     this.load();

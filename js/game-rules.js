@@ -33,6 +33,7 @@ gameMixin(class {
     this.whistle('VYLOUČENÍ', [-s * 69, (pk.y >= 0 ? 1 : -1) * 22]);
   }
   assess(pd) {
+    this.color(pick(['That is a lazy penalty.', 'You cannot do that. Easy call for the referee.']), 0.5, 2.4);
     const p = pd.player, t = pd.team, box = this.boxPos(t);
     p.inBox = true; p.onIce = false; p.goBench = false; p.stats.pim = (p.stats.pim || 0) + 2;
     if (p.ctrl >= 0) { const hm = this.humans.find((q) => q.player === p); p.ctrl = -1; if (hm) { const q = t.skaters.find((x) => x !== p && x.ctrl < 0); hm.player = q || null; if (q) q.ctrl = hm.idx; } }
@@ -181,6 +182,8 @@ gameMixin(class {
   }
   other(t) { return t === this.teams[0] ? this.teams[1] : this.teams[0]; }
   sfx(n, ...a) { if (!this.silent) Sfx[n](...a); }
+  // postřeh spolukomentátora (jen hokej; hlášky jsou v tools/gen_voice.py COLOR)
+  color(text, chance = 1, delay) { this.lastColor = text; if (!this.silent && !this.demo && !this.fb && Math.random() < chance) Voice.color(text, delay); }
   say(text, prio, chance) { if (!this.silent) Voice.say(text, prio, chance); }
   showBanner(text, sub, dur = 2, color) { this.banner = { text, sub, t: 0, dur, color }; }
   pop(text, x, y, color = '#fff') { this.pops.push({ text, x, y, t: 0, color }); }

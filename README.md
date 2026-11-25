@@ -157,6 +157,8 @@ Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překlád
   střídavě zpoza branky a nízko od mantinelu teleobjektivem.
 - **Srovnání týmů** při přerušení: střely, hity, vyhraná vhazování (ve fotbale rohy a fauly).
 - **Diváci** po gólu vyskakují ze sedadel a hala pohasíná do rytmu, při nástupu se světla rozsvěcují.
+- **Spolukomentátor:** k anglickému komentáři se přidává druhý hlas s krátkým postřehem po gólu, velkém
+  zákroku, faulu a na konci třetiny (podle skóre, střel a toho, kdo se trefil).
 - **Zvuky ledu** jsou nahrávky: brusle (hlasitost podle rychlosti hry), škrábnutí při prudkém zabrzdění,
   náraz do mantinelu, tyčka, úder holí, píšťalka a klakson po gólu.
 - **Zvuk publika** tvoří skutečné nahrávky hluku davu a potlesku (sílí podle dění na ledě).

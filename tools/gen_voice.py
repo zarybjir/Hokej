@@ -62,6 +62,17 @@ EN = {
     'Hattrick!': 'Hat trick!', 'Jeho druhý gól!': 'His second of the night!', 'Dva góly krátce po sobě!': 'Back to back goals!', 'Vyrovnáno!': 'We are tied!', 'Jdou do vedení!': 'They take the lead!', 'Poslední minuta!': 'One minute to go!', 'Zlomená hůl!': 'Broken stick!',
     'Zdá se, že je zraněný.': 'He seems to be hurt.', 'To nevypadá dobře.': 'That does not look good.', 'Zraněný hráč odchází do kabin.': 'The injured player is heading to the locker room.', 'nedohraje.': 'will not return.',
 }
+# druhý hlas (spolukomentátor, jen anglicky): krátké postřehy po gólu, zákroku, faulu a na konci třetiny.
+# python3 tools/gen_voice.py /cesta/k/en_US-bryce-medium.onnx en2  → sounds/voice-en2/
+COLOR = [
+    'What a finish.', 'The goalie had no chance on that one.', 'Great patience with the puck.', 'That is how you bury it.',
+    'He is on fire tonight.', 'And just like that, we have a brand new game.', 'This one is getting out of hand.', 'What a time to score!',
+    'The power play gets it done.', 'And that should seal it.',
+    'Huge save. That kept them in it.', 'Robbery! How did he stop that?', 'He read that all the way.',
+    'That is a lazy penalty.', 'You cannot do that. Easy call for the referee.',
+    'They are getting outshot badly. They need more pucks on net.', 'A very even period. Could go either way.', 'They are dominating in shots, but it is not on the scoreboard yet.',
+    'Off the iron! So close.', 'Thanks. Should be a good one tonight.', 'Next goal wins. It does not get better than this.',
+]
 def text_for(t, lang):
     if lang != 'en': return t
     return EN.get(t) or unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode()   # jména a města bez diakritiky
@@ -71,8 +82,9 @@ def slug(t):
     return re.sub(r'[^a-z0-9]+', '_', s).strip('_') or 'x'
 
 def main(model, lang='cs'):
-    global OUT
+    global OUT, PHRASES
     if lang == 'en': OUT += '-en'
+    if lang == 'en2': OUT += '-en2'; PHRASES = COLOR; lang = 'en'
     voice = PiperVoice.load(model)
     # svižné tempo; zvolání (končí vykřičníkem) rychleji, proměnlivěji, o kousek výš a hlasitěji
     cfg = SynthesisConfig(length_scale=0.8, noise_scale=0.55, noise_w_scale=0.45)

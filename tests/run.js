@@ -244,6 +244,15 @@ test('souboj u mantinelu: přetlačování trvá, silnější a mačkající hr�
   between(wa, 18, 42, 'vyrovnaný souboj není vyrovnaný'); ok(wp > wa + 6, 'mačkání tlačítka nepomáhá: ' + wp + ' × ' + wa);
 });
 
+test('spolukomentátor: po gólu a na konci třetiny vybere postřeh, který existuje v nahrávkách', (G) => {
+  const fs = require('fs'), man = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'sounds', 'voice-en2', 'manifest.json'), 'utf8'));
+  ok(Object.keys(man).length >= 20 && Object.values(man).every((f) => fs.existsSync(require('path').join(__dirname, '..', 'sounds', 'voice-en2', f))), 'chybí nahrávky druhého hlasu');
+  const g = new G.Game({ home: 0, away: 1, humans: [], silent: true }); while (g.state !== 'play') g.update(1 / 60);
+  const seen = new Set(); for (let i = 0; i < 6; i++) { g.state = 'play'; g.puck.lastTouch = g.teams[i % 2].skaters[0]; g.goal(i % 2 ? -1 : 1); seen.add(g.lastColor); g.state = 'play'; }
+  g.teams[0].shots = 12; g.teams[1].shots = 2; g.period = 1; g.endPeriod(); seen.add(g.lastColor);
+  ok(seen.size >= 3 && [...seen].every((t) => man[t]), 'postřeh bez nahrávky: ' + [...seen].filter((t) => !man[t]).join(' | '));
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

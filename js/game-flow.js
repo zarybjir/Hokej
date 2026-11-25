@@ -48,6 +48,10 @@ gameMixin(class {
     if (!this.silent && !this.demo) { this.slowT = 0.5; this.punch = 1; }
     this.showBanner('GÓÓÓL!', team.def.city + ' ' + team.def.name, 3.4, team.jersey);
     const who = scorer ? '#' + scorer.num + ' ' + scorer.name.toUpperCase() : 'VLASTNÍ GÓL';
+    { // spolukomentátor: postřeh podle situace
+      const o = this.other(team), d = team.score - o.score, late = this.period >= 3 && this.clock < 120;
+      this.color(this.goalieOff(o) ? 'And that should seal it.' : scorer && scorer.stats.g >= 2 ? 'He is on fire tonight.' : d === 0 ? 'And just like that, we have a brand new game.' : d >= 4 ? 'This one is getting out of hand.' : late ? 'What a time to score!' : this.penalties.some((pn) => pn.team === o) ? 'The power play gets it done.' : pick(['What a finish.', 'The goalie had no chance on that one.', 'Great patience with the puck.', 'That is how you bury it.']), 0.8, 2.6);
+    }
     const ast = (assists.length ? 'Asistence: ' + assists.map((a) => a.name).join(', ') : 'Bez asistence') + (ppNote ? '  •  ' + ppNote : '');
     this.lower = { title: who, sub: ast, team, t: 0, dur: 3.6 };
     this.sfx('horn'); this.sfx('cheer', 1);
@@ -109,6 +113,8 @@ gameMixin(class {
     const [a, b] = this.teams;
     if (this.period >= 3 && a.score !== b.score) return this.finish();
     if (this.period >= 4 || (this.period === 3 && this.otMode === 'off')) return this.cfg.shootout !== false && !this.demo ? this.startShootout() : this.finish();
+    { const sa = a.shots - (a.shotsP || 0), sb = b.shots - (b.shotsP || 0), lead = sa > sb ? a : b, trail = lead === a ? b : a; a.shotsP = a.shots; b.shotsP = b.shots;
+      this.color(Math.abs(sa - sb) < 3 ? 'A very even period. Could go either way.' : lead.score <= trail.score ? 'They are dominating in shots, but it is not on the scoreboard yet.' : 'They are getting outshot badly. They need more pucks on net.', 1, 2.2); }
     this.state = 'periodEnd'; this.stateT = 0;
     this.say('Konec ' + ['', 'první', 'druhé', 'třetí'][this.period] + ' třetiny.', true);
   }

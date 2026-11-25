@@ -281,7 +281,7 @@ gameMixin(class {
       pk.shot.counted = true; pk.shot.team.shots++; pk.shot.by.stats.s++; g.stats.sa++; g.stats.sv++;
     }
     if (onNet && sp > 70) this.impact(0.05, 0.45);
-    if (onNet) { g.conf = Math.min(1, (g.conf || 0) + 0.1); this.addMom(g.team, 0.05); if (sp > 70 || pk.oneTimer) this.hl = { t: this.time, what: 'ZÁKROK' }; }
+    if (onNet) { g.conf = Math.min(1, (g.conf || 0) + 0.1); this.addMom(g.team, 0.05); if (sp > 70 || pk.oneTimer) { this.hl = { t: this.time, what: 'ZÁKROK' }; this.color(pick(['Huge save. That kept them in it.', 'Robbery! How did he stop that?', 'He read that all the way.']), 0.45, 1.6); } }
     // druh zákroku podle toho, kam puk letí vůči brankáři: nízko uprostřed rozklek, nízko stranou vykopnutý beton,
     // výš lapačka (levá ruka) nebo vyrážečka; ruka i beton jdou přesně za pukem (saveL = stranou, saveZ = výška)
     const sl = (pk.x - g.x) * -Math.sin(g.dir) + (pk.y - g.y) * Math.cos(g.dir);
