@@ -97,6 +97,7 @@ function emblemSymbol(g, sym) {
 // swap = tělo dresu v druhé barvě týmu. Kdo tu není, má vzor podle pořadí týmu.
 const KITS = { BOS: { style: 1, yoke: 1 }, BUF: { style: 1, yoke: 1 }, DET: { style: 3, yoke: 1, hem: 1 }, FLA: { style: 0, yoke: 1, swap: 1 },
   MTL: { style: 0, yoke: 1 }, OTT: { style: 1, yoke: 1, swap: 1 }, TBM: { style: 0, yoke: 1 }, TOR: { style: 0, yoke: 1 } };
+for (const [k, v] of Object.entries({CAR: 0, CBC: 0, NJH: 3, LIM: 0, NYK: 1, PHI: 1, PIT: 0, WSH: 0, CHI: 0, COL: 0, DAL: 3, MIN: 0, NSH: 1, STL: 0, UTA: 3, WPG: 2, ANA: 0, CGY: 3, EDM: 3, LAM: 1, SJC: 0, SEA: 0, VAN: 0, LVR: 2})) KITS[k] = { style: v, yoke: 1 };
 // obrázková loga týmů (gfx/logos/<zkratka>.png); kdo ho nemá, dostane kreslený kulatý znak
 const LOGOS = {};
 if (typeof Image !== 'undefined') for (const k of TEAMS.map((t) => t.abbr)) { const im = new Image(); im.onload = () => { LOGOS[k] = im; }; im.src = 'gfx/logos/' + k + '.png'; }
