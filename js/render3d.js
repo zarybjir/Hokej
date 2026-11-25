@@ -5,8 +5,8 @@ const ZOOMS = [0.72, 0.86, 1.0, 1.2, 1.45];
 const ZOOM_NAMES = ['VELMI BLÍZKO', 'BLÍZKO', 'STŘEDNÍ', 'DALEKO', 'VELMI DALEKO'];
 const GFX = {
   low: { name: 'NÍZKÁ', pr: 0.7, shadow: 0, refl: false, ice: 2048, post: false, wear: false, grass: 0 },
-  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048, post: false, wear: true, grass: 22000 },
-  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096, post: true, wear: true, grass: 45000 },
+  mid: { name: 'STŘEDNÍ', pr: 1, shadow: 1024, refl: false, ice: 2048, post: false, wear: true, grass: 14 },
+  high: { name: 'VYSOKÁ', pr: 1, shadow: 2048, refl: true, ice: 4096, post: true, wear: true, grass: 26 },
 };
 const GFX_ORDER = ['low', 'mid', 'high'];
 // barevné ladění „TV přenos“: kontrast, sytost, vinětace (v lineárním HDR před tone mappingem)
@@ -1141,42 +1141,50 @@ float wH(vec2 p) {
     if (this.pitchMat.map) this.pitchMat.map.dispose();
     this.pitchMat.map = canvasTex(c, true, this.aniso); this.pitchMat.needsUpdate = true;
   },
-  // ---------- 3D tráva: trsy stébel po celém hřišti (jedna instancovaná síť), výška podle posekání ----------
-  buildGrass(N) {
-    const rnd = mulberry32(99), BH = 0.52, v = [], B = 5;
-    for (let b = 0; b < B; b++) {   // trs: pět zašpičatělých stébel s náklonem
-      const a = rnd() * TAU, r = rnd() * 0.24, x = Math.cos(a) * r, z = Math.sin(a) * r, d = rnd() * TAU, w = 0.045 + rnd() * 0.03, h = BH * (0.7 + rnd() * 0.3), ln = 0.05 + rnd() * 0.16, la = rnd() * TAU;
-      v.push(x - Math.cos(d) * w, 0, z - Math.sin(d) * w, x + Math.cos(d) * w, 0, z + Math.sin(d) * w, x + Math.cos(la) * ln, h, z + Math.sin(la) * ln);
+  // ---------- 3D tráva: jemná stébla rovnoměrně po celém hřišti ----------
+  // Jedna instancovaná síť: dlaždice 1×1 stopa s n×n stébly v rozhozené mřížce, dlaždice na sebe přesně navazují.
+  buildGrass(n) {
+    // řada stébel jako průhledná textura: dole skoro souvislá, nahoře jednotlivé špičky; n takových řad v každé dlaždici
+    const rnd = mulberry32(99), BH = 0.14, v = [], uv = [], [bc, bg] = mkCanvas(256, 64);
+    for (let i = 0; i < 150; i++) {
+      const x = rnd() * 256, h = 26 + rnd() * 36, w = 3.5 + rnd() * 3.5, ln = (rnd() - 0.5) * 14, sh = Math.round(195 + rnd() * 60);
+      bg.fillStyle = `rgb(${sh},${sh},${sh})`;
+      for (const ox of [0, 256, -256]) { bg.beginPath(); bg.moveTo(x + ox - w, 64); bg.lineTo(x + ox + w, 64); bg.lineTo(x + ox + ln, 64 - h); bg.closePath(); bg.fill(); }
     }
-    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(v.length / 3).fill([0, 1, 0]).flat(), 3));
-    const U = this.grassU = { uGH: { value: null }, uGM: { value: null }, uGT: { value: 0 }, uGW: { value: 0 }, uGP: { value: Array.from({ length: 14 }, () => new THREE.Vector3()) }, uGPud: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) } };
-    const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+    const btex = canvasTex(bc, false, this.aniso); btex.wrapS = THREE.RepeatWrapping;
+    for (let i = 0; i < n; i++) {
+      const cx = rnd() - 0.5, cz = rnd() - 0.5, a = rnd() * Math.PI, dx = Math.cos(a) * 0.36, dz = Math.sin(a) * 0.36, u0 = rnd(), h = BH * (0.75 + rnd() * 0.25);
+      const A = [cx - dx, 0, cz - dz], B = [cx + dx, 0, cz + dz], C = [cx + dx, h, cz + dz], D = [cx - dx, h, cz - dz];
+      v.push(...A, ...B, ...C, ...A, ...C, ...D); uv.push(u0, 0, u0 + 0.72, 0, u0 + 0.72, 1, u0, 0, u0 + 0.72, 1, u0, 1);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(v.length / 3).fill([0, 1, 0]).flat(), 3));
+    const U = this.grassU = { uGH: { value: null }, uGM: { value: null }, uGT: { value: 0 }, uGW: { value: 0 }, uGPud: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) } };
+    const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, map: btex, alphaTest: 0.3 });
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
-      sh.vertexShader = 'uniform sampler2D uGH; uniform sampler2D uGM; uniform float uGT; uniform vec3 uGP[14]; uniform vec4 uGPud[8]; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
-  vec3 io = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz; vec2 guv = vec2((io.x + 100.0) / 200.0, (42.5 - io.z) / 85.0);
-  float gh0 = texture2D(uGH, guv).r, hk = 0.22 + 0.78 * gh0; vTip = position.y / ${BH.toFixed(2)}; vCut = gh0; vGc = texture2D(uGM, guv).rgb;
-  for (int i = 0; i < 8; i++) if (uGPud[i].z > 0.0 && length(io.xz - uGPud[i].xy) < uGPud[i].z * 0.8) hk *= 0.3;   // v kaluži kouká jen špička
-  for (int i = 0; i < 14; i++) if (uGP[i].z > 0.0) hk *= 1.0 - 0.65 * smoothstep(1.1, 0.25, length(io.xz - uGP[i].xy));   // pod kopačkami je tráva sešlapaná
-  transformed.y *= hk; transformed.x += sin(uGT * 1.7 + io.x * 0.6 + io.z * 0.4) * 0.05 * vTip * hk;`);
-      sh.fragmentShader = 'uniform float uGW; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb = vGc * mix(0.5, 1.4, vTip) * mix(vec3(1.12, 1.08, 0.88), vec3(1.0), vCut) * (1.0 - 0.2 * uGW);')
+      sh.vertexShader = 'uniform sampler2D uGH; uniform sampler2D uGM; uniform float uGT; uniform float uGW; uniform vec4 uGPud[8]; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  vec3 io = (instanceMatrix * vec4(position.x, 0.0, position.z, 1.0)).xyz; vec2 guv = vec2((io.x + 100.0) / 200.0, (42.5 - io.z) / 85.0);
+  float gh0 = texture2D(uGH, guv).r, hk = 0.3 + 0.7 * gh0; vTip = position.y / ${BH.toFixed(2)}; vCut = gh0; vGc = texture2D(uGM, guv).rgb;
+  if (uGW > 0.5) for (int i = 0; i < 8; i++) if (uGPud[i].z > 0.0 && length(io.xz - uGPud[i].xy) < uGPud[i].z * 0.8) hk *= 0.3;   // v kaluži kouká jen špička
+  transformed.y *= hk; transformed.x += sin(uGT * 1.7 + io.x * 0.9 + io.z * 0.6) * 0.014 * vTip * hk;`);
+      sh.fragmentShader = 'uniform float uGW; varying vec3 vGc; varying float vTip; varying float vCut;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb = vGc * diffuseColor.g * mix(0.9, 1.5, vTip) * mix(vec3(1.42, 1.3, 0.78), vec3(0.9, 0.94, 0.9), smoothstep(0.2, 0.9, vCut)) * (1.0 - 0.2 * uGW);')
         .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n  normal = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);');
     };
-    const m = this.grassM = new THREE.InstancedMesh(geo, mat, N), o = new THREE.Object3D(), GX = RINK.GOAL_X + 1.5, HW = FB.HW + 1.5;
-    for (let i = 0; i < N; i++) { o.position.set((rnd() * 2 - 1) * GX, 0.02, (rnd() * 2 - 1) * HW); o.rotation.y = rnd() * TAU; const s = 0.75 + rnd() * 0.55; o.scale.set(s, s, s); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }
-    m.frustumCulled = false; m.receiveShadow = true; m.renderOrder = 2; this.grassN = N; this.scene.add(m);
+    const GX = Math.ceil(RINK.GOAL_X) + 1, HW = Math.ceil(FB.HW) + 1, N = (2 * GX) * (2 * HW);
+    const m = this.grassM = new THREE.InstancedMesh(geo, mat, N), o = new THREE.Object3D(); let k = 0;
+    for (let x = -GX; x < GX; x++) for (let y = -HW; y < HW; y++) { o.position.set(x + 0.5, 0.02, y + 0.5); o.rotation.y = Math.floor(rnd() * 4) * Math.PI / 2; o.scale.set(1, 0.8 + rnd() * 0.4, 1); o.updateMatrix(); m.setMatrixAt(k++, o.matrix); }
+    m.frustumCulled = false; m.receiveShadow = true; m.renderOrder = 2; this.grassN = n; this.scene.add(m);
     this.grassTex = new THREE.DataTexture(new Uint8Array(100 * 43).fill(255), 100, 43, THREE.RedFormat); this.grassTex.magFilter = THREE.LinearFilter; this.grassTex.minFilter = THREE.LinearFilter; this.grassTex.needsUpdate = true;
     U.uGH.value = this.grassTex;
   },
   syncGrass(g, players, t) {
-    const N = this.sportOn === 'football' && g && g.grass && this.pitchMat && this.pitchMat.map ? GFX[this.quality].grass >> (IS_MOBILE ? 1 : 0) : 0;
+    const N = this.sportOn === 'football' && g && g.grass && this.pitchMat && this.pitchMat.map ? Math.max(0, GFX[this.quality].grass >> (IS_MOBILE ? 1 : 0)) : 0;
     if (this.grassM && this.grassN !== N && N) { this.scene.remove(this.grassM); this.grassM.geometry.dispose(); this.grassM.material.dispose(); this.grassM.dispose(); this.grassTex.dispose(); this.grassM = null; }
     if (!N) { if (this.grassM) this.grassM.visible = false; return; }
     if (!this.grassM) this.buildGrass(N);
     const U = this.grassU, tex = this.grassTex; this.grassM.visible = true;
     if (tex.image.data !== g.grass || this.grassV !== g.grassV) { tex.image.data = g.grass; this.grassV = g.grassV; tex.needsUpdate = true; }
     U.uGM.value = this.pitchMat.map; U.uGT.value = t; U.uGW.value = g.rain ? 1 : 0;
-    U.uGP.value.forEach((v, i) => { const p = players[i]; if (p && !p.inBox) v.set(p.x, -p.y, 1); else v.z = 0; });
     U.uGPud.value.forEach((v, i) => { const q = g.rain && g.puddles[i]; if (q) v.set(q.x, -q.y, q.r, 0); else v.z = 0; });
   },
   // traktůrek se sekačkou (o poločase místo rolby)
