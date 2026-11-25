@@ -76,16 +76,17 @@ const App = {
           if (this.sel === 1) S.away = nx(S.away, S.home);
           if (this.sel === 2) { const i = PERIOD_OPTS.indexOf(S.periodLen); S.periodLen = PERIOD_OPTS[clamp((i < 0 ? 2 : i) + d, 0, PERIOD_OPTS.length - 1)]; }
           if (this.sel === 3) { S.diff = clamp(S.diff + d, 0, DIFF.length - 1); this.kidsAssist(); }
-          if (this.sel === 4) S.autoChange = !S.autoChange;
-          if (this.sel === 5) S.penalties = S.penalties === false;
+          const cu = this.sport === 'curling';
+          if (this.sel === 4) { if (cu) S.stone = ((S.stone | 0) + d + STONES.length) % STONES.length; else S.autoChange = !S.autoChange; }
+          if (this.sel === 5 && !cu) S.penalties = S.penalties === false;
           if (this.sel === 6) { if (this.sport === 'football') S.weather = WEATHER[(WEATHER.indexOf(S.weather || 'off') + d + WEATHER.length) % WEATHER.length]; else S.three = !S.three; }
           Sfx.stick(0.4); Settings.save();
         }
         if (M.pressed('y')) { this.rosterTeam = this.sel === 1 ? S.away : S.home; this.rosterFrom = this.sel; this.go('roster'); break; }
         if (M.pressed('a') || M.pressed('start')) {
           if (this.sel === 7 || M.pressed('start')) { this.initSlots(); this.go('ctrl'); }
-          else if (this.sel === 4) { S.autoChange = !S.autoChange; Settings.save(); }
-          else if (this.sel === 5) { S.penalties = S.penalties === false; Settings.save(); }
+          else if (this.sel === 4) { if (this.sport === 'curling') S.stone = ((S.stone | 0) + 1) % STONES.length; else S.autoChange = !S.autoChange; Settings.save(); }
+          else if (this.sel === 5) { if (this.sport !== 'curling') S.penalties = S.penalties === false; Settings.save(); }
           else if (this.sel === 6) { if (this.sport === 'football') S.weather = WEATHER[(WEATHER.indexOf(S.weather || 'off') + 1) % WEATHER.length]; else S.three = !S.three; Settings.save(); }
           else this.sel = Math.min(7, this.sel + 1);
         }
@@ -243,7 +244,7 @@ const App = {
     });
     Sfx.init(); Sfx.resume();
     const cfg = { home: S.home, away: S.away, humans, ...this.ruleCfg() };
-    this.game = this.sport === 'football' ? new Football(cfg) : this.sport === 'polo' ? new WaterPolo(cfg) : this.sport === 'curling' ? new Curling({ ...cfg, ends: CURL_ENDS[S.periodLen] || 3 }) : new Game({ ...cfg, three: !!S.three });
+    this.game = this.sport === 'football' ? new Football(cfg) : this.sport === 'polo' ? new WaterPolo(cfg) : this.sport === 'curling' ? new Curling({ ...cfg, ends: CURL_ENDS[S.periodLen] || 3, stone: S.stone | 0 }) : new Game({ ...cfg, three: !!S.three });
     this.screen = 'game'; this.sel = 0;
   },
   // trénink: všechny ovladače hrají za domácí (tým z Exhibice), soupeř podle druhu cvičení
@@ -254,6 +255,8 @@ const App = {
     this.game = new Game({ home: S.home, away: S.away, humans, ...this.ruleCfg(), practice: kind, penalties: false, injuries: false, offside: false, icing: false, zamboni: 'off', shootout: true });
     this.screen = 'game'; this.sel = 0;
   },
+  // vlastnosti kamene pro curling jako stupnice 1–5
+  stoneInfo(st) { const dots = (v, lo, hi) => { const n = clamp(Math.round(1 + 4 * (v - lo) / (hi - lo)), 1, 5); return '●'.repeat(n) + '○'.repeat(5 - n); }; return 'VÁHA ' + dots(st.m, 0.72, 1.35) + '  VYVÁŽENÍ ' + dots(-st.bal, -1.3, -0.4) + '  TŘENÍ ' + dots(st.grip, 0.7, 1.45); },
   // pravidla a volby zápasu z Nastavení (exhibice i kariéra)
   ruleCfg() {
     const S = Settings.data;
@@ -415,7 +418,7 @@ const App = {
     this.teamCard(TEAMS[S.away], R.W / 2 + 230, 90, 'HOSTÉ', this.sel === 1);
     R.chromeText('VS', R.W / 2, 250, 54, '#fff', '#ff5a3c');
     const rows = [sp === 'curling' ? ['POČET ENDŮ', String(CURL_ENDS[S.periodLen] || 3)] : [fb ? 'DÉLKA POLOČASU' : sp === 'polo' ? 'DÉLKA ČTVRTINY' : 'DÉLKA TŘETINY', S.periodLen + ' MIN'], ['OBTÍŽNOST', DIFF[clamp(S.diff, 0, DIFF.length - 1)].name.toUpperCase()],
-      ['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP'], fb ? ['POČASÍ', { off: 'JASNO', moles: 'JASNO + KRTINCE', rain: 'DÉŠŤ (KALUŽE)', rainmoles: 'DÉŠŤ + KRTINCE', random: 'NÁHODNĚ' }[S.weather || 'off'] || 'JASNO'] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
+      ...(sp === 'curling' ? [['KÁMEN', STONES[S.stone | 0].name], ['VLASTNOSTI', this.stoneInfo(STONES[S.stone | 0])]] : [['STŘÍDÁNÍ FORMACÍ', S.autoChange !== false ? 'AUTOMATICKY' : 'RUČNĚ (LB)'], [fb ? 'FAULY A KARTY' : 'FAULY A VYLOUČENÍ', S.penalties !== false ? 'ZAP' : 'VYP']]), fb ? ['POČASÍ', { off: 'JASNO', moles: 'JASNO + KRTINCE', rain: 'DÉŠŤ (KALUŽE)', rainmoles: 'DÉŠŤ + KRTINCE', random: 'NÁHODNĚ' }[S.weather || 'off'] || 'JASNO'] : ['FORMÁT', sp === 'polo' ? '5+1, ÚTOČNÝ ČAS 30 S' : sp === 'curling' ? '8 KAMENŮ NA END' : S.three ? '3 NA 3 (ARKÁDA)' : '5 NA 5']];
     rows.forEach(([n, v], i) => {
       const y = 452 + i * 42, on = this.sel === i + 2;
       R.panel(R.W / 2 - 300, y - 19, 600, 38, on ? 0.95 : 0.6);
@@ -706,7 +709,7 @@ const App = {
     const L = hs === 'curling' ? [
       ['CÍL HRY', 'dostat své kameny blíž ke středu terče než soupeř'],
       ['', ''], ['MÍŘENÍ', ''],
-      ['LEVÁ PÁČKA', 'posun koštěte skipa = kam má kámen dojet'], ['Y / LB / RB', 'směr rotace – kámen se ke konci stáčí'], ['A', 'přejít na sílu'],
+      ['LEVÁ PÁČKA', 'posun koštěte skipa = kam má kámen dojet'], ['Y', 'směr rotace – kámen se ke konci stáčí'], ['LB / RB', 'méně / více rotace (víc = ostřejší oblouk)'], ['A', 'přejít na sílu'],
       ['', ''], ['SÍLA', ''],
       ['A', 'zastavit ukazatel: STRÁŽ / DO DOMU / VYRAŽENÍ'], ['B', 'zpět k míření'],
       ['', ''], ['PO ODHODU', ''],

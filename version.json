@@ -1,8 +1,10 @@
 {
-  "build": 73,
-  "version": "1.73",
+  "build": 74,
+  "version": "1.74",
   "date": "2026-11-25",
   "notes": [
-    "Oprava externích ovladačů: spouště v klidu se už nečtou jako vychýlená pravá páčka, takže hráč ve hře normálně reaguje na levou páčku"
+    "Fotbal: hráči běhají pomaleji, tempo odpovídá jejich velikosti",
+    "Curling: LB/RB nastavuje sílu rotace kamene, Y směr",
+    "Curling: před zápasem výběr z pěti kamenů – váha, vyvážení a tření mění nárazy, přesnost a tvar dráhy"
   ]
 }

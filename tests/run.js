@@ -141,6 +141,34 @@ test('ovladač: vlastní mapování tlačítek se opravdu použije', (G) => {
   ok(G.Input.kb[1].map.a[0] === 'KeyP', 'vlastní klávesa hráče 2 se nepoužila');
 });
 
+test('curling: síla rotace a vlastnosti kamene (váha, vyvážení, tření) mění dráhu, nárazy a přesnost', (G) => {
+  const C = G.CURL, [kl, tezky, lehky, presny, drsny] = G.STONES, run = (spin, st, pts) => G.curlPath(C.HOG1, 0, G.curlV0(G.curlW(C.TEE - C.HOG1, st.m), st.m), 0, spin, false, null, pts, st.grip);
+  ok(run(1.5, kl).y > run(1, kl).y + 1 && run(1, kl).y > run(0.5, kl).y + 1, 'víc rotace nedává ostřejší oblouk');
+  ok(Math.abs(run(1, kl).x - C.TEE) < 1.5 && Math.abs(run(1, tezky).x - C.TEE) < 1.5 && Math.abs(run(1, lehky).x - C.TEE) < 1.5, 'síla „do domu“ nesedí pro různě těžké kameny');
+  // tření: drsný kámen zatočí víc a dřív, přesný (hladký) méně
+  const half = (st) => { const pts = []; const r = run(1, st, pts); return pts[Math.floor(pts.length / 2)][1] / r.y; };
+  ok(run(1, drsny).y > run(1, presny).y + 0.5 && half(drsny) > half(presny) + 0.04, 'tření nemění tvar dráhy');
+  // váha: těžší kámen má nižší nejvyšší rychlost a při nárazu odhodí stojící kámen dál
+  ok(G.curlV0(1, tezky.m) < G.curlV0(1, kl.m) - 1 && G.curlV0(1, lehky.m) > G.curlV0(1, kl.m) + 1, 'váha nemění nejvyšší rychlost');
+  const hit = (m) => { const g = new G.Curling({ home: 0, away: 1, humans: [], silent: true }), A = g.teams[0], B = g.teams[1];
+    g.stones = [{ team: A, x: 40, y: 0, vx: 10, vy: 0, spin: 0, m, grip: 1, moving: true, out: false }, { team: B, x: 42, y: 0, vx: 0, vy: 0, spin: 0, m: 1, grip: 1, moving: false, out: false }]; g.cur = g.stones[0];
+    for (let i = 0; i < 600; i++) g.stepStones(1 / 120); return g.stones.map((s) => s.x); };
+  const hh = hit(tezky.m), hl = hit(lehky.m);
+  ok(hh[1] > hl[1] + 2 && hh[0] > hl[0] + 1, 'těžký kámen neodhodil stojící dál než lehký: ' + hh.map((v) => v.toFixed(1)) + ' × ' + hl.map((v) => v.toFixed(1)));
+  // vyvážení: přesný kámen má menší rozptyl odhodu
+  const scat = (i) => { const g = new G.Curling({ home: 0, away: 1, humans: [{ dev: idleDev(), team: 0 }, { dev: idleDev(), team: 1 }], silent: true, stone: i }); let s = 0; const T = g.teams[0];
+    for (let k = 0; k < 60; k++) { g.T = T; g.aim = { y: 0, spin: 1, w: g.wDraw }; g.stones = []; g.release(); const a0 = (() => { let lo = -0.35, hi = 0.35; for (let q = 0; q < 22; q++) { const a = (lo + hi) / 2; if (G.curlPath(C.HOG1, 0, Math.cos(a) * g.v0, Math.sin(a) * g.v0, 1, false, C.TEE, null, T.stone.grip).yAt < 0) lo = a; else hi = a; } return (lo + hi) / 2; })(); s += (g.ang - a0) ** 2; }
+    return Math.sqrt(s / 60); };
+  const sp = scat(3), sd = scat(4); ok(sp < sd * 0.6, 'přesný kámen není přesnější: ' + sp.toFixed(4) + ' × ' + sd.toFixed(4));
+  // ovládání: RB přidává rotaci jen do stropu podle tření, Y otáčí směr, počítač hraje klasickým kamenem
+  const keys = new Set(), dev = { st: { lx: 0, ly: 0 }, pressed: (b) => keys.has(b) };
+  const g = new G.Curling({ home: 0, away: 1, humans: [{ dev, team: 0 }], silent: true, stone: 3 }); g.update(3);
+  ok(g.T === g.teams[0] && g.T.stone === presny && g.teams[1].stone === kl, 'kámen se nepřiřadil hráči (nebo ho dostal i počítač)');
+  const press = (b) => { keys.add(b); g.update(1 / 60); keys.clear(); };
+  for (let i = 0; i < 6; i++) press('rb'); ok(g.aim.spin === 1, 'hladký kámen dostal víc rotace, než dovolí tření: ' + g.aim.spin);
+  press('lb'); ok(g.aim.spin === 0.5, 'LB neubralo rotaci'); press('lb'); ok(g.aim.spin === 0.5, 'rotace klesla pod nejnižší stupeň'); press('y'); ok(g.aim.spin === -0.5, 'Y neotočilo směr rotace');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

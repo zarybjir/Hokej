@@ -120,7 +120,7 @@ const R = {
     // kdo hraje a co dělat
     const who = g.T.def.abbr + (hum ? '' : ' (POČÍTAČ)');
     let tip = '';
-    if (g.state === 'aim') tip = hum ? 'PÁČKA = MÍŘENÍ   Y = ROTACE ' + (g.aim.spin > 0 ? '↶' : '↷') + '   A = SÍLA' : 'HRAJE ' + who + '   (DRŽ A = ZRYCHLIT)';
+    if (g.state === 'aim') tip = hum ? 'PÁČKA = MÍŘENÍ   Y = SMĚR ' + (g.aim.spin > 0 ? '↶' : '↷') + '   LB/RB = ROTACE ' + Math.round(Math.abs(g.aim.spin) * 2) + '/' + stoneMaxSpin(g.T.stone) + '   A = SÍLA' : 'HRAJE ' + who + '   (DRŽ A = ZRYCHLIT)';
     else if (g.state === 'power') tip = 'A = ODHODIT   B = ZPĚT K MÍŘENÍ';
     else if (g.state === 'slide' || g.state === 'run') tip = hum ? (g.sweep ? 'ZAMETÁŠ!' : 'DRŽ X = ZAMETAT (KÁMEN DOJEDE DÁL A ROVNĚJI)') : 'HRAJE ' + who + '   (DRŽ A = ZRYCHLIT)';
     if (tip) { const tw = LED.width(tip, 2.5) + 30; LED.panel(ctx, this.W / 2 - tw / 2, this.H - 48, tw, 36, 2.5); LED.text(ctx, tip, this.W / 2, this.H - 30, 2.5, { align: 'center', color: g.sweep ? '#7dff8a' : '#ffd21f' }); }

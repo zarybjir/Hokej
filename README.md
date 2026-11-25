@@ -191,12 +191,24 @@ pólo má 6+1), čtyři čtvrtiny, při remíze pětimetrové hody.
 kruhů, než je nejlepší kámen soupeře. Kdo end prohraje, má v dalším výhodu posledního kamene (tečka
 u názvu týmu). Počet endů se řídí položkou POČET ENDŮ, při remíze se hraje dodatečný end.
 
-1. **Míření:** levou páčkou posouváš koště skipa (kam má kámen dojet), Y / LB / RB mění rotaci –
-   kámen se ke konci dráhy stáčí. Čárkovaná čára ukazuje dráhu při síle „do domu“.
+1. **Míření:** levou páčkou posouváš koště skipa (kam má kámen dojet). Y otáčí směr rotace, LB / RB
+   ubírá a přidává její sílu – víc rotace znamená ostřejší oblouk. Čárkovaná čára ukazuje dráhu při síle „do domu“.
 2. **Síla:** A zastaví běžící ukazatel – STRÁŽ (před kruhy), DO DOMU, VYRAŽENÍ.
 3. **Zametání:** po odhodu drž X – kámen dojede dál a méně zatáčí.
 
 Při hodu počítače můžeš držet A a čekání zrychlit.
+
+Před zápasem si vybíráš **kámen** (počítač hraje klasickým):
+
+| Kámen | Váha | Vyvážení | Tření |
+|---|---|---|---|
+| Klasický | střední | střední | střední |
+| Těžký | vysoká – při nárazu odhodí soupeře dál, ale nejde hodit tak rychle | horší | vyšší |
+| Lehký | nízká – rychlejší hody, v nárazu ho soupeř odhodí | lepší | nižší |
+| Přesný | střední | nejlepší – nejmenší rozptyl odhodu | nízké – méně rotace, plochý oblouk |
+| Drsný | vyšší | nejhorší | nejvyšší – nejvíc rotace, zatáčí hned, ale rotace brzy dojde |
+
+Tření určuje, kolik stupňů rotace kameni dáš (2 až 4), jak silně zatáčí a jak rychle se rotace zastaví.
 Curling se vždy hraje z pohledu shora za kamenem (nastavení kamery se ho netýká).
 
 ## Legion Go S / Steam Deck (SteamOS)
