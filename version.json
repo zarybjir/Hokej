@@ -1,9 +1,8 @@
 {
-  "build": 72,
-  "version": "1.72",
+  "build": 73,
+  "version": "1.73",
   "date": "2026-11-25",
   "notes": [
-    "Fotbal: 3D tráva je jemná a hustá – souvislý porost rovnoměrně po celém hřišti místo jednotlivých trsů",
-    "Posekaný pruh za traktůrkem je světlejší, aby byl dobře vidět"
+    "Oprava externích ovladačů: spouště v klidu se už nečtou jako vychýlená pravá páčka, takže hráč ve hře normálně reaguje na levou páčku"
   ]
 }

@@ -125,9 +125,17 @@ const Input = {
         if (lx && ly) { lx *= 0.7071; ly *= 0.7071; }
       }
       s.lx = lx; s.ly = ly;
-      // pravá páčka (vedení puku): standard osy 2/3, linuxové rozložení 3/4
-      const ra = d.std ? 2 : 3, rx = gp.axes[ra] || 0, ry = gp.axes[ra + 1] || 0;
-      if (Math.hypot(rx, ry) > 0.3 && Math.abs(rx) <= 1 && Math.abs(ry) <= 1) { s.rx = rx; s.ry = ry; }
+      // pravá páčka (vedení puku, obranný postoj): standard osy 2/3, linuxové rozložení (xpad) 3/4.
+      // Obecné ovladače mají na osách 3/4 spouště, které v klidu drží −1: dvě osy naráz na −1 páčka být nemůže,
+      // takové rozložení si zapamatujeme a pravou páčku čteme z os 2/5 (jinak by „páčka“ byla trvale vychýlená
+      // a hráč ve hře jen couval v obranném postoji). Ovladač se čtyřmi osami má pravou páčku na 2/3.
+      const A = gp.axes; let ra = 2, rb = 3;
+      if (!d.std && A.length > 4) {
+        if ((A[3] || 0) < -0.9 && (A[4] || 0) < -0.9) d.trig34 = true;
+        if (d.trig34) { ra = 2; rb = A.length > 5 ? 5 : -1; } else { ra = 3; rb = 4; }
+      }
+      const rx = A[ra] || 0, ry = rb < 0 ? 0 : A[rb] || 0, rm = Math.hypot(rx, ry);
+      if (rm > 0.3 && rm < 1.3 && Math.abs(rx) <= 1 && Math.abs(ry) <= 1) { s.rx = rx; s.ry = ry; }
       d.st = s;
       if (BTN.some((b) => s[b])) { this.anyEvent = true; if (typeof Touch !== 'undefined') Touch.visible = false; }
     }

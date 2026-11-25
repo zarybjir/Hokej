@@ -129,6 +129,14 @@ test('ovladač: vlastní mapování tlačítek se opravdu použije', (G) => {
   ok(d.st.a, 'přemapované tlačítko 5 se nečte jako A');
   pad.axes[7] = -1; G.Input.poll(1 / 60); ok(d.st.up, 'kříž jako osa se nečte');
   ok(!d.st.lt && !d.st.rt, 'spouště v klidu na −1 se čtou jako stisknuté');
+  // obecný ovladač se spouštěmi na osách 3/4 (v klidu −1): nesmí se číst jako trvale vychýlená pravá páčka
+  const p2 = { index: 1, id: 'Obecný ovladač', connected: true, mapping: '', axes: [0.9, 0, 0, -1, -1, 0], buttons: Array.from({ length: 12 }, () => ({ pressed: false, value: 0 })) };
+  global.navigator.getGamepads = () => [pad, p2]; G.Input.poll(1 / 60); G.Input.poll(1 / 60);
+  const d2 = G.Input.pads[1]; ok(d2.st.lx > 0.5, 'levá páčka obecného ovladače se nečte');
+  ok(!d2.st.rx && !d2.st.ry, 'spouště v klidu se čtou jako pravá páčka: ' + d2.st.rx + ' ' + d2.st.ry);
+  p2.axes[4] = 0.2; p2.axes[2] = 0.8; G.Input.poll(1 / 60); ok(d2.st.rx > 0.5 && Math.abs(d2.st.ry) < 0.1, 'pravá páčka na osách 2/5 se nečte');
+  pad.axes[3] = 0.7; G.Input.poll(1 / 60); ok(d.st.rx > 0.5, 'pravá páčka linuxového rozložení (osy 3/4) se nečte'); pad.axes[3] = 0;
+  global.navigator.getGamepads = () => [pad];
   G.Settings.data.kbMaps = [{}, { a: ['KeyP'] }]; G.Input.applyKb();
   ok(G.Input.kb[1].map.a[0] === 'KeyP', 'vlastní klávesa hráče 2 se nepoužila');
 });
