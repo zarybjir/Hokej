@@ -429,12 +429,12 @@ const R = {
   },
   // nástup: základní sestavy obou týmů
   drawLineups(g) {
-    const ctx = this.ctx, k = clamp(g.stateT / 0.5, 0, 1) * clamp((4.4 - g.stateT) / 0.5, 0, 1), w = 330, h = 214;
+    const ctx = this.ctx, k = clamp(g.stateT / 0.5, 0, 1) * clamp((4.4 - g.stateT) / 0.5, 0, 1), w = 470, h = 214;
     g.teams.forEach((T, i) => {
       const x = i ? this.W - 20 - w + (1 - k) * 380 : 20 - (1 - k) * 380, y = this.H - h - 70;
       LED.panel(ctx, x, y, w, h, 3, 0.9); this.chip(T, x + 12, y + 10, 24);
       LED.text(ctx, T.def.city.toUpperCase(), x + 30, y + 22, 3, { color: '#ffd21f' });
-      T.skaters.slice(0, 5).concat(T.goalie ? [T.goalie] : []).forEach((p, j) => { LED.text(ctx, ROLES[p.role] || p.role, x + 14, y + 54 + j * 26, 2, { color: '#9fe3ff' }); LED.text(ctx, '#' + p.num + ' ' + p.name.toUpperCase(), x + 62, y + 54 + j * 26, 2.5); });
+      T.skaters.slice(0, 5).concat(T.goalie ? [T.goalie] : []).forEach((p, j) => { LED.text(ctx, ROLES[p.role] || p.role, x + 14, y + 54 + j * 26, 2, { color: '#9fe3ff' }); LED.text(ctx, '#' + p.num + ' ' + p.name.toUpperCase(), x + 62, y + 54 + j * 26, 2.5); if (p.cm) LED.text(ctx, p.cm + ' CM  ' + p.kg + ' KG', x + w - 12, y + 54 + j * 26, 2, { align: 'right', color: '#aeb6c8' }); });
     });
   },
   // tři hvězdy zápasu: jmenovky pod hráči na středu ledu

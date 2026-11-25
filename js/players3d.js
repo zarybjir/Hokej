@@ -268,7 +268,7 @@ function bodyMaterialFinish(T, p, c, ref) {
   const idx = TEAMS.indexOf(T.def), kit = SPORT === 'hockey' && T.def ? KITS[T.def.abbr] : null;
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
-    uInfl: { value: p.isGoalie && SPORT === 'hockey' ? 1.55 : 1 }, uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
+    uInfl: { value: (p.isGoalie && SPORT === 'hockey' ? 1.55 : 1) * (p.kg && p.cm && !ref ? clamp(1 + ((p.kg / 88) / (p.cm / 184) - 1) * 2.4, 0.55, 1.7) : 1) },   // mohutnost podle váhy vůči výšce uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
     uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : SPORT === 'polo' || SPORT === 'curling' ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
     uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex }, uFab: { value: fabricTex() },
@@ -430,7 +430,7 @@ class HModel {
     }
     // výška hráče (mírně): vyšší hráč je větší model
     this.fsc = SPORT === 'football' ? 0.62 : 1;   // fotbal: menší postavy, ať hřiště působí větší
-    this.root.scale.setScalar(this.fsc * FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 0.8 : 1));
+    this.root.scale.setScalar(this.fsc * FT * (p.cm && !p.isRef ? 1 + (p.cm / 184 - 1) * 1.5 : 1));   // výška je na ledě znát (170 cm ≈ o pětinu menší postava než 203 cm)
     this.root.updateMatrixWorld(true);
     const len = (a, b) => wpos(a).distanceTo(wpos(b));
     this.L = {

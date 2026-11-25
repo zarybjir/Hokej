@@ -1,8 +1,9 @@
 {
-  "build": 95,
-  "version": "1.95",
+  "build": 96,
+  "version": "1.96",
   "date": "2026-11-25",
   "notes": [
-    "Nový přepínač v Nastavení: VLIV STATISTIK HRÁČŮ – arkádový režim ztrojnásobí rozdíly mezi hráči, silný tým je opravdu silný"
+    "Výška a váha hráčů je vidět na ledě: vyšší hráč je znatelně větší, těžší mohutnější",
+    "V základních sestavách při nástupu jsou u hráčů centimetry a kilogramy"
   ]
 }
