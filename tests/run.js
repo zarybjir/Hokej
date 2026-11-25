@@ -340,6 +340,10 @@ test('fotbal: za deště kaluž zbrzdí míč, krtinec ho vychýlí; za jasna ne
   hitMole(); ok(sh.yc === 2 && mg.penalties.some((q) => q.player === sh && q.left > 1e6), 'druhá žlutá za krtka není červená');
   const mh = mk('off'); mh.moles = [{ x: -10, y: 0, born: 0, peek: false, up: 0, pt: 99 }]; roll(mh, 0).lastTouch = mh.teams[0].skaters[0]; for (let i = 0; i < 60; i++) mh.updatePuck(1 / 120);
   ok(mh.state === 'play' && !mh.moleCards && mh.moleHits === 1, 'schovaný krtek dal kartu');
+  // hráč, který přes vykukujícího krtka přeběhne, upadne a ztratí míč; přes schovaného proběhne
+  const trip = (up) => { const t = mk('off'), q = t.teams[0].skaters[0]; t.moles = [{ x: 0, y: 0, born: 0, peek: up, up: up ? 1 : 0, pt: 99 }]; q.x = 0.5; q.y = 0; q.vx = 20; q.vy = 0; t.puck.owner = q; q.downT = 0; t.updatePuck(1 / 120); return [t, q]; };
+  let [tg, tq] = trip(true); ok(tq.downT > 0.5 && tg.puck.owner !== tq && tg.trips === 1, 'hráč o krtka nezakopl');
+  [tg, tq] = trip(false); ok(!(tq.downT > 0) && !tg.trips, 'hráč zakopl o schovaného krtka');
   // kaluže přibývají a rostou, zápas za deště doběhne
   const g = fbPlay(G, { home: 2, away: 5, weather: 'rain', moles: true });
   const g2 = fbPlay(G, { home: 2, away: 5, moles: true }); ok(!g2.puddles.length && g2.molesOn && g2.moles.length <= 3, 'krtince za jasna: kaluže ' + g2.puddles.length);

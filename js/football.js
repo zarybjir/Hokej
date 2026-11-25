@@ -53,6 +53,12 @@ class Football extends Game {
       m.pt = (m.pt == null ? rand(5, 12) : m.pt) - h;
       if (m.pt <= 0) { m.peek = !m.peek; m.pt = m.peek ? 2.6 : rand(8, 16); }
       m.up = clamp((m.up || 0) + (m.peek ? 1 : -1) * h * 5, 0, 1);
+      // hráč, který přes vykukujícího krtka přeběhne, o něj zakopne, upadne a ztratí míč
+      if (m.up > 0.6) for (const t of this.teams) for (const q of t.skaters) {
+        if (q.downT > 0 || q.inBox || Math.hypot(q.vx, q.vy) < 9 || Math.hypot(q.x - m.x, q.y - m.y) > 1.5) continue;
+        q.downT = 1.1; q.lie = Math.atan2(q.vy, q.vx); if (pk.owner === q) this.loosePuck(q, q.vx * 0.6, q.vy * 0.6);
+        q.vx *= 0.3; q.vy *= 0.3; this.trips = (this.trips || 0) + 1; this.sfx('stick', 0.5); this.pop('ZAKOPL O KRTKA', m.x, m.y, '#d8b27a');
+      }
       if (m.up > 0.6 && !pk.owner && pk.lastTouch && v > 6 && pk.z < 1.8 && Math.hypot(pk.x - m.x, pk.y - m.y) < 1.2) return this.moleHit(m, pk.lastTouch);
     }
     if (pk.owner || pk.z > 0.4) return;
