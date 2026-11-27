@@ -1327,6 +1327,8 @@ float wH(vec2 p) {
         fragmentShader: `uniform vec3 uCol, uFill; uniform float uSt; varying vec2 vP;
           // vzdálenost od oblouku o poloměru R se středem v úhlu c (0 = dole) a polovičním rozpětím h, se zaoblenými konci
           float arc(vec2 p, float R, float c, float h) { float a = atan(p.x, -p.y) - c; a = atan(sin(a), cos(a)); if (abs(a) < h) return abs(length(p) - R); float e = c + sign(a) * h; return length(p - R * vec2(sin(e), -cos(e))); }
+          // totéž s rovnými konci (w = poloviční tloušťka)
+          float arcF(vec2 p, float R, float c, float h, float w) { float a = atan(p.x, -p.y) - c; a = atan(sin(a), cos(a)); return max(abs(length(p) - R), (abs(a) - h) * R + w); }
           void main() {
             float G = 0.78, A = 0.64, aa = fwidth(vP.x) * 1.2, ang = atan(vP.x, -vP.y);
             // kruh: čtyři tenké šedé segmenty s přechodem (světlejší vzadu), kolem měkký stín
@@ -1335,9 +1337,9 @@ float wH(vec2 p) {
             float ring = 1.0 - smoothstep(0.06 - aa, 0.06 + aa, dr), shadow = (1.0 - smoothstep(0.02, 0.62, dr)) * 0.55;
             vec3 grey = mix(vec3(0.24, 0.25, 0.27), vec3(0.74, 0.75, 0.77), 0.5 - 0.5 * cos(ang)) * (0.9 + 0.1 * smoothstep(0.05, 0.0, dr));
             vec3 col = mix(vec3(0.02, 0.03, 0.05), grey, ring); float al = max(ring, shadow);
-            // výdrž: šest zaoblených barevných dílků na souvislém tmavém podkladu, poslední se plní plynule
-            float n = 6.0, sl = 2.0 * A / n, hs = sl * 0.5 - 0.045, dt = arc(vP, 2.66, 0.0, A - 0.045), df = 9.0;   // podklad je jeden souvislý oblouk, dílky má jen barevná výplň
-            for (int i = 0; i < 6; i++) { float c0 = -A + (float(i) + 0.5) * sl, f = clamp(uSt * n - float(i), 0.0, 1.0); if (f > 0.02) df = min(df, arc(vP, 2.66, c0 - hs + hs * f, hs * f)); }
+            // výdrž: dvanáct krátkých hranatých barevných dílků na souvislém tmavém podkladu, poslední se plní plynule
+            float n = 12.0, sl = 2.0 * A / n, hs = sl * 0.5 - 0.016, dt = arcF(vP, 2.66, 0.0, A + 0.03, 0.17), df = 9.0;   // podklad je jeden souvislý oblouk, dílky má jen barevná výplň
+            for (int i = 0; i < 12; i++) { float c0 = -A + (float(i) + 0.5) * sl, f = clamp(uSt * n - float(i), 0.0, 1.0); if (f > 0.02) df = min(df, arcF(vP, 2.66, c0 - hs + hs * f, hs * f, 0.115)); }
             float track = 1.0 - smoothstep(0.17 - aa, 0.17 + aa, dt), tsh = (1.0 - smoothstep(0.15, 0.5, dt)) * 0.3, fill = 1.0 - smoothstep(0.115 - aa, 0.115 + aa, df);
             col = mix(col, vec3(0.03, 0.04, 0.06), max(track, step(al, tsh))); al = max(al, max(track * 0.88, tsh));
             col = mix(col, uFill * (0.8 + 0.35 * smoothstep(0.115, 0.0, df)), fill); al = max(al, fill);
