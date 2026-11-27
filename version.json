@@ -1,8 +1,8 @@
 {
-  "build": 106,
-  "version": "2.06",
+  "build": 107,
+  "version": "2.07",
   "date": "2026-11-27",
   "notes": [
-    "Nový model hokejky: oválná násada s koncovkou, omotávkou a grafikou, zahnutá čepel se zaoblenou špičkou a páskou"
+    "Čepel hokejky má černou pásku, na ledě je dobře vidět"
   ]
 }

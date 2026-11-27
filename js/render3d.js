@@ -297,9 +297,9 @@ function stickShaftTex() {
 function stickBladeTex() {
   const [c, g] = mkCanvas(256, 64);
   g.fillStyle = '#121214'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#2fd4ff'; g.fillRect(34, 0, 5, 64);                    // pata: uhlík s proužkem
-  g.fillStyle = '#eeeae0'; g.fillRect(52, 0, 204, 64);                                                                   // omotávka čepele
-  g.strokeStyle = 'rgba(60,55,45,0.5)'; g.lineWidth = 1.5; for (let x = 52; x < 270; x += 13) { g.beginPath(); g.moveTo(x, 64); g.lineTo(x + 9, 0); g.stroke(); }
-  g.fillStyle = 'rgba(40,40,40,0.22)'; g.fillRect(52, 54, 204, 10);                                                       // ojetá spodní hrana
+  g.fillStyle = '#0b0b0d'; g.fillRect(52, 0, 204, 64);                                                                   // omotávka čepele
+  g.strokeStyle = 'rgba(150,150,160,0.5)'; g.lineWidth = 1.5; for (let x = 52; x < 270; x += 13) { g.beginPath(); g.moveTo(x, 64); g.lineTo(x + 9, 0); g.stroke(); }
+  g.fillStyle = 'rgba(200,200,210,0.16)'; g.fillRect(52, 54, 204, 10);                                                       // ojetá spodní hrana
   return canvasTex(c, true, 4);
 }
 
