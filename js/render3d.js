@@ -605,6 +605,17 @@ const G3 = {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 500), new THREE.MeshStandardMaterial({ color: 0x14161b, roughness: 0.9 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = -0.4; this.scene.add(floor);
   },
+  // obrázek do textur povrchu (gfx/…): vrátí ho, až je načtený; po načtení se povrch jednou přemaluje
+  gimg(src) {
+    const c = this.gim || (this.gim = {});
+    if (!c[src]) { const im = c[src] = new Image(); im.onload = () => { clearTimeout(this.gimT); this.gimT = setTimeout(() => { if (this.fail || !this.iceMat) return; if (this.fbOn) this.paintPitch(); else this.paintIce(); }, 60); }; im.src = src; }
+    return c[src].complete && c[src].naturalWidth ? c[src] : null;
+  },
+  // opakovaná textura přes celé plátno (násobením), dlaždice široká `feet` stop
+  gtile(g, src, feet, ppf, W, H, alpha) {
+    const im = this.gimg(src); if (!im) return;
+    const s = feet * ppf / im.naturalWidth; g.save(); g.globalCompositeOperation = 'multiply'; g.globalAlpha = alpha; g.scale(s, s); g.fillStyle = g.createPattern(im, 'repeat'); g.fillRect(0, 0, W / s, H / s); g.restore();
+  },
   paintIce() {
     if (this.fbOn) this.paintPitch();   // při změně kvality grafiky se přemaluje i trávník
     if (this.sportOn === 'curling') return this.paintCurl();
@@ -658,9 +669,17 @@ const G3 = {
     g.lineWidth = 0.9 * ppf; g.strokeStyle = '#0a2a6b'; g.stroke();
     g.lineWidth = 0.35 * ppf; g.strokeStyle = '#c8202e'; g.beginPath(); g.arc(0, 0, 9.1 * ppf, 0, TAU); g.stroke();
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = '#0a2a6b'; g.font = `italic 900 ${4.4 * ppf}px "Arial Black","DejaVu Sans",sans-serif`; g.fillText('HOKEJ', 0, -1.2 * ppf);
-    g.fillStyle = '#c8202e'; g.font = `italic 900 ${3.4 * ppf}px "Arial Black","DejaVu Sans",sans-serif`; g.fillText("'98", 0, 3.2 * ppf);
+    const hl = typeof LOGOS !== 'undefined' && LOGOS[this.homeAbbr];
+    if (hl) g.drawImage(hl, -8.2 * ppf, -8.2 * ppf, 16.4 * ppf, 16.4 * ppf);   // logo domácího týmu
+    else { g.fillStyle = '#0a2a6b'; g.font = `italic 900 ${4.4 * ppf}px "Arial Black","DejaVu Sans",sans-serif`; g.fillText('HOKEJ', 0, -1.2 * ppf);
+      g.fillStyle = '#c8202e'; g.font = `italic 900 ${3.4 * ppf}px "Arial Black","DejaVu Sans",sans-serif`; g.fillText("'98", 0, 3.2 * ppf); }
     g.restore();
+    // reklamy namalované v ledu (gfx/ice1–6.jpg): čtyři ve středním pásmu, po jedné v každém obranném
+    [[-15, 30], [15, 30], [-15, -30], [15, -30], [-47, 0], [47, 0]].forEach(([ax, ay], i) => {
+      const im = this.gimg('gfx/ice' + (i + 1) + '.jpg'); if (!im) return;
+      const w = 13 * ppf, h = w * im.naturalHeight / im.naturalWidth;
+      g.save(); g.translate(X(ax), Y(ay)); g.rotate(this.view === 'side' ? 0 : Math.PI / 2); g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.8; g.drawImage(im, -w / 2, -h / 2, w, h); g.restore();
+    });
     g.restore();
     // škrábance od bruslí
     const N = W > 3000 ? 9000 : 4500;
@@ -739,7 +758,9 @@ const G3 = {
     for (let i = 0; i < 900; i++) { ag.fillStyle = `rgba(20,20,20,${0.1 + rnd() * 0.35})`; ag.beginPath(); ag.arc(rnd() * AW, 70 + rnd() * 55, 1 + rnd() * 3, 0, TAU); ag.fill(); }
     const adTex = canvasTex(ac, true, this.aniso);
     // do volných polí mantinelu obrázkové reklamy smyšlených značek (gfx/ad1–4.jpg)
-    for (let i = 0; i < 4; i++) { const im = new Image(); im.onload = () => { adSlots.forEach((x0, j) => { if (j % 4 === i) ag.drawImage(im, x0, 14, 12 * ppf, 100); }); adTex.needsUpdate = true; }; im.src = 'gfx/ad' + (i + 1) + '.jpg'; }
+    const adI = { h: [1, 2, 3, 4].map((i) => 'gfx/ad' + i + '.jpg'), f: [1, 2, 3, 4, 5, 6, 7].map((i) => 'gfx/fb' + i + '.jpg') }, adC = {};
+    this.adPaint = () => { const L = adI[this.sportOn === 'football' ? 'f' : 'h']; adSlots.forEach((x0, j) => { const im = adC[L[j % L.length]]; if (im && im.complete && im.naturalWidth) ag.drawImage(im, x0, 14, 12 * ppf, 100); }); adTex.needsUpdate = true; };   // fotbal má vlastní sadu
+    for (const s of adI.h.concat(adI.f)) { const im = adC[s] = new Image(); im.onload = this.adPaint; im.src = s; }
     const u = (i) => (P - L.s[i]) / P; // zevnitř čteno zleva doprava
     const wall = (z0, z1, off, mat, uvf) => {
       const g = stripGeo(N, (i, kk) => { const p = at(i), n = nr(i); return [p[0] + n[0] * off, p[1] + n[1] * off, kk ? z1 : z0]; }, uvf || ((i, kk) => [u(i), kk]));
@@ -851,11 +872,22 @@ const G3 = {
       Object.assign(sh.uniforms, this.cheerU);
       sh.vertexShader = 'uniform float uCheer; uniform float uCT;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  float ch = fract(instanceMatrix[3].x * 0.37 + instanceMatrix[3].z * 0.61); transformed.y += uCheer * (0.45 + 0.75 * abs(sin(uCT * (7.0 + ch * 5.0) + ch * 40.0))) * step(0.25, ch);');
     };
-    this.bodies = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.48, 0.6, 1.7, 6), this.bodyMat, seats.length);
+    // diváci jako ploché postavy z atlasu gfx/fans.png (8×2), natočené do hlediště; šedé oblečení se barví barvou sedadla (dresy fanoušků)
+    const fanTex = new THREE.TextureLoader().load('gfx/fans.png'); fanTex.colorSpace = THREE.SRGBColorSpace; fanTex.anisotropy = this.aniso;
+    Object.assign(this.bodyMat, { map: fanTex, alphaTest: 0.5, side: THREE.DoubleSide });
+    const ob = this.bodyMat.onBeforeCompile;
+    this.bodyMat.onBeforeCompile = (sh) => {
+      ob(sh);
+      sh.vertexShader = 'attribute float aCell;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vMapUv = vec2((mod(aCell, 8.0) + uv.x) / 8.0, (1.0 - floor(aCell / 8.0) + uv.y) / 2.0);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', '{ float mx = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)), mn = min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));\n  float gk = step(mx - mn, 0.07) * smoothstep(0.28, 0.4, mx) * (1.0 - smoothstep(0.74, 0.86, mx)); diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vColor.rgb * 2.1, gk); }');
+    };
+    const fg = new THREE.PlaneGeometry(1.8, 2.7); fg.setAttribute('aCell', new THREE.InstancedBufferAttribute(new Float32Array(seats.map(() => Math.floor(rnd() * 16))), 1));
+    this.bodies = new THREE.InstancedMesh(fg, this.bodyMat, seats.length);
     this.heads = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.37, 0), this.headMat, seats.length);
     const col = new THREE.Color();
     this.seatCol = seats.map(() => pal[Math.floor(rnd() * pal.length)]); this.seatFan = seats.map(() => rnd());
     seats.forEach((_, i) => { col.set(this.seatCol[i]); this.bodies.setColorAt(i, col); });
+    this.heads.visible = false;
     this.placeCrowd(0, 0);
     this.scene.add(this.bodies, this.heads);
   },
@@ -864,7 +896,8 @@ const G3 = {
     this.seats.forEach(([x, y, z, ph, s], i) => {
       const b = ex > 0.25 ? Math.max(0, Math.sin(t * 11 + ph)) * ex * 1.1 : 0;
       sc.set(s, s, s);
-      p.set(x, z + 0.85 * s + b, -y); m4.compose(p, q, sc); this.bodies.setMatrixAt(i, m4);
+      q.setFromAxisAngle(_Y, Math.atan2(-x * 0.3, y));
+      p.set(x, z + 1.3 * s + b, -y); m4.compose(p, q, sc); this.bodies.setMatrixAt(i, m4);
       p.y += 1.2 * s; m4.compose(p, q, sc); this.heads.setMatrixAt(i, m4);
     });
     this.bodies.instanceMatrix.needsUpdate = true; this.heads.instanceMatrix.needsUpdate = true;
@@ -944,6 +977,7 @@ const G3 = {
     const X = (x) => (x + 100) * ppf, Y = (y) => (42.5 - y) * ppf, C = CURL, rnd = mulberry32(7);
     g.fillStyle = '#9fb0c4'; g.fillRect(0, 0, W, H);                                         // led mimo dráhu
     g.fillStyle = '#e8eef5'; g.fillRect(X(C.HACK - 8), Y(C.HW), (C.BACK + 8 - C.HACK + 2) * ppf, 2 * C.HW * ppf);   // dráha
+    this.gtile(g, 'gfx/curl-ice.jpg', 16, ppf, W, H, 1);   // kropený led
     for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(255,255,255,${0.15 + rnd() * 0.25})`; g.beginPath(); g.arc(X(C.HACK - 8 + rnd() * (C.BACK - C.HACK + 16)), Y((rnd() * 2 - 1) * C.HW), 0.12 * ppf, 0, TAU); g.fill(); }   // kapičky („pebble")
     const ring = (x, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(X(x), Y(0), r * ppf, 0, TAU); g.fill(); };
     for (const x of [C.TEE, -C.TEE]) { ring(x, 6, '#1d5fc4'); ring(x, 4, '#e8eef5'); ring(x, 2, '#d12a2a'); ring(x, 0.5, '#e8eef5'); }
@@ -971,6 +1005,7 @@ const G3 = {
     if (fb) this.paintPitch(); else this.paintIce();
     this.setReflector(q.refl && sport === 'hockey'); this.wearMesh.visible = q.wear && sport === 'hockey'; this.clearWear();
     this.ice.visible = !fb; this.pitch && (this.pitch.visible = fb);
+    if (this.adPaint) this.adPaint();
     this.zoomMul = sport === 'football' ? 0.74 : 1; if (this.off) this.setView();   // fotbalisté jsou menší (větší hřiště), kamera o to blíž
     if (this.ball) this.ball.scale.setScalar(sport === 'football' ? 0.68 : 1);
   },
@@ -1091,6 +1126,7 @@ float wH(vec2 p) {
       const x = rnd() * W, y = rnd() * H, r = (2 + rnd() * 7) * ppf, q = g.createRadialGradient(x, y, 0, x, y, r);
       q.addColorStop(0, `rgba(190,235,255,${0.05 + rnd() * 0.09})`); q.addColorStop(1, 'rgba(190,235,255,0)'); g.fillStyle = q; g.fillRect(x - r, y - r, 2 * r, 2 * r);
     }
+    this.gtile(g, 'gfx/pool.jpg', 44, ppf, W, H, 0.55);   // dlaždice na dně
     g.fillStyle = 'rgba(8,40,80,0.35)';                                                           // hloubka mimo hřiště
     g.fillRect(0, 0, X(-GX), H); g.fillRect(X(GX), 0, W, H); g.fillRect(0, 0, W, Y(HW)); g.fillRect(0, Y(-HW), W, H);
     // plovoucí lana kolem hřiště: bílá, u branek červená (2 m) a žlutá (5 m)
@@ -1433,6 +1469,8 @@ float wH(vec2 p) {
   },
   buildModels(g) {
     this.crowdColors(g);
+    const ha = g.teams && g.teams[0].def ? g.teams[0].def.abbr : null;
+    if (ha !== this.homeAbbr) { this.homeAbbr = ha; if (this.sportOn === 'hockey' && this.iceMat) this.paintIce(); }   // logo domácích ve středovém kruhu
     for (const m of this.modelMap.values()) m.dispose();
     this.modelMap = new Map(); this.modelGame = g;
   },

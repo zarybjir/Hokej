@@ -6,6 +6,8 @@ const ASSIST_HINT = 'ČÁSTEČNÁ: přepíná na hráče u puku, přesnější s
 const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.25];
 // sporty v hlavním menu (pořadí = pořadí položek)
 const SPORTS = [['football', 'FOTBAL'], ['hockey', 'HOKEJ'], ['polo', 'VODNÍ PÓLO'], ['curling', 'CURLING']];
+// který odznak z atlasu gfx/ach.jpg patří ke které výzvě
+const ACH_ICON = { goal: 0, hat: 1, win: 7, wins10: 23, shut: 9, hard: 10, legend: 2, comeback: 8, pp: 4, sh: 16, en: 17, sixer: 21, ot: 5, ot1: 20, tip: 3, hit: 14, so: 11, soGoal: 18, soSave: 13, three: 22, practice: 12, zam: 15, champ: 19, cup: 6 };
 const WEATHER = ['off', 'moles', 'rain', 'rainmoles', 'random'];
 const PRACTICE = [['shoot', 'STŘELBA A PŘIHRÁVKY', 'Celá formace proti brankáři, bez soupeřů a bez času. Po gólu nebo zákroku dostaneš puk znovu.'],
   ['pp', 'PŘESILOVKA 5 NA 4', 'Útočíš v pásmu proti čtyřem bránícím. Když puk vyjede z pásma, začíná se znovu.'],
@@ -392,8 +394,12 @@ const App = {
       R.panel(x, y, 590, 46, got ? 0.92 : 0.5);
       if (got) { ctx.fillStyle = ACC; ctx.fillRect(x, y, 5, 46); }
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.font = font(17); ctx.fillStyle = got ? ACC : '#8a93a6'; ctx.fillText((got ? '★ ' : '☆ ') + name, x + 16, y + 15);
-      ctx.font = font(12, 'bold'); ctx.fillStyle = got ? '#fff' : '#8a93a6'; ctx.fillText(desc, x + 16, y + 34);
+      // odznak z gfx/ach.jpg (atlas 6×4); nesplněný je ztlumený
+      if (!this.achImg) { this.achImg = new Image(); this.achImg.src = 'gfx/ach.jpg'; }
+      const ic = ACH_ICON[id], io = this.achImg.complete && this.achImg.naturalWidth && ic != null ? 40 : 0;
+      if (io) { ctx.save(); ctx.globalAlpha = got ? 1 : 0.5; ctx.beginPath(); ctx.arc(x + 30, y + 23, 19, 0, TAU); ctx.clip(); ctx.drawImage(this.achImg, (ic % 6) * 128 + 6, Math.floor(ic / 6) * 128 + 6, 116, 116, x + 11, y + 4, 38, 38); ctx.restore(); }
+      ctx.font = font(17); ctx.fillStyle = got ? ACC : '#8a93a6'; ctx.fillText((io ? '' : got ? '★ ' : '☆ ') + name, x + 16 + io, y + 15);
+      ctx.font = font(12, 'bold'); ctx.fillStyle = got ? '#fff' : '#8a93a6'; ctx.fillText(desc, x + 16 + io, y + 34);
     });
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.textAlign = 'center'; ctx.fillText('A / B zpět', R.W / 2, 786);
   },

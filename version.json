@@ -1,9 +1,11 @@
 {
-  "build": 96,
-  "version": "1.96",
-  "date": "2026-11-25",
+  "build": 97,
+  "version": "1.97",
+  "date": "2026-11-27",
   "notes": [
-    "Výška a váha hráčů je vidět na ledě: vyšší hráč je znatelně větší, těžší mohutnější",
-    "V základních sestavách při nástupu jsou u hráčů centimetry a kilogramy"
+    "Diváci jsou postavy v barvách týmů místo kuželek",
+    "V ledu jsou reklamy a ve středovém kruhu logo domácích",
+    "Při nástupu kostka s logy týmů, odznaky u výzev, obličeje hráčů",
+    "Fotbal má vlastní reklamy, bazén dlaždice, curling kropený led"
   ]
 }

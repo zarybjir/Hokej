@@ -427,8 +427,19 @@ const R = {
     ctx.fillStyle = pc >= 90 ? '#7dff8a' : '#ffd21f'; ctx.fillRect(x + 20, y + 44, (w - 40) * pc / 100, 8);
     LED.text(ctx, 'PÁČKA = ŘÍZENÍ   B = HOTOVO', this.W / 2, y + 70, 2, { align: 'center', color: '#bfc6d6' });
   },
+  // kostka nad ledem (gfx/jumbo.png) při nástupu: loga obou týmů a jména měst
+  drawJumbo(g) {
+    if (!this.jumbo) { this.jumbo = new Image(); this.jumbo.src = 'gfx/jumbo.png'; }
+    const im = this.jumbo; if (!im.complete || !im.naturalWidth) return;
+    const ctx = this.ctx, k = clamp(g.stateT / 0.5, 0, 1) * clamp((4.4 - g.stateT) / 0.5, 0, 1), w = 430, h = w * im.naturalHeight / im.naturalWidth, x = this.W / 2 - w / 2, y = 56 - (1 - k) * (h + 80), [A, B] = g.teams;
+    ctx.drawImage(im, x, y, w, h);
+    for (const [T, cx] of [[A, 0.3], [B, 0.7]]) { ctx.save(); ctx.translate(x + w * cx, y + h * 0.45); drawEmblem(ctx, T.def, 104); ctx.restore(); }
+    LED.text(ctx, 'VS', x + w / 2, y + h * 0.45, 3, { align: 'center', color: '#ffd21f' });
+    LED.text(ctx, A.def.city.toUpperCase() + '  –  ' + B.def.city.toUpperCase(), x + w / 2, y + h * 0.93, 2, { align: 'center', color: '#9fe3ff' });
+  },
   // nástup: základní sestavy obou týmů
   drawLineups(g) {
+    this.drawJumbo(g);
     const ctx = this.ctx, k = clamp(g.stateT / 0.5, 0, 1) * clamp((4.4 - g.stateT) / 0.5, 0, 1), w = 470, h = 214;
     g.teams.forEach((T, i) => {
       const x = i ? this.W - 20 - w + (1 - k) * 380 : 20 - (1 - k) * 380, y = this.H - h - 70;

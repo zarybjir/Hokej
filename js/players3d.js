@@ -125,6 +125,8 @@ const BODY_FRAG_HEAD = `
 uniform vec3 uJersey, uStripe, uTrim, uPants, uGlove, uSkin, uSock;
 uniform sampler2D uNum;
 uniform sampler2D uFab;
+uniform sampler2D uFace;
+uniform vec3 uFaceC;
 uniform float uRef, uStyle, uYoke, uHasMap, uKit, uHem;
 varying vec3 vPos;
 varying float vArm;
@@ -174,7 +176,17 @@ const BODY_FRAG = `
       vec4 t = texture2D(uNum, vec2(st.x * 0.5, 0.11 + clamp(st.y, 0.0, 1.0) * 0.6));
       c = mix(c, t.rgb, t.a * step(0.0, st.y) * step(st.y, 1.0));
     }
-  } else if (y > 1.535 && ax < 0.15) c = uHasMap > 0.5 ? diffuseColor.rgb : uSkin;
+  } else if (y > 1.535 && ax < 0.15) {
+    c = uHasMap > 0.5 ? diffuseColor.rgb : uSkin;
+    // obličej z atlasu gfx/faces.jpg (5×3) promítnutý zepředu na hlavu; uFaceC = sloupec, řádek, zapnuto
+    if (uFaceC.z > 0.5 && vPos.z > 0.0) {
+      vec2 fu = vec2(0.5 + vPos.x / 0.24, (y - 1.545) / 0.27);
+      if (fu.x > 0.0 && fu.x < 1.0 && fu.y > 0.0 && fu.y < 1.0) {
+        vec3 fc = texture2D(uFace, vec2((uFaceC.x + 0.16 + fu.x * 0.68) / 5.0, (2.0 - uFaceC.y + 0.2 + fu.y * 0.72) / 3.0)).rgb;
+        if (min(fc.r, min(fc.g, fc.b)) < 0.88) c = mix(c, fc, smoothstep(0.0, 0.05, vPos.z));
+      }
+    }
+  }
   else if (y > 1.5 && ax < 0.08) c = vec3(0.06);     // chránič krku
   else if (y > 0.99 && uRef > 0.5) {
     c = fract(atan(vPos.x, vPos.z) / 6.2832 * 14.0) < 0.5 ? uJersey : uStripe;
@@ -238,6 +250,8 @@ function fabricTex() {
   const im = new Image(); im.onload = () => { _fabTex.dispose(); _fabTex.image = im; _fabTex.needsUpdate = true; }; im.src = 'gfx/fabric.jpg';   // dispose: jiná velikost než zástupná textura
   return _fabTex;
 }
+let _faceTex = null;
+function faceTex() { if (!_faceTex) { _faceTex = new THREE.TextureLoader().load('gfx/faces.jpg'); _faceTex.colorSpace = THREE.SRGBColorSpace; } return _faceTex; }
 function bodyMaterial(T, p) {
   const [c, g] = mkCanvas(1024, 640);
   if (p.isRef) return bodyMaterialFinish(T, p, c, true);
@@ -265,13 +279,14 @@ function bodyMaterialFinish(T, p, c, ref) {
   const tex = canvasTex(c, true, 4);
   const trim = T.trim || '#ffffff';
   const col = (h) => new THREE.Color(h);
+  let fh = 7; for (const ch of String(p.name) + p.num) fh = (fh * 31 + ch.charCodeAt(0)) >>> 0; fh %= 15;   // který obličej z atlasu
   const idx = TEAMS.indexOf(T.def), kit = SPORT === 'hockey' && T.def ? KITS[T.def.abbr] : null;
   const m = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0 });
   m.userData.uniforms = {
     uInfl: { value: (p.isGoalie && SPORT === 'hockey' ? 1.55 : 1) * (p.kg && p.cm && !ref ? clamp(1 + ((p.kg / 88) / (p.cm / 184) - 1) * 2.4, 0.55, 1.7) : 1) },   // mohutnost podle váhy vůči výšce uFoot: { value: SPORT !== 'hockey' ? 1 : 0 }, uKit: { value: SPORT === 'football' ? 1 : SPORT === 'polo' ? 2 : 0 },
     uJersey: { value: col(T.jersey) }, uStripe: { value: col(T.stripe) }, uTrim: { value: col(trim) },
     uPants: { value: col(T.pants) }, uGlove: { value: col(ref ? '#d6a184' : SPORT === 'polo' || SPORT === 'curling' ? '#d6a184' : p.isGoalie ? '#f2f2f2' : SPORT === 'football' ? '#d6a184' : (T.helmet === T.jersey ? T.pants : T.helmet)) },
-    uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex }, uFab: { value: fabricTex() },
+    uSkin: { value: col('#d6a184') }, uSock: { value: col(ref ? '#111111' : T.jersey) }, uNum: { value: tex }, uFab: { value: fabricTex() }, uFace: { value: faceTex() }, uFaceC: { value: new THREE.Vector3(fh % 5, Math.floor(fh / 5) % 3, ref ? 0 : 1) },
     uRef: { value: ref ? (p.kind === 'R' ? 2 : 1) : 0 },
     uHasMap: { value: 0 },
     uStyle: { value: ref ? 0 : kit ? kit.style : (idx < 0 ? 0 : idx % 4) }, uYoke: { value: ref ? 0 : kit ? kit.yoke : (idx < 0 ? 1 : (idx * 7 % 3 ? 1 : 0)) }, uHem: { value: !ref && kit && kit.hem ? 1 : 0 },
