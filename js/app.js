@@ -121,8 +121,11 @@ const App = {
       }
       case 'roster': {
         const d = this.lr(dt);
+        if (this.cardOn) { if (M.pressed('a') || M.pressed('b') || M.pressed('x') || M.pressed('y')) { this.cardOn = false; Sfx.stick(0.4); } break; }   // karta hráče
         if (d) { this.rosterTeam = (this.rosterTeam + d + TEAMS.length) % TEAMS.length; Sfx.stick(0.4); }
-        if (M.pressed('a') || M.pressed('b') || M.pressed('y')) this.go('setup', this.rosterFrom || 0);
+        this.menuMove(0, 17, dt);
+        if (M.pressed('a') || M.pressed('x')) { this.cardOn = true; Sfx.stick(0.6); }
+        else if (M.pressed('b') || M.pressed('y')) this.go('setup', this.rosterFrom || 0);
         break;
       }
       case 'ctrl': {
@@ -492,8 +495,9 @@ const App = {
     ctx.textBaseline = 'middle';
     head.forEach((h, i) => { ctx.font = font(13, 'bold'); ctx.fillStyle = '#8fa6c8'; ctx.textAlign = i >= 3 ? 'center' : 'left'; ctx.fillText(h, x0 + cols[i] + (i >= 3 ? 30 : 0), 88); });
     const col = (v) => (v >= 85 ? '#4cff7a' : v >= 75 ? '#ffffff' : v >= 65 ? ACC : '#ff9a3a');
-    let y = 112;
+    let y = 112, rn = 0, selP = null;
     const row = (p, vals) => {
+      if (rn++ === this.sel) { selP = p; R.sel(x0 - 12, y - 12, 964, 24); }
       ctx.font = font(14, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(p.role === 'G' ? 'G' : p.role, x0 + cols[0], y);
       ctx.fillStyle = ACC; ctx.fillText(String(p.num), x0 + cols[1], y);
       drawFlag(ctx, natOf(p), x0 + cols[2], y - 7, 20, 13); ctx.fillStyle = '#fff'; ctx.fillText(p.first + ' ' + p.name, x0 + cols[2] + 26, y); if (p.kg) { const w = ctx.measureText(p.first + ' ' + p.name).width; ctx.save(); ctx.font = font(12, 'bold'); ctx.fillStyle = '#8a93a6'; ctx.fillText(p.cm + ' cm · ' + p.kg + ' kg', x0 + cols[2] + 26 + w + 12, y); const tr = traitOf(p); if (tr) { ctx.fillStyle = ACC; ctx.fillText('★ ' + TRAITS[tr], x0 + cols[2] + 26 + w + 110, y); } ctx.restore(); }
@@ -511,7 +515,37 @@ const App = {
     ctx.font = font(15); ctx.textAlign = 'left'; ctx.fillStyle = ACC; ctx.fillText('BRANKÁŘI  (REFLEXY / POHYB / STAMINA)', x0, y); y += 24;
     Rr.goalies.forEach((p, k) => row(p, [p.at.REF, p.at.RYC, null, p.at.STA, k === 0 ? p.at.REF : null]));
     ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'center';
-    ctx.fillText(`TÝM: SÍLA ${RT.SIL}  RYCHLOST ${RT.RYC}  PŘESNOST ${RT.PRE}  STAMINA ${RT.STA}  BRANKÁŘ ${RT.REF}   •   ◄► jiný tým   A/B zpět`, R.W / 2, 776);
+    ctx.fillText(`TÝM: SÍLA ${RT.SIL}  RYCHLOST ${RT.RYC}  PŘESNOST ${RT.PRE}  STAMINA ${RT.STA}  BRANKÁŘ ${RT.REF}   •   ◄► jiný tým   ↑↓ hráč   A karta hráče   B zpět`, R.W / 2, 776);
+    if (this.cardOn && selP) this.drawCard(selP, T, Rr);
+  },
+  // karta hráče: míry, typ hráče a vlastnosti s porovnáním proti průměru týmu
+  drawCard(p, T, Rr) {
+    const ctx = R.ctx, G = p.role === 'G', a = p.at, w = 860, h = 470, x = R.W / 2 - w / 2, y = 150;
+    ctx.fillStyle = 'rgba(4,8,16,0.8)'; ctx.fillRect(0, 0, R.W, R.H);
+    R.panel(x, y, w, h, 0.97); ctx.fillStyle = T.c1; ctx.fillRect(x, y, w, 6);
+    ctx.save(); ctx.translate(x + 70, y + 74); drawEmblem(ctx, T, 96); ctx.restore();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.font = font(13, 'bold'); ctx.fillStyle = '#8fa6c8'; ctx.fillText(ROLE_NAMES[p.role].toUpperCase() + '  •  ' + (p.line != null && !G ? (p.line + 1) + '. FORMACE' : T.city.toUpperCase()), x + 136, y + 40);
+    ctx.font = font(40); ctx.fillStyle = '#fff'; ctx.fillText('#' + p.num + '  ' + (p.first + ' ' + p.name).toUpperCase(), x + 136, y + 76);
+    drawFlag(ctx, natOf(p), x + w - 70, y + 30, 40, 26);
+    [[p.cm + ' CM', 'VÝŠKA'], [p.kg + ' KG', 'VÁHA'], [G ? 'LAPAČKA ' + (p.hand > 0 ? 'VLEVO' : 'VPRAVO') : 'HŮL ' + (p.hand > 0 ? 'VLEVO' : 'VPRAVO'), 'DRŽENÍ']].forEach(([v, l], i) => {
+      const bx = x + 136 + i * 210; R.panel(bx, y + 108, 196, 46, 0.6); ctx.font = font(11, 'bold'); ctx.fillStyle = '#8fa6c8'; ctx.textAlign = 'left'; ctx.fillText(l, bx + 12, y + 121); ctx.font = font(20); ctx.fillStyle = '#fff'; ctx.fillText(v, bx + 12, y + 140);
+    });
+    const tr = traitOf(p);
+    if (tr) { R.panel(x + 24, y + 176, w - 48, 44, 0.75); ctx.fillStyle = '#ffd21f'; ctx.fillRect(x + 24, y + 176, 5, 44); ctx.font = font(12, 'bold'); ctx.fillStyle = '#8fa6c8'; ctx.fillText('TYP HRÁČE', x + 42, y + 189); ctx.font = font(19); ctx.fillStyle = '#ffd21f'; ctx.fillText('◆ ' + TRAITS[tr], x + 42, y + 208); ctx.font = font(14, 'bold'); ctx.fillStyle = '#cfd8ea'; ctx.fillText(TRAIT_HINT[tr], x + 300, y + 200); }
+    // vlastnosti: hodnota, pruh a rozdíl proti průměru spoluhráčů (zeleně lepší, červeně horší)
+    const mates = G ? Rr.goalies : Rr.lines.flat(), avg = (f) => mates.reduce((q, m) => q + f(m), 0) / mates.length, reach = (m) => clamp(75 + ((m.cm || 185) - 185) * 1.2, 40, 99), mass = (m) => clamp(75 + ((m.kg || 88) - 88) * 0.9, 40, 99);
+    const rows = G ? [['REFLEXY', (m) => m.at.REF], ['POHYB V BRANCE', (m) => m.at.RYC], ['VÝDRŽ', (m) => m.at.STA], ['POKRYTÍ BRANKY', reach]]
+      : [['SÍLA STŘELY', (m) => m.at.SIL], ['PŘESNOST STŘELY', (m) => m.at.PRE], ['PŘIHRÁVKY', (m) => m.at.PRE], ['RYCHLOST', (m) => m.at.RYC], ['OBRATNOST', (m) => (m.at.RYC + m.at.PRE) / 2], ['VÝDRŽ', (m) => m.at.STA], ['BODYČEK A SOUBOJE', (m) => (m.at.SIL + mass(m)) / 2], ['DOSAH HOLE', reach]];
+    rows.forEach(([name, f], i) => {
+      const cx = x + 24 + (i % 2) * 412, cy = y + 250 + Math.floor(i / 2) * 50, v = Math.round(f(p)), d = Math.round(v - avg(f));
+      ctx.font = font(13, 'bold'); ctx.textAlign = 'left'; ctx.fillStyle = '#cfd8ea'; ctx.fillText(name, cx, cy);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cx, cy + 14, 300, 8); ctx.fillStyle = v >= 85 ? '#4cff7a' : v >= 75 ? '#ffffff' : v >= 65 ? ACC : '#ff9a3a'; ctx.fillRect(cx, cy + 14, 300 * clamp((v - 40) / 59, 0, 1), 8);
+      ctx.fillStyle = '#fff'; ctx.fillRect(cx + 300 * clamp((avg(f) - 40) / 59, 0, 1) - 1, cy + 11, 2, 14);   // průměr týmu
+      ctx.font = font(20); ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; ctx.fillText(String(v), cx + 392, cy + 10);
+      if (d) { ctx.fillStyle = d > 0 ? '#1f9c46' : '#c8362f'; ctx.fillRect(cx + 308, cy - 1, 38, 22); ctx.font = font(13, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText((d > 0 ? '+' : '') + d, cx + 327, cy + 10); }
+    });
+    ctx.font = font(13, 'bold'); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.textAlign = 'center'; ctx.fillText('bílá ryska = průměr týmu   •   A / B zavřít', R.W / 2, y + h - 16);
   },
   drawCtrl() {
     const ctx = R.ctx, S = Settings.data;

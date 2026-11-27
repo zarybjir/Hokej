@@ -1,8 +1,9 @@
 {
-  "build": 98,
-  "version": "1.98",
+  "build": 99,
+  "version": "1.99",
   "date": "2026-11-27",
   "notes": [
-    "Nové kolečko pod ovládaným hráčem: tenký kruh s ukazatelem výdrže přímo u hráče"
+    "Karta hráče v soupisce: míry, typ hráče a vlastnosti s porovnáním proti průměru týmu",
+    "V soupisce se dá šipkami vybrat hráč, A otevře jeho kartu"
   ]
 }
