@@ -1311,20 +1311,30 @@ float wH(vec2 p) {
     this.puck.castShadow = true; this.scene.add(this.puck);
   },
   buildRings() {
-    // tenký kruh na ledě pod ovládaným hráčem, dole (směrem ke kameře) přerušený; v mezeře oblouk výdrže
-    const flat = (r0, r1, a0, len, mat) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 40, 1, a0, len).rotateX(-Math.PI / 2), mat); m.renderOrder = 2; return m; };
-    const bm = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
-    const A = -Math.PI / 2, G = 0.72, NS = 14;
+    // kruh pod ovládaným hráčem a oblouk výdrže kreslí shader na jedné plošce: hladké hrany a zaoblené konce v každém přiblížení.
+    // Kruh je dole (směrem ke kameře) přerušený, v mezeře je ukazatel výdrže.
+    const geo = new THREE.PlaneGeometry(6.6, 6.6).rotateX(-Math.PI / 2);
     this.rings = HUMAN_COLORS.map((c) => {
-      const grp = new THREE.Group();
-      grp.add(flat(2.0, 2.16, A + G, TAU - 2 * G, bm(c, 0.95)), flat(2.16, 2.3, A + G, TAU - 2 * G, bm(c, 0.25)));
-      grp.add(flat(2.42, 2.86, A - G + 0.06, 2 * G - 0.12, bm(0x10141c, 0.8)));   // podklad ukazatele výdrže
-      const fm = bm(0x3ddc5a, 1), seg = (2 * G - 0.2) / NS;
-      grp.userData = { fm, segs: Array.from({ length: NS }, (_, i) => { const m = flat(2.5, 2.78, A - G + 0.1 + i * seg, seg * 0.98, fm); m.position.y = 0.01; grp.add(m); return m; }) };
-      grp.visible = false; this.scene.add(grp);
-      return grp;
+      const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uCol: { value: new THREE.Color(c) }, uSt: { value: 1 }, uFill: { value: new THREE.Color(0x3ddc5a) } },
+        vertexShader: 'varying vec2 vP; void main() { vP = (uv - 0.5) * 6.6; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `uniform vec3 uCol, uFill; uniform float uSt; varying vec2 vP;
+          // vzdálenost od oblouku o poloměru R se středem v úhlu c (0 = dole) a polovičním rozpětím h, se zaoblenými konci
+          float arc(vec2 p, float R, float c, float h) { float a = atan(p.x, -p.y) - c; a = atan(sin(a), cos(a)); if (abs(a) < h) return abs(length(p) - R); float e = c + sign(a) * h; return length(p - R * vec2(sin(e), -cos(e))); }
+          void main() {
+            float G = 0.74, A = 0.62, aa = fwidth(vP.x) * 1.2;
+            float dr = arc(vP, 2.08, 3.14159, 3.14159 - G), ring = 1.0 - smoothstep(0.075 - aa, 0.075 + aa, dr), glow = (1.0 - smoothstep(0.075, 0.42, dr)) * 0.22;
+            float dt = arc(vP, 2.66, 0.0, A), track = 1.0 - smoothstep(0.2 - aa, 0.2 + aa, dt);
+            float h = A * clamp(uSt, 0.0, 1.0), df = arc(vP, 2.66, -A + h, h), fill = (1.0 - smoothstep(0.125 - aa, 0.125 + aa, df)) * step(0.004, uSt);
+            vec3 col = uCol; float al = max(ring, glow);
+            col = mix(col, vec3(0.04, 0.05, 0.07), track); al = max(al, track * 0.82);
+            col = mix(col, uFill * (0.85 + 0.3 * smoothstep(0.125, 0.0, df)), fill); al = max(al, fill);
+            if (al < 0.01) discard; gl_FragColor = vec4(col, al);
+          }` });
+      const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.visible = false; this.scene.add(m);
+      return m;
     });
   },
+
 
   buildGoalLights() {
     this.gLights = [-1, 1].map((sN) => {
@@ -1519,8 +1529,8 @@ float wH(vec2 p) {
       }
     }
     const used = new Set();
-    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl], k = this.sportOn === 'football' ? 0.66 : 1, st = p.stamina == null ? 1 : p.stamina, U = m.userData; m.position.set(p.x, 0.04, -p.y); m.rotation.y = Math.atan2(-VIEW.fx, VIEW.fy); m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl);
-      U.segs.forEach((q, i) => { q.visible = st > (i + 0.5) / U.segs.length; }); U.fm.color.set(st > 0.5 ? 0x3ddc5a : st > 0.25 ? 0xffc21f : 0xff4a3a); }   // výdrž: zelená → žlutá → červená
+    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl], k = this.sportOn === 'football' ? 0.66 : 1, st = p.stamina == null ? 1 : p.stamina, U = m.material.uniforms; m.position.set(p.x, 0.04, -p.y); m.rotation.y = Math.atan2(-VIEW.fx, VIEW.fy); m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl);
+      U.uSt.value = st; U.uFill.value.set(st > 0.5 ? 0x3ddc5a : st > 0.25 ? 0xffc21f : 0xff4a3a); }   // výdrž: zelená → žlutá → červená
     this.rings.forEach((m, i) => { if (!used.has(i)) m.visible = false; });
     for (const L of this.gLights) {
       const on = g && g.goalLight === L.sN && g.goalLightT > 0 && Math.floor(t * 6) % 2 === 0;

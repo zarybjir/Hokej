@@ -1,9 +1,8 @@
 {
-  "build": 99,
-  "version": "1.99",
+  "build": 100,
+  "version": "2.00",
   "date": "2026-11-27",
   "notes": [
-    "Karta hráče v soupisce: míry, typ hráče a vlastnosti s porovnáním proti průměru týmu",
-    "V soupisce se dá šipkami vybrat hráč, A otevře jeho kartu"
+    "Ukazatel výdrže u hráče je hladký oblouk se zaoblenými konci místo hranatých dílků"
   ]
 }
