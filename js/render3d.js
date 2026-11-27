@@ -1307,7 +1307,14 @@ float wH(vec2 p) {
     a.needsUpdate = true;
   },
   buildPuck() {
-    this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.45 }));
+    // puk: menší (blíž skutečnému poměru k čepeli), vroubkovaný bok, na horní ploše světlejší hrana a znak, ať je čitelný i na tmavém podkladu
+    const [tc, tg] = mkCanvas(128, 128), [sc, sg] = mkCanvas(256, 16);
+    tg.fillStyle = '#3b3d44'; tg.fillRect(0, 0, 128, 128); tg.fillStyle = '#0d0d10'; tg.beginPath(); tg.arc(64, 64, 57, 0, TAU); tg.fill();
+    tg.strokeStyle = '#2b2d34'; tg.lineWidth = 3; tg.beginPath(); tg.arc(64, 64, 44, 0, TAU); tg.stroke();
+    tg.fillStyle = '#c9ced8'; tg.font = 'italic 900 34px "Arial Black","DejaVu Sans",sans-serif'; tg.textAlign = 'center'; tg.textBaseline = 'middle'; tg.fillText("'98", 64, 66);
+    sg.fillStyle = '#0c0c0e'; sg.fillRect(0, 0, 256, 16); sg.fillStyle = '#26272c'; for (let i = 0; i < 256; i += 4) sg.fillRect(i, 3, 2, 10);
+    const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.5, ...o }), top = std({ map: canvasTex(tc, true, 4) });
+    this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.11, 28), [std({ map: canvasTex(sc, true, 4) }), top, top]);
     this.puck.castShadow = true; this.scene.add(this.puck);
   },
   buildRings() {
@@ -1321,13 +1328,19 @@ float wH(vec2 p) {
           // vzdálenost od oblouku o poloměru R se středem v úhlu c (0 = dole) a polovičním rozpětím h, se zaoblenými konci
           float arc(vec2 p, float R, float c, float h) { float a = atan(p.x, -p.y) - c; a = atan(sin(a), cos(a)); if (abs(a) < h) return abs(length(p) - R); float e = c + sign(a) * h; return length(p - R * vec2(sin(e), -cos(e))); }
           void main() {
-            float G = 0.74, A = 0.62, aa = fwidth(vP.x) * 1.2;
-            float dr = arc(vP, 2.08, 3.14159, 3.14159 - G), ring = 1.0 - smoothstep(0.075 - aa, 0.075 + aa, dr), glow = (1.0 - smoothstep(0.075, 0.42, dr)) * 0.22;
-            float dt = arc(vP, 2.66, 0.0, A), track = 1.0 - smoothstep(0.2 - aa, 0.2 + aa, dt);
-            float h = A * clamp(uSt, 0.0, 1.0), df = arc(vP, 2.66, -A + h, h), fill = (1.0 - smoothstep(0.125 - aa, 0.125 + aa, df)) * step(0.004, uSt);
-            vec3 col = uCol; float al = max(ring, glow);
-            col = mix(col, vec3(0.04, 0.05, 0.07), track); al = max(al, track * 0.82);
-            col = mix(col, uFill * (0.85 + 0.3 * smoothstep(0.125, 0.0, df)), fill); al = max(al, fill);
+            float G = 0.78, A = 0.64, aa = fwidth(vP.x) * 1.2, ang = atan(vP.x, -vP.y);
+            // kruh: čtyři tenké šedé segmenty s přechodem (světlejší vzadu), kolem měkký stín
+            float seg = (6.28318 - 2.0 * G) / 4.0, dr = 9.0;
+            for (int i = 0; i < 4; i++) dr = min(dr, arc(vP, 2.08, G + (float(i) + 0.5) * seg, seg * 0.5 - 0.075));
+            float ring = 1.0 - smoothstep(0.06 - aa, 0.06 + aa, dr), shadow = (1.0 - smoothstep(0.02, 0.62, dr)) * 0.55;
+            vec3 grey = mix(vec3(0.2, 0.22, 0.27), vec3(0.72, 0.75, 0.8), 0.5 - 0.5 * cos(ang)) * (0.9 + 0.1 * smoothstep(0.05, 0.0, dr));
+            vec3 col = mix(vec3(0.02, 0.03, 0.05), mix(grey, uCol, 0.22), ring); float al = max(ring, shadow);
+            // výdrž: šest zaoblených dílků, poslední se plní plynule
+            float n = 6.0, sl = 2.0 * A / n, hs = sl * 0.5 - 0.045, dt = 9.0, df = 9.0;
+            for (int i = 0; i < 6; i++) { float c0 = -A + (float(i) + 0.5) * sl, f = clamp(uSt * n - float(i), 0.0, 1.0); dt = min(dt, arc(vP, 2.66, c0, hs)); if (f > 0.02) df = min(df, arc(vP, 2.66, c0 - hs + hs * f, hs * f)); }
+            float track = 1.0 - smoothstep(0.17 - aa, 0.17 + aa, dt), tsh = (1.0 - smoothstep(0.15, 0.5, dt)) * 0.3, fill = 1.0 - smoothstep(0.115 - aa, 0.115 + aa, df);
+            col = mix(col, vec3(0.03, 0.04, 0.06), max(track, step(al, tsh))); al = max(al, max(track * 0.88, tsh));
+            col = mix(col, uFill * (0.8 + 0.35 * smoothstep(0.115, 0.0, df)), fill); al = max(al, fill);
             if (al < 0.01) discard; gl_FragColor = vec4(col, al);
           }` });
       const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.visible = false; this.scene.add(m);

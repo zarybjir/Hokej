@@ -1,8 +1,10 @@
 {
-  "build": 100,
-  "version": "2.00",
+  "build": 101,
+  "version": "2.01",
   "date": "2026-11-27",
   "notes": [
-    "Ukazatel výdrže u hráče je hladký oblouk se zaoblenými konci místo hranatých dílků"
+    "Kolečko pod hráčem: čtyři tenké šedé segmenty s přechodem a stínem",
+    "Ukazatel výdrže má šest zaoblených dílků",
+    "Puk je menší, má vroubkovaný bok a znak; při vedení leží uprostřed čepele"
   ]
 }
