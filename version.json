@@ -1,10 +1,9 @@
 {
-  "build": 101,
-  "version": "2.01",
+  "build": 102,
+  "version": "2.02",
   "date": "2026-11-27",
   "notes": [
-    "Kolečko pod hráčem: čtyři tenké šedé segmenty s přechodem a stínem",
-    "Ukazatel výdrže má šest zaoblených dílků",
-    "Puk je menší, má vroubkovaný bok a znak; při vedení leží uprostřed čepele"
+    "Čepel hokejky se puku dotýká zezadu a nepřekrývá ho",
+    "Kolečko pod hráčem je čistě šedé"
   ]
 }

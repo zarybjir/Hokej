@@ -1333,8 +1333,8 @@ float wH(vec2 p) {
             float seg = (6.28318 - 2.0 * G) / 4.0, dr = 9.0;
             for (int i = 0; i < 4; i++) dr = min(dr, arc(vP, 2.08, G + (float(i) + 0.5) * seg, seg * 0.5 - 0.075));
             float ring = 1.0 - smoothstep(0.06 - aa, 0.06 + aa, dr), shadow = (1.0 - smoothstep(0.02, 0.62, dr)) * 0.55;
-            vec3 grey = mix(vec3(0.2, 0.22, 0.27), vec3(0.72, 0.75, 0.8), 0.5 - 0.5 * cos(ang)) * (0.9 + 0.1 * smoothstep(0.05, 0.0, dr));
-            vec3 col = mix(vec3(0.02, 0.03, 0.05), mix(grey, uCol, 0.22), ring); float al = max(ring, shadow);
+            vec3 grey = mix(vec3(0.24, 0.25, 0.27), vec3(0.74, 0.75, 0.77), 0.5 - 0.5 * cos(ang)) * (0.9 + 0.1 * smoothstep(0.05, 0.0, dr));
+            vec3 col = mix(vec3(0.02, 0.03, 0.05), grey, ring); float al = max(ring, shadow);
             // výdrž: šest zaoblených dílků, poslední se plní plynule
             float n = 6.0, sl = 2.0 * A / n, hs = sl * 0.5 - 0.045, dt = 9.0, df = 9.0;
             for (int i = 0; i < 6; i++) { float c0 = -A + (float(i) + 0.5) * sl, f = clamp(uSt * n - float(i), 0.0, 1.0); dt = min(dt, arc(vP, 2.66, c0, hs)); if (f > 0.02) df = min(df, arc(vP, 2.66, c0 - hs + hs * f, hs * f)); }
