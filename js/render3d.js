@@ -1311,23 +1311,21 @@ float wH(vec2 p) {
     this.puck.castShadow = true; this.scene.add(this.puck);
   },
   buildRings() {
-    // rozsegmentovaný kruh na ledě pod aktivním hráčem
-    const N = 4, gap = 0.45;
+    // tenký kruh na ledě pod ovládaným hráčem, dole (směrem ke kameře) přerušený; v mezeře oblouk výdrže
+    const flat = (r0, r1, a0, len, mat) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 40, 1, a0, len).rotateX(-Math.PI / 2), mat); m.renderOrder = 2; return m; };
+    const bm = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+    const A = -Math.PI / 2, G = 0.72, NS = 14;
     this.rings = HUMAN_COLORS.map((c) => {
       const grp = new THREE.Group();
-      const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
-      const inner = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
-      for (let i = 0; i < N; i++) {
-        const a0 = (i / N) * TAU + gap / 2, len = TAU / N - gap;
-        const seg = new THREE.Mesh(new THREE.RingGeometry(1.85, 2.3, 8, 1, a0, len).rotateX(-Math.PI / 2), mat);
-        seg.renderOrder = 2; grp.add(seg);
-        const tick = new THREE.Mesh(new THREE.RingGeometry(1.55, 1.7, 8, 1, a0 + len * 0.25, len * 0.5).rotateX(-Math.PI / 2), inner);
-        tick.renderOrder = 2; grp.add(tick);
-      }
+      grp.add(flat(2.0, 2.16, A + G, TAU - 2 * G, bm(c, 0.95)), flat(2.16, 2.3, A + G, TAU - 2 * G, bm(c, 0.25)));
+      grp.add(flat(2.42, 2.86, A - G + 0.06, 2 * G - 0.12, bm(0x10141c, 0.8)));   // podklad ukazatele výdrže
+      const fm = bm(0x3ddc5a, 1), seg = (2 * G - 0.2) / NS;
+      grp.userData = { fm, segs: Array.from({ length: NS }, (_, i) => { const m = flat(2.5, 2.78, A - G + 0.1 + i * seg, seg * 0.98, fm); m.position.y = 0.01; grp.add(m); return m; }) };
       grp.visible = false; this.scene.add(grp);
       return grp;
     });
   },
+
   buildGoalLights() {
     this.gLights = [-1, 1].map((sN) => {
       const grp = new THREE.Group(); grp.position.set(sN * (RINK.HL + 0.8), 12.3, 0);
@@ -1521,7 +1519,8 @@ float wH(vec2 p) {
       }
     }
     const used = new Set();
-    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl]; m.position.set(p.x, 0.04, -p.y); m.rotation.y += dt * 1.6; const k = 1 + Math.sin(t * 6) * 0.04; m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl); }
+    for (const p of players) if (p.ctrl >= 0 && p.ctrl < 4) { const m = this.rings[p.ctrl], k = this.sportOn === 'football' ? 0.66 : 1, st = p.stamina == null ? 1 : p.stamina, U = m.userData; m.position.set(p.x, 0.04, -p.y); m.rotation.y = Math.atan2(-VIEW.fx, VIEW.fy); m.scale.set(k, 1, k); m.visible = true; used.add(p.ctrl);
+      U.segs.forEach((q, i) => { q.visible = st > (i + 0.5) / U.segs.length; }); U.fm.color.set(st > 0.5 ? 0x3ddc5a : st > 0.25 ? 0xffc21f : 0xff4a3a); }   // výdrž: zelená → žlutá → červená
     this.rings.forEach((m, i) => { if (!used.has(i)) m.visible = false; });
     for (const L of this.gLights) {
       const on = g && g.goalLight === L.sN && g.goalLightT > 0 && Math.floor(t * 6) % 2 === 0;
