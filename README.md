@@ -151,6 +151,12 @@ hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzděn
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
+## Tempo akcí
+
+V Nastavení → pravidla je **TEMPO AKCÍ (HOKEJ)**: RYCHLÉ (jako dřív), STŘEDNÍ (výchozí) a KLIDNÉ. Nižší tempo
+zpomaluje zatáčení, rozjezd a brzdění, nápřah a švih střely, reakce hráčů a let puku. Nejvyšší rychlost
+bruslení zůstává stejná, takže hra není „zpomalený film“, jen je víc času na rozhodnutí.
+
 ## Arkádový vliv statistik
 
 V Nastavení → pravidla je přepínač **VLIV STATISTIK HRÁČŮ**. Výchozí MÍRNÝ: atributy hráčů hru jen lehce

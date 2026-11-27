@@ -285,7 +285,7 @@ const App = {
     const S = Settings.data;
     return { periodLen: S.periodLen * 60, diff: clamp(S.diff, 0, DIFF.length - 1), autoChange: S.autoChange !== false, penalties: S.penalties !== false,
       injuries: S.injuries !== false, zamboni: S.zamboni || 'auto', offside: S.offside !== false, icing: S.icing !== false, icingMode: S.icingMode || 'touch',
-      arcade: !!S.arcade, weather: /^rain/.test(S.weather) ? 'rain' : S.weather === 'random' ? 'random' : 'off', moles: /moles$/.test(S.weather || ''), ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
+      tempo: S.tempo == null ? 1 : S.tempo, arcade: !!S.arcade, weather: /^rain/.test(S.weather) ? 'rain' : S.weather === 'random' ? 'random' : 'off', moles: /moles$/.test(S.weather || ''), ot: S.ot || '3v3', shootout: S.shootout !== false, cpuAggr: S.cpuAggr == null ? 1 : S.cpuAggr, tactics: [S.tactics, S.tactics] };
   },
   toggleFull() {
     try {
@@ -661,6 +661,7 @@ const App = {
         { label: 'NÁJEZDY', val: () => onoff(S.shootout !== false), set: () => { S.shootout = S.shootout === false; },
           hint: 'Když nerozhodne ani prodloužení: 3 série nájezdů, pak náhlá smrt. Bráníš-li, řídíš brankáře (páčka, X = vypíchnout).' },
         { label: 'ZRANĚNÍ', val: () => onoff(S.injuries !== false), set: () => { S.injuries = S.injuries === false; } },
+        { label: 'TEMPO AKCÍ (HOKEJ)', val: () => '◄ ' + ['RYCHLÉ', 'STŘEDNÍ', 'KLIDNÉ'][S.tempo == null ? 1 : S.tempo] + ' ►', set: (d) => { S.tempo = ((S.tempo == null ? 1 : S.tempo) + (d || 1) + 3) % 3; } },
         { label: 'VLIV STATISTIK HRÁČŮ', val: () => '◄ ' + (S.arcade ? 'ARKÁDOVÝ (SILNÝ)' : 'MÍRNÝ') + ' ►', set: () => { S.arcade = !S.arcade; } },
         { label: 'ROLBA O PŘESTÁVCE', val: () => '◄ ' + { auto: 'AUTOMATICKY', manual: 'ŘÍDÍM SÁM', off: 'VYPNUTÁ' }[S.zamboni || 'auto'] + ' ►', set: (d) => { S.zamboni = cyc(['auto', 'manual', 'off'], S.zamboni || 'auto', d); },
           hint: 'ŘÍDÍM SÁM: o přestávce řídíš rolbu páčkou a uklízíš stopy bruslí (B = hotovo).' },

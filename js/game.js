@@ -22,6 +22,7 @@ function applySport(s) {
   Object.assign(PH, PH_HOCKEY, SPORT === 'football' ? PH_FOOTBALL : SPORT === 'polo' ? PH_POLO : {});
   Object.assign(RINK, SPORT === 'football' ? { NET_W: 5, NET_H: 6.5 } : SPORT === 'polo' ? { NET_W: 5, NET_H: 3 } : { NET_W: 3, NET_H: 4 });
 }
+const TEMPO = [1, 0.8, 0.66];   // rychlé (původní) / střední / klidné
 const SWING_T = 0.13; // doba švihu od nápřahu k úderu do puku
 const HUMAN_COLORS = ['#ffd21f', '#2ee6ff', '#ff4fd8', '#7dff4f'];
 const PERIOD_NAMES = ['', '1. TŘETINA', '2. TŘETINA', '3. TŘETINA', 'PRODLOUŽENÍ'];
@@ -92,7 +93,11 @@ class Player {
 class Game {
   constructor(cfg) {
     this.cfg = cfg; this.silent = !!cfg.silent; this.demo = !!cfg.demo;
-    applySport(cfg.sport); this.sport = SPORT; this.fb = SPORT === 'football' || SPORT === 'polo';   // fb = míčová hra nad společným jádrem
+    applySport(cfg.sport); this.sport = SPORT; this.fb = SPORT === 'football' || SPORT === 'polo';
+    // tempo akcí (jen hokej): zpomaluje zatáčení, rozjezd, brzdění, nápřah, švih, reakce a let puku – nejvyšší rychlost bruslení zůstává
+    const ak = this.ak = this.fb ? 1 : TEMPO[cfg.tempo == null ? 1 : cfg.tempo] || 1;
+    if (ak !== 1) { PH.GRIP *= ak; PH.BRAKE *= ak; PH.ACC *= 0.4 + 0.6 * ak; }
+    this.swT = SWING_T / ak;   // fb = míčová hra nad společným jádrem
     this.diff = DIFF[cfg.diff == null ? 1 : cfg.diff];
     this.periodLen = cfg.periodLen || 180;
     this.otMode = cfg.ot || '3v3';   // '3v3' | '5v5' | 'off'
@@ -368,7 +373,7 @@ class Game {
   }
   // kde AI „vidí“ hráče: se zpožděním podle obtížnosti (klička obránce zmate)
   seen(p, t) {
-    let tau = (t.cpu && this.vsHuman ? this.diff.react : 0.14) + (p.dekeT > 0 ? 0.15 : 0);
+    let tau = (t.cpu && this.vsHuman ? this.diff.react : 0.14) / this.ak + (p.dekeT > 0 ? 0.15 : 0);
     const k = Math.min(Math.round(tau * 120), (p.hn || 0) - 1);
     if (!p.hb || k <= 0) return { x: p.x, y: p.y, vx: p.vx, vy: p.vy };
     const i = ((p.hi - 1 - k) % 64 + 64) % 64 * 4, b = p.hb;

@@ -20,10 +20,10 @@ gameMixin(class {
         p.downT -= h; const f = 1 - 3 * h; p.vx *= f; p.vy *= f; p.spdN = Math.hypot(p.vx, p.vy);
         this.integrate(p, h); continue;
       }
-      if (p.winding) { p.windT = Math.min(1.2, p.windT + h * 1.4); if (!p.carry) { p.winding = false; p.windT = 0; } }
+      if (p.winding) { p.windT = Math.min(1.2, p.windT + h * 1.4 * this.ak); if (!p.carry) { p.winding = false; p.windT = 0; } }
       if (p.swingT > 0) {
         // švih dolů: hůl se vrací k puku, při dopadu vystřelí
-        p.swingT -= h; p.windT = p.swingW * Math.max(0, p.swingT) / SWING_T;
+        p.swingT -= h; p.windT = p.swingW * Math.max(0, p.swingT) / this.swT;
         if (!p.carry) { p.swingT = 0; p.windT = 0; }
         else if (p.swingT <= 0) this.shoot(p, ...p.swingArgs);
       }

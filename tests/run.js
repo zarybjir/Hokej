@@ -300,6 +300,15 @@ test('couvání: držené LT nebo LB dá obranný postoj, pravá páčka ne; ťu
   ok(n === 0 && p.stance == null, 'držení LB vystřídalo formaci'); st.lb = true; for (let i = 0; i < 5; i++) g.handleHumans(1 / 60); st.lb = false; g.handleHumans(1 / 60); ok(n === 1, 'ťuknutí LB nestřídá');
 });
 
+test('tempo akcí: zpomalí zatáčení, švih a reakce, nejvyšší rychlost bruslení nechá; fotbalu se netýká', (G) => {
+  const fast = new G.Game({ home: 0, away: 1, humans: [], silent: true, tempo: 0 }), f = { grip: G.PH.GRIP, maxv: G.PH.MAXV, sw: fast.swT };
+  const calm = new G.Game({ home: 0, away: 1, humans: [], silent: true, tempo: 2 });
+  ok(G.PH.GRIP < f.grip * 0.75 && calm.swT > f.sw * 1.3 && calm.ak < 0.7, 'klidné tempo nezpomalilo zatáčení a švih');
+  ok(G.PH.MAXV === f.maxv, 'tempo změnilo nejvyšší rychlost bruslení');
+  const def = new G.Game({ home: 0, away: 1, humans: [], silent: true }); ok(def.ak === 0.8, 'výchozí tempo není střední');
+  const fb = new G.Football({ home: 0, away: 1, humans: [], silent: true, tempo: 2 }); ok(fb.ak === 1, 'tempo ovlivnilo fotbal');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

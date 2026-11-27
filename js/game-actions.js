@@ -97,7 +97,7 @@ gameMixin(class {
     const low = p.ctrl >= 0 && p.inX * s < -0.5, high = p.ctrl >= 0 && p.inX * s > 0.6 && aim != null;
     const z = low ? 'low' : high ? 'high' : null;
     if (w < 0.22) this.shoot(p, 0, false, aim, false, { snap, z: snap ? 'high' : z });
-    else { p.swingT = SWING_T; p.swingW = w; p.swingArgs = [clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z }]; p.winding = false; }
+    else { p.swingT = this.swT; p.swingW = w; p.swingArgs = [clamp((w - 0.22) / 0.75, 0, 1), true, aim, false, { z }]; p.winding = false; }
   }
   shoot(p, power, slap, aimY, oneTimer, opt = {}) {
     const pk = this.puck;
@@ -122,6 +122,7 @@ gameMixin(class {
     const sd = angDiff(p.dir, Math.atan2(dy, dx)), bh = !slap && !oneTimer && ((sgn(sd) === -sgn(p.hand) && Math.abs(sd) > 1.3) || Math.abs(sd) > 2.6);   // na straně bez hole
     let speed = slap ? (80 + 38 * power) * p.pow * (0.85 + 0.15 * ft) : (58 + 16 * p.pow) * (0.9 + 0.1 * ft);
     if (opt.snap) speed *= 1.12; if (bh) speed *= 0.8;
+    speed *= 0.7 + 0.3 * this.ak;
     let err = ((slap ? 0.05 : 0.036) * (1.32 - p.acc) + clamp(d / 100, 0, 0.6) * 0.03) / (0.7 + 0.3 * ft);
     err *= p.snipe || 1;
     if (opt.snap) err *= 1.35; if (bh) err *= 1.25;
