@@ -630,6 +630,7 @@ const App = {
         { label: 'JMENOVKA NAD HRÁČEM S PUKEM', val: () => onoff(S.tags !== false), set: () => { S.tags = S.tags === false; } },
         { label: 'ZÁZNAM PO GÓLU', val: () => onoff(S.replay), set: () => { S.replay = !S.replay; } },
         { label: 'ZOBRAZIT FPS', val: () => onoff(S.fps), set: () => { S.fps = !S.fps; } },
+        { label: 'DYNAMICKÁ KAMERA (HOKEJ)', val: () => onoff(S.dynCam !== false), set: () => { S.dynCam = S.dynCam === false; } },
         { label: 'OTŘESY OBRAZU PŘI SRÁŽKÁCH', val: () => onoff(S.camShake !== false), set: () => { S.camShake = S.camShake === false; } },
       ] },
       { name: 'ZVUK', desc: 'Hlasitost, komentář a vibrace ovladače', items: [

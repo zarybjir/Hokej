@@ -151,7 +151,11 @@ const R = {
     } else G3.rcam = null;
     const lead = g.state === 'play' ? clamp(pk.vx || 0, -30, 30) * 0.3 : 0;
     if (g.state === 'zamboni' && g.zam) { players = []; refs = []; this.updateCam(g.zam.x + Math.cos(g.zam.dir) * 6, dt, false, 0, g.zam.y); }
-    else this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
+    else {
+      // dynamická kamera (hokej): při buly a přerušení blízko, v pásmu u branky blíž, ve středním pásmu a při brejku dál
+      G3.camZ = g.sport !== 'hockey' || Settings.data.dynCam === false ? null : g.state === 'faceoff' || g.state === 'stop' || g.state === 'intro' ? 0.74 : g.state === 'goal' ? 0.8 : g.state === 'play' ? (Math.abs(pk.x) > RINK.BLUE_X ? 0.86 : 1.0) : 0.92;
+      this.updateCam(pk.x + lead, dt, g.camSnap, g.shake, pk.y);
+    }
     g.camSnap = false;
     if (g.sport === 'polo') refs = [];   // rozhodčí vodního póla stojí na břehu
     this.drawWorld(g, players, pk, g.time, dt, { rings: g.state !== 'replay', refs });

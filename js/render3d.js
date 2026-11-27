@@ -1357,6 +1357,14 @@ float wH(vec2 p) {
     const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.5, ...o }), top = std({ map: canvasTex(tc, true, 4) });
     this.puck = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.11, 28), [std({ map: canvasTex(sc, true, 4) }), top, top]);
     this.puck.castShadow = true; this.scene.add(this.puck);
+    // šedé halo na ledě pod pukem: ukazuje, kde puk je, i když letí vzduchem (čím výš, tím větší a slabší)
+    this.halo = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3a4250, transparent: true, opacity: 0.6, depthWrite: false }));
+    this.halo.renderOrder = 3; this.halo.visible = false; this.scene.add(this.halo);
+    // ochranné sítě za brankami nad plexisklem
+    const [nc, ng] = mkCanvas(32, 32); ng.strokeStyle = 'rgba(235,240,248,0.9)'; ng.lineWidth = 1.5; ng.strokeRect(0, 0, 32, 32);
+    const nt = canvasTex(nc, true, this.aniso); nt.wrapS = nt.wrapT = THREE.RepeatWrapping; nt.repeat.set(64, 22);
+    const nm = new THREE.MeshBasicMaterial({ map: nt, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide });
+    this.endNets = [-1, 1].map((s) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(64, 22).rotateY(Math.PI / 2), nm); m.position.set(s * (RINK.HL + 0.6), 23, 0); m.renderOrder = 6; this.scene.add(m); return m; });
   },
   buildRings() {
     // kruh pod ovládaným hráčem a oblouk výdrže kreslí shader na jedné plošce: hladké hrany a zaoblené konce v každém přiblížení.
@@ -1460,8 +1468,8 @@ float wH(vec2 p) {
     const v = dt > 0 && !snap && this.lastTx != null ? Math.hypot(tx - this.lastTx, ty - this.lastTy) / dt : 0;
     this.lastTx = tx; this.lastTy = ty;
     this.vEst = (this.vEst || 0) + (Math.min(v, 80) - (this.vEst || 0)) * Math.min(1, dt * 1.5);
-    const zt = (0.95 + clamp((this.vEst - 8) / 30, 0, 1) * 0.1) * (1 - 0.05 * (this.punch || 0));   // při zásahu kamera krátce přiskočí
-    this.zf = snap || this.zf == null ? zt : this.zf + (zt - this.zf) * Math.min(1, dt * (this.punch > 0.05 ? 9 : 0.8));
+    const zb = this.camZ == null || this.rcam ? 0.95 : this.camZ, zt = (zb + clamp((this.vEst - 8) / 30, 0, 1) * (this.camZ == null ? 0.1 : 0.14)) * (1 - 0.05 * (this.punch || 0));   // při zásahu kamera krátce přiskočí
+    this.zf = snap || this.zf == null ? zt : this.zf + (zt - this.zf) * Math.min(1, dt * (this.punch > 0.05 ? 9 : 1.1));
     this.camT.x += (tx - this.camT.x) * k; this.camT.y += (ty - this.camT.y) * k * 0.85;
     const sx = (Math.random() - 0.5) * shake * 1.2, sy = (Math.random() - 0.5) * shake * 1.0;
     const [ox, oy, oz] = this.off.map((q) => q * this.zf * (this.zoomMul || 1));
@@ -1558,6 +1566,8 @@ float wH(vec2 p) {
     }
     for (const m of this.modelMap.values()) if (!vis.has(m)) m.setVisible(false);
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
+    { const hz = pk.z || 0, hk = 1 + hz * 0.22, hs = this.sportOn === 'hockey' && !!g && !g.puck.held && g.state !== 'zamboni'; this.halo.visible = hs; this.halo.position.set(pk.x, 0.03, -pk.y); this.halo.scale.set(hk, 1, hk); this.halo.material.opacity = clamp(0.85 - hz * 0.05, 0.45, 0.85);
+      this.endNets.forEach((m, i) => { m.visible = this.sportOn === 'hockey' && (this.view === 'side' || !!this.rcam || i === 1); }); }   // v pohledu shora by bližší síť clonila
     this.puck.visible = this.sportOn === 'hockey' && !(g && g.puck.held && g.state !== 'replay');
     if (g && g.stones) {
       if (!this.stoneM) this.buildStones();
