@@ -121,8 +121,8 @@ class PModel {
       P.mask = M(geo.mask, m.mask);
       P.cage = M(geo.cage, G.mat.cage, false);
       P.shaft = M(geo.shaft, G.mat.shaft);
-      P.paddle = M(geo.paddle, G.mat.shaft);
-      P.blade = M(geo.gBlade, G.mat.blade);
+      P.paddle = M(geo.paddle, G.mat.paddle);
+      P.blade = M(geo.gBlade, G.mat.gblade);
     }
     G.scene.add(this.root);
   }
@@ -265,6 +265,44 @@ function prepClip(a) {
   return { duration: a.duration, tracks };
 }
 
+// ---------- hokejka: oválná násada s koncovkou a omotávkou, zahnutá čepel se zaoblenou špičkou ----------
+// násada: jednotková délka podél y (dole pata, nahoře koncovka), dole se zužuje, nahoře je hrbolek koncovky
+function stickShaftGeo() {
+  const g = new THREE.CylinderGeometry(1, 1, 1, 10, 12), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = p.getY(i) + 0.5, k = (0.78 + 0.22 * Math.min(1, t * 2.5)) * (t > 0.965 ? 1.45 : 1); p.setX(i, p.getX(i) * 0.05 * k); p.setZ(i, p.getZ(i) * 0.072 * k); }
+  g.computeVertexNormals(); return g;
+}
+// čepel: délka podél z (pata −0,5, špička +0,5), spodní hrana rovná na ledě, k špičce se snižuje, zužuje a zahýbá (do −x)
+function stickBladeGeo() {
+  const g = new THREE.BoxGeometry(0.06, 0.3, 1.0, 1, 5, 14), p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const t = p.getZ(i) + 0.5, v = (p.getY(i) + 0.15) / 0.3;
+    let h = 1 - 0.2 * t; if (t > 0.8) h *= 0.35 + 0.65 * Math.sqrt(Math.max(0, 1 - ((t - 0.8) / 0.2) ** 2));
+    const lift = (t > 0.8 ? ((t - 0.8) / 0.2) ** 2 * 0.05 : 0) + (t < 0.08 ? ((0.08 - t) / 0.08) ** 2 * 0.05 : 0);   // zvednutá špička a zaoblená pata
+    p.setY(i, -0.15 + lift * (1 - v) + v * 0.3 * h); p.setX(i, p.getX(i) * (1 - 0.35 * t) - 0.11 * t * t); uv.setXY(i, t, v);
+  }
+  g.computeVertexNormals(); return g;
+}
+function stickShaftTex() {
+  const [c, g] = mkCanvas(32, 512);
+  g.fillStyle = '#17181c'; g.fillRect(0, 0, 32, 512);
+  for (let y = 0; y < 512; y += 4) { g.fillStyle = y % 8 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.18)'; g.fillRect(0, y, 32, 2); }   // uhlíková vazba
+  g.fillStyle = '#eceef1'; g.fillRect(0, 0, 32, 20);                                                    // koncovka
+  g.fillStyle = '#0a0a0b'; g.fillRect(0, 20, 32, 86); g.fillStyle = 'rgba(255,255,255,0.07)'; for (let y = 24; y < 104; y += 9) g.fillRect(0, y, 32, 2);   // omotávka pro horní ruku
+  g.fillStyle = '#2fd4ff'; g.fillRect(0, 300, 32, 8); g.fillRect(0, 392, 32, 8); g.fillStyle = '#f2f4f7'; g.fillRect(0, 312, 32, 76);   // grafika na násadě
+  g.fillStyle = '#17181c'; g.font = 'italic 900 22px "Arial Black","DejaVu Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.save(); g.translate(16, 350); g.rotate(-Math.PI / 2); g.fillText("'98", 0, 1); g.restore();
+  g.fillStyle = '#2fd4ff'; g.fillRect(0, 486, 32, 5);
+  return canvasTex(c, true, 4);
+}
+function stickBladeTex() {
+  const [c, g] = mkCanvas(256, 64);
+  g.fillStyle = '#121214'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#2fd4ff'; g.fillRect(34, 0, 5, 64);                    // pata: uhlík s proužkem
+  g.fillStyle = '#eeeae0'; g.fillRect(52, 0, 204, 64);                                                                   // omotávka čepele
+  g.strokeStyle = 'rgba(60,55,45,0.5)'; g.lineWidth = 1.5; for (let x = 52; x < 270; x += 13) { g.beginPath(); g.moveTo(x, 64); g.lineTo(x + 9, 0); g.stroke(); }
+  g.fillStyle = 'rgba(40,40,40,0.22)'; g.fillRect(52, 54, 204, 10);                                                       // ojetá spodní hrana
+  return canvasTex(c, true, 4);
+}
+
 const G3 = {
   init(canvas) {
     this.cv = canvas;
@@ -309,8 +347,8 @@ const G3 = {
       head: new THREE.SphereGeometry(0.36, 16, 12),
       helmet: new THREE.SphereGeometry(0.44, 20, 12, 0, TAU, 0, Math.PI * 0.56).scale(1, 1, 1.12),
       visor: new THREE.SphereGeometry(0.47, 16, 6, Math.PI / 2 - 0.75, 1.5, Math.PI * 0.4, Math.PI * 0.17).scale(1, 1, 1.1),
-      shaft: new THREE.BoxGeometry(0.11, 1, 0.15),
-      blade: new THREE.BoxGeometry(0.07, 0.3, 1.0),
+      shaft: stickShaftGeo(),
+      blade: stickBladeGeo(),
       broom: new THREE.BoxGeometry(0.34, 0.16, 0.95),   // hlavice curlingového koštěte
       pad: new THREE.BoxGeometry(0.78, 1, 0.62),
       catcher: new THREE.CylinderGeometry(0.55, 0.55, 0.22, 20).rotateZ(Math.PI / 2),
@@ -324,8 +362,9 @@ const G3 = {
       boot: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.35, metalness: 0.1 }),
       steel: new THREE.MeshStandardMaterial({ color: 0xdfe6ee, roughness: 0.15, metalness: 1.0 }),
       visor: new THREE.MeshPhysicalMaterial({ color: 0x8ea4c4, transparent: true, opacity: 0.35, roughness: 0.05, clearcoat: 1, depthWrite: false }),
-      shaft: new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.4, metalness: 0.2 }),
-      blade: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6 }),
+      shaft: new THREE.MeshStandardMaterial({ map: stickShaftTex(), roughness: 0.38, metalness: 0.25 }),
+      blade: new THREE.MeshStandardMaterial({ map: stickBladeTex(), roughness: 0.7, side: THREE.DoubleSide }),
+      paddle: new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.4, metalness: 0.2 }), gblade: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6 }),
       broom: new THREE.MeshStandardMaterial({ color: 0xe0b020, roughness: 0.85 }),
       cage: new THREE.MeshStandardMaterial({ color: 0x222222, wireframe: true, metalness: 0.8, roughness: 0.3 }),
       whitePlastic: new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.35 }),

@@ -457,8 +457,8 @@ class HModel {
     this.stick = new THREE.Group();
     const sm = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; this.stick.add(m); return m; };
     this.shaft = sm(G.geo.shaft, G.mat.shaft);
-    if (p.isGoalie) { this.paddle = sm(G.geo.paddle, G.mat.shaft); this.blade = sm(G.geo.gBlade, G.mat.blade); }
-    else { const cu = SPORT === 'curling'; this.blade = sm(cu ? G.geo.broom : G.geo.blade, cu ? G.mat.broom : G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); this.tape.visible = !cu; }
+    if (p.isGoalie) { this.paddle = sm(G.geo.paddle, G.mat.paddle); this.blade = sm(G.geo.gBlade, G.mat.gblade); }
+    else { const cu = SPORT === 'curling'; this.blade = sm(cu ? G.geo.broom : G.geo.blade, cu ? G.mat.broom : G.mat.blade); this.tape = sm(G.hgeo.tape, G.mat.tape); this.tape.visible = false; }   // omotávka je teď v textuře čepele
     G.scene.add(this.root, this.stick);
   }
   setVisible(v) { this.root.visible = v; this.stick.visible = v && !this.isRef && (!this.foot || this.kit === 'curling'); }
@@ -542,8 +542,10 @@ class HModel {
     if (wide) return;
     put(this.blade, heel.clone().addScaledVector(toeDir, 0.45).add(new THREE.Vector3(0, 0.02, 0)), toeDir);
     put(this.tape, heel.clone().addScaledVector(toeDir, 0.45).add(new THREE.Vector3(0, 0.02, 0)), toeDir);
+    if (this.kit !== 'curling') this.blade.scale.x = this.bh || 1;   // zahnutí čepele podle toho, na kterou stranu hráč drží hůl
   }
   poseSkater(p, t, O, F, Lv, J, down) {
+    this.bh = p.hand;
     const B = this.b, spd = Math.min(1, (p.spdN || 0) / 26), ph = p.stride || 0, wind = p.windT || 0, poke = p.pokeA || 0;
     const chk = !down && p.checkT > 0 ? Math.sin(clamp(p.checkT / 0.4, 0, 1) * Math.PI) : 0;   // bodyček: rameno dopředu
     // směr akce (přihrávka, střela) omezený na to, kam hůl před tělem dosáhne
