@@ -188,7 +188,12 @@ gameMixin(class {
   color(text, chance = 1, delay) { this.lastColor = text; if (!this.silent && !this.demo && !this.fb && Math.random() < chance) Voice.color(text, delay); }
   say(text, prio, chance) { if (!this.silent) Voice.say(text, prio, chance); }
   showBanner(text, sub, dur = 2, color) { this.banner = { text, sub, t: 0, dur, color }; }
-  pop(text, x, y, color = '#fff') { this.pops.push({ text, x, y, t: 0, color }); }
+  pop(text, x, y, color = '#fff') {
+    this.pops.push({ text, x, y, t: 0, color });
+    // událost u lidského hráče se ukáže i u jeho jména pod kolečkem
+    for (const hm of this.humans) { const p = hm.player; if (p && Math.hypot(p.x - x, p.y - y) < 5) this.note(p, text); }
+  }
+  note(p, text) { if (p && p.ctrl >= 0) { p.note = text; p.noteT = this.time; } }
   thinkFor(t) { return t.cpu && this.vsHuman ? this.diff.think : 0.2; }
   aggrFor(t) {
     const base = t.cpu && this.vsHuman ? this.diff.aggr : 0.85;

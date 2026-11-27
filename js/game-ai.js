@@ -193,7 +193,8 @@ gameMixin(class {
           const rear = Math.cos(o.dir) * (o.x - p.x) + Math.sin(o.dir) * (o.y - p.y) > d * 0.5; // byl by to faul zezadu
           const sideOn = Math.abs(angDiff(o.dir, Math.atan2(p.y - o.y, p.x - o.x))) > 1.0;
           const hitM = (t.style === 'heavy' ? 1.5 : 1) * (p.trait === 'E' ? 1.5 : 1);
-          if (fa < 0.8 && p.spdN > 9 && (!rear || Math.random() < 0.12 * ag) && Math.random() < 0.2 * ag * hitM) this.startCheck(p);
+          const wall = rinkContact(o.x, o.y, 7) ? 1.7 : 1;   // u mantinelu se soupeř dohrává tělem
+          if (fa < 0.8 && p.spdN > 9 && (!rear || Math.random() < 0.12 * ag) && Math.random() < 0.26 * ag * hitM * wall) this.startCheck(p);
           else if (sideOn && d < 4.5 && Math.random() < 0.12) this.liftStick(p);
           else if (Math.random() < 0.55 * ag) this.poke(p);
         }
@@ -215,10 +216,24 @@ gameMixin(class {
         if (dl < 2.5 && ds < 18 && ds > 5) { this.dive(p); return; }
       }
       tx = o.x + (gx - o.x) * 0.28; ty = o.y * 0.8;
+      // práce tělem před vlastní brankou: obránce se do hlídaného hráče opře a vytlačuje ho ze slotu (bez pádu, bez faulu)
+      const bd = Math.hypot(o.x - p.x, o.y - p.y), slot = Math.abs(o.x - gx) < 24 && Math.abs(o.y) < 16;
+      if (!this.fb && slot && bd < 3.6 && bd > 0.1 && o.downT <= 0 && pk.owner !== o) {
+        const ax = o.x - gx, ay = o.y, al = Math.hypot(ax, ay) || 1, f = 26 * h * clamp(p.chk * p.mass / (o.chk * o.mass), 0.5, 1.6);
+        o.vx += ax / al * f; o.vy += ay / al * f; p.battleT = o.battleT = 0.2; p.battleDir = Math.atan2(o.y - p.y, o.x - p.x); o.battleDir = p.battleDir + Math.PI; this.boxOuts = (this.boxOuts || 0) + h;
+      }
     } else {
       [tx, ty] = this.spotFor(p);
       // útok vedený člověkem: spoluhráči sprintují na svá místa, ať je komu přihrát
       if (pk.owner && pk.owner.team === t && pk.owner.ctrl >= 0 && p.role[1] !== 'D') { const dd = Math.hypot(tx - p.x, ty - p.y); if (dd > 6) { urg = true; turbo = dd > 12 && p.stamina > 0.3; } }
+    }
+    // ofsajd: dokud puk není za modrou, hráč bez puku před čárou včas brzdí (setrvačnost) a z pásma se hned vrací
+    if (this.cfg.offside !== false && !this.fb) {
+      const s2 = t.dir, pu2 = s2 * pk.x, up = s2 * p.x, vf = s2 * p.vx, mine = pk.owner ? pk.owner.team === t : pu2 > 0;
+      if (mine && pu2 < RINK.BLUE_X) {
+        if (up > RINK.BLUE_X - 0.8) { tx = s2 * (RINK.BLUE_X - 5); ty = p.y; urg = true; turbo = p.stamina > 0.2; }
+        else if (up + Math.max(0, vf) * 0.55 > RINK.BLUE_X - 1.5) { tx = s2 * (RINK.BLUE_X - 7); ty = p.y + clamp(ty - p.y, -6, 6); urg = true; turbo = false; }
+      }
     }
     const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
     if (d < 1.2) { p.inX = 0; p.inY = 0; }
@@ -281,7 +296,7 @@ gameMixin(class {
         u += ai.sdu || 0; v += ai.sdv || 0; p.ai.offer = this.time + 0.2;
       }
       // ofsajd: dokud puk není v útočném pásmu, nikdo nesmí být za modrou čárou
-      if (this.cfg.offside !== false && pu < RINK.BLUE_X) u = Math.min(u, RINK.BLUE_X - 1.5);
+      if (this.cfg.offside !== false && pu < RINK.BLUE_X) u = Math.min(u, RINK.BLUE_X - 3.5);
     } else {
       const tac = this.tacOf(t), fb = [-21, -13, -7][tac], db = [-32, -28, -24][tac], dmax = [44, 50, 56][tac];
       const S = { C: [pu + fb + 1, pv * 0.5], LW: [pu + fb, 18 * (tac ? 1 : 0.7)], RW: [pu + fb, -18 * (tac ? 1 : 0.7)], LD: [Math.min(pu + db, dmax), 12], RD: [Math.min(pu + db, dmax), -12], X: [pu + fb - 6, 0] }[p.extra ? 'X' : p.role];
@@ -303,6 +318,8 @@ gameMixin(class {
     let td = 1e9, thr = null;
     for (const o of opp.skaters) { if (o.downT > 0) continue; const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < td) { td = d; thr = o; } }
     const front = thr ? s * (thr.x - p.x) > -1 : false;
+    // krytí puku tělem: když je soupeř blízko, hráč dá puk na odvrácenou stranu (tělo mezi soupeře a puk)
+    if (!this.fb) { if (thr && td < 9) { const lt = (thr.x - p.x) * -Math.sin(p.dir) + (thr.y - p.y) * Math.cos(p.dir), k = Math.min(1, h * 10), o = p.stk || [p.hand * 0.4, 0]; p.stk = [o[0] + ((lt > 0 ? -0.85 : 0.85) - o[0]) * k, o[1] + (0.15 - o[1]) * k]; } else p.stk = null; }
     let tu, tv;
     if (u > 86) { tu = 80; tv = (v >= 0 ? 1 : -1) * 16; }
     else if (u < 52) { tu = u + 28; tv = v * 0.55; }

@@ -151,6 +151,13 @@ hromadí (o přestávce je smaže rolba), sníh od bruslí při prudkém brzděn
 Hráči mají objemnější výstroj, v zatáčkách se naklánějí a překládají nohy a po střele dokončí
 švih holí. Kamera mírně odjede při rychlé akci a přiblíží se v klidné hře.
 
+## Hra tělem a ofsajdy
+
+- Hráči bez puku před modrou čárou včas brzdí a z ofsajdu se hned vracejí, takže zbytečných ofsajdů je výrazně méně.
+- Obránci se před vlastní brankou opírají do hlídaného útočníka a vytlačují ho ze slotu.
+- Hráč s pukem pod tlakem kryje puk tělem (dá ho na odvrácenou stranu), u mantinelu se soupeř častěji dohrává.
+- Co se tvému hráči povedlo nebo stalo (gól, asistence, souboj, zásah…), se na chvíli ukáže u jeho jména pod kolečkem.
+
 ## Tempo akcí
 
 V Nastavení → pravidla je **TEMPO AKCÍ (HOKEJ)**: RYCHLÉ (jako dřív), STŘEDNÍ (výchozí) a KLIDNÉ. Nižší tempo

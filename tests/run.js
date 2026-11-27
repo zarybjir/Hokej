@@ -309,6 +309,19 @@ test('tempo akcí: zpomalí zatáčení, švih a reakce, nejvyšší rychlost br
   const fb = new G.Football({ home: 0, away: 1, humans: [], silent: true, tempo: 2 }); ok(fb.ak === 1, 'tempo ovlivnilo fotbal');
 });
 
+test('ofsajd a tělo: spoluhráč před modrou brzdí a z pásma se vrací, nosič kryje puk, hláška se zapíše k hráči', (G) => {
+  const g = new G.Game({ home: 0, away: 1, humans: [{ dev: idleDev(), team: 0, assist: 0 }], silent: true }); while (g.state !== 'play') g.update(1 / 60);
+  const A = g.teams[0], s = A.dir, me = g.humans[0].player, w = A.skaters.find((p) => p !== me && p.role[1] !== 'D');
+  for (const q of g.teams[1].skaters) { q.x = -s * 70; q.y = 0; } me.x = 0; me.y = 0; g.puck.owner = me; g.puck.x = 0; g.puck.y = 0;
+  w.x = s * (G.RINK.BLUE_X - 3); w.y = 15; w.vx = s * 22; w.vy = 0; g.aiSkater(w, 1 / 60);
+  ok(s * w.inX < 0, 'křídlo před modrou nebrzdí, i když puk je ještě ve středním pásmu');
+  w.x = s * (G.RINK.BLUE_X + 4); w.vx = 0; g.aiSkater(w, 1 / 60); ok(s * w.inX < -0.5, 'hráč v ofsajdu se nevrací');
+  // krytí puku: soupeř zleva → puk na pravou stranu
+  const c = g.teams[1].skaters[0], o = A.skaters.find((p) => p !== me); c.x = 0; c.y = 20; c.dir = 0; c.vx = c.vy = 0; g.puck.owner = c; o.x = 0; o.y = 24; o.downT = 0;
+  for (let i = 0; i < 30; i++) g.aiCarrier(c, 1 / 60); ok(c.stk && c.stk[0] < -0.5, 'nosič nekryje puk tělem: ' + JSON.stringify(c.stk));
+  g.pop('TEST', me.x, me.y); ok(me.note === 'TEST' && me.noteT === g.time, 'hláška se nezapsala k ovládanému hráči');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

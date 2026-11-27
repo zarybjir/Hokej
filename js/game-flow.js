@@ -24,11 +24,11 @@ gameMixin(class {
     const scorer = hist.length ? hist[hist.length - 1] : null;
     const assists = [];
     for (let i = hist.length - 2; i >= 0 && assists.length < 2; i--) if (hist[i] !== scorer && !assists.includes(hist[i])) assists.push(hist[i]);
-    if (scorer) { scorer.stats.g++; scorer.celebT = 3; }
+    if (scorer) { scorer.stats.g++; scorer.celebT = 3; this.note(scorer, scorer.stats.g >= 3 ? 'HATTRICK!' : 'GÓL!'); }
     this.addMom(team, 0.6); if (!en) opp.goalie.conf = Math.max(-1, (opp.goalie.conf || 0) - 0.5);
     if (this.practice) this.practice.goals++;
     this.achGoal(team, opp, scorer, en);
-    for (const a of assists) a.stats.a++;
+    for (const a of assists) { a.stats.a++; this.note(a, 'ASISTENCE'); }
     let ppNote = en ? 'Do prázdné branky' : '';
     if (this.pending && this.pending.team !== team) { ppNote = 'Vyloučení se ruší'; this.pending = null; }
     else if (this.pending) { this.assess(this.pending); this.pending = null; }

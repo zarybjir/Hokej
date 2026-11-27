@@ -1,10 +1,10 @@
 {
-  "build": 112,
-  "version": "2.12",
+  "build": 113,
+  "version": "2.13",
   "date": "2026-11-27",
   "notes": [
-    "Střídačky s náhradníky a trenéry za mantinelem",
-    "Tmavé hlediště – diváci v barvách týmů víc vyniknou",
-    "Jméno ovládaného hráče je pod jeho kolečkem"
+    "Mnohem méně ofsajdů: hráči před modrou brzdí a z pásma se vracejí",
+    "Víc práce tělem: vytlačování před brankou, krytí puku, dohrávání u mantinelu",
+    "Události se ukazují u jména tvého hráče pod kolečkem"
   ]
 }
