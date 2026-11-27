@@ -538,11 +538,11 @@ class HModel {
   }
   placeStick(heel, top, toeDir, F, wide) {
     const dir = new THREE.Vector3().subVectors(top, heel).normalize();
-    seg(this.shaft, heel, top.clone().addScaledVector(dir, 0.15), F);
+    seg(this.shaft, wide ? heel : heel.clone().addScaledVector(dir, -0.12), top.clone().addScaledVector(dir, 0.15), F);   // násada zajíždí do paty čepele
     if (wide) return;
     put(this.blade, heel.clone().addScaledVector(toeDir, 0.45).add(new THREE.Vector3(0, 0.02, 0)), toeDir);
     put(this.tape, heel.clone().addScaledVector(toeDir, 0.45).add(new THREE.Vector3(0, 0.02, 0)), toeDir);
-    if (this.kit !== 'curling') this.blade.scale.x = this.bh || 1;   // zahnutí čepele podle toho, na kterou stranu hráč drží hůl
+    if (this.kit !== 'curling') this.blade.scale.x = -(this.bh || 1);   // zahnutí čepele podle toho, na kterou stranu hráč drží hůl
   }
   poseSkater(p, t, O, F, Lv, J, down) {
     this.bh = p.hand;

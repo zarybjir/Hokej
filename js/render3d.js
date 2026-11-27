@@ -278,8 +278,10 @@ function stickBladeGeo() {
   for (let i = 0; i < p.count; i++) {
     const t = p.getZ(i) + 0.5, v = (p.getY(i) + 0.15) / 0.3;
     let h = 1 - 0.2 * t; if (t > 0.8) h *= 0.35 + 0.65 * Math.sqrt(Math.max(0, 1 - ((t - 0.8) / 0.2) ** 2));
-    const lift = (t > 0.8 ? ((t - 0.8) / 0.2) ** 2 * 0.05 : 0) + (t < 0.08 ? ((0.08 - t) / 0.08) ** 2 * 0.05 : 0);   // zvednutá špička a zaoblená pata
-    p.setY(i, -0.15 + lift * (1 - v) + v * 0.3 * h); p.setX(i, p.getX(i) * (1 - 0.35 * t) - 0.11 * t * t); uv.setXY(i, t, v);
+    const k = Math.max(0, 1 - t / 0.22), hos = k * k * (3 - 2 * k);   // krček: u paty čepel plynule stoupá a tloustne do násady
+    h += hos * 0.32;
+    const lift = t > 0.8 ? ((t - 0.8) / 0.2) ** 2 * 0.05 : 0;   // zvednutá špička
+    p.setY(i, -0.15 + lift * (1 - v) + v * 0.3 * h); p.setX(i, p.getX(i) * (1 - 0.35 * t + 0.9 * hos) - 0.11 * t * t); p.setZ(i, p.getZ(i) - hos * v * 0.03); uv.setXY(i, t, Math.min(1, v * h));
   }
   g.computeVertexNormals(); return g;
 }
