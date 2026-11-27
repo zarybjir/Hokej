@@ -68,7 +68,7 @@ function bladeOffset(dir, hand, carry, t, wind, poke, reach = 1, stk) {
   const fx = Math.cos(dir), fy = Math.sin(dir);
   const lx = -fy, ly = fx; // levá strana hráče
   let f = 3.3, s = hand * 0.9, z = 0;
-  if (carry && stk) { s = stk[0] * 2.4; f = 3.0 + stk[1] * 0.9; }   // puk vedený pravou páčkou: do strany / před sebe / k tělu
+  if (carry && stk) { const k = 1 - 0.7 * Math.min(1, Math.hypot(stk[0], stk[1])); s = stk[0] * 2.4 + Math.sin(t * 11) * 0.5 * k; f = 3.0 + stk[1] * 0.9 + Math.cos(t * 5.5) * 0.25 * k; }   // puk vedený pravou páčkou: do strany / před sebe / k tělu
   else if (carry) { s += Math.sin(t * 9) * 0.75; f = 3.0 + Math.cos(t * 4.5) * 0.35; }
   if (poke > 0) f += 2.4 * Math.sin(Math.min(1, poke) * Math.PI);
   if (wind > 0) {

@@ -1582,6 +1582,7 @@ float wH(vec2 p) {
       m.setVisible(true); m.pose(p, t); vis.add(m);
     }
     for (const m of this.modelMap.values()) if (!vis.has(m)) m.setVisible(false);
+    this.pkNow = pk;
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
     { const hz = pk.z || 0, hk = 1 + hz * 0.22, hs = this.sportOn === 'hockey' && !!g && !g.puck.held && g.state !== 'zamboni'; this.halo.visible = hs; this.halo.position.set(pk.x, 0.03, -pk.y); this.halo.scale.set(hk, 1, hk); this.halo.material.opacity = clamp(0.85 - hz * 0.05, 0.45, 0.85);
       if (this.benchGrp) this.benchGrp.visible = this.sportOn === 'hockey';

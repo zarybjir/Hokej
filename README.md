@@ -315,7 +315,7 @@ nenačte JavaScriptové moduly.) Funguje gamepad i klávesnice:
 | B | klička | šťouchnutí holí |
 | LT + B | | zvednout soupeři hokejku |
 | Y | lobovaná přihrávka / nahození | přepnout hráče |
-| Pravá páčka | vedení puku: do strany, před sebe, k tělu (soupeř na krytý puk hůř dosáhne) | |
+| Pravá páčka | vedení puku: do strany, před sebe, k tělu (soupeř na krytý puk hůř dosáhne); rychlé přehození ze strany na stranu = stahovačka (úkrok za pukem) | |
 | drž LT nebo LB | | obranný postoj: hráč se otočí čelem k puku, couvá (pomaleji) a jistěji odebírá puk. Couvání jde v Ovládání přemapovat na jiné tlačítko; krátké ťuknutí LB střídá formaci |
 | LB | střídání formace | střídání formace |
 | View (Back) | zoom kamery | zoom kamery |

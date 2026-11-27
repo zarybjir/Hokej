@@ -610,6 +610,13 @@ class HModel {
     // hůl a ruce
     const bo = bladeOffset(p.dir, p.hand, p.carry && !wind, t, wind, poke, p.reach || (p.ref && p.ref.reach) || 1, p.stk);
     if (p.carry && p.pkOff && !wind) { bo[0] = p.pkOff[0]; bo[1] = p.pkOff[1]; }   // čepel přesně u puku
+    // živá hůl bez puku: čepel se v rytmu bruslení pohupuje a poblíž puku ho sleduje po ledě (aktivní hůl), plynule
+    if (!p.carry && !wind && !poke && !ready && !down) {
+      const lx0 = -Math.sin(p.dir), ly0 = Math.cos(p.dir), sway = Math.sin(ph) * 0.45 * spd * clamp(pw, 0.3, 1); bo[0] += lx0 * sway; bo[1] += ly0 * sway;
+      const pkn = this.G.pkNow, ddx = pkn ? pkn.x - p.x : 99, ddy = pkn ? pkn.y - p.y : 99, dd = Math.hypot(ddx, ddy);
+      if (dd < 12 && dd > 1.6 && !(pkn.z > 2)) { const a = p.dir + clamp(angDiff(p.dir, Math.atan2(ddy, ddx)), -1.3, 1.3), r = Math.min(dd - 0.5, 3.7 * (p.reach || 1)), w = clamp((12 - dd) / 5, 0, 1); bo[0] = lerp(bo[0], Math.cos(a) * r, w); bo[1] = lerp(bo[1], Math.sin(a) * r, w); }
+      if (this.sb) { const kk = K(10); this.sb[0] += (bo[0] - this.sb[0]) * kk; this.sb[1] += (bo[1] - this.sb[1]) * kk; bo[0] = this.sb[0]; bo[1] = this.sb[1]; } else this.sb = [bo[0], bo[1]];
+    } else this.sb = null;
     {
       const fx = Math.cos(p.dir), fy = Math.sin(p.dir), lx = -fy, ly = fx;
       // buly: čepel na ledě u bodu vhazování, hůl se mírně chvěje, po vhození rychlé švihnutí dozadu

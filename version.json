@@ -1,10 +1,10 @@
 {
-  "build": 113,
-  "version": "2.13",
+  "build": 114,
+  "version": "2.14",
   "date": "2026-11-27",
   "notes": [
-    "Mnohem méně ofsajdů: hráči před modrou brzdí a z pásma se vracejí",
-    "Víc práce tělem: vytlačování před brankou, krytí puku, dohrávání u mantinelu",
-    "Události se ukazují u jména tvého hráče pod kolečkem"
+    "Živější práce s holí: hráč si puk při vedení sám pohazuje",
+    "Hráči bez puku sledují čepelí puk a hůl se hýbe v rytmu bruslení",
+    "Stahovačka: rychlé přehození pravé páčky ze strany na stranu"
   ]
 }

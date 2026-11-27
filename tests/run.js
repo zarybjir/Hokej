@@ -322,6 +322,15 @@ test('ofsajd a tělo: spoluhráč před modrou brzdí a z pásma se vrací, nosi
   g.pop('TEST', me.x, me.y); ok(me.note === 'TEST' && me.noteT === g.time, 'hláška se nezapsala k ovládanému hráči');
 });
 
+test('stahovačka: rychlé přehození pravé páčky s pukem udělá úkrok, pomalé ne', (G) => {
+  const run = (gap) => { const st = { lx: 0, ly: 0, rx: 0, ry: 0 }, dev = { st, pressed: () => false };
+    const g = new G.Game({ home: 0, away: 1, humans: [{ dev, team: 0, assist: 0 }], silent: true }); while (g.state !== 'play') g.update(1 / 60); g.thinkAll = () => {};
+    const p = g.humans[0].player; g.puck.owner = p; p.dir = 0; p.vx = p.vy = 0; let pops = 0; const po = g.pop.bind(g); g.pop = (t, ...a) => { if (t === 'STAHOVAČKA') pops++; po(t, ...a); };
+    const side = (v, n) => { for (let i = 0; i < n; i++) { st.rx = v; g.puck.owner = p; g.time += 1 / 60; g.handleHumans(1 / 60); } };
+    side(1, 6); side(0, gap); side(-1, 6); return pops; };
+  ok(run(3) === 1, 'rychlé přehození páčky neudělalo stahovačku'); ok(run(40) === 0, 'pomalé přehození udělalo stahovačku');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

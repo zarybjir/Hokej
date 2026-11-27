@@ -324,7 +324,10 @@ class Game {
       if (st.rx || st.ry) {
         const wx = st.rx * VIEW.rx - st.ry * VIEW.fx, wy = st.rx * VIEW.ry - st.ry * VIEW.fy, c = Math.cos(p.dir), s = Math.sin(p.dir);
         const k = Math.min(1, dt * 14), o = p.stk || [p.hand * 0.4, 0];
-        p.stk = [o[0] + (clamp(-wx * s + wy * c, -1, 1) - o[0]) * k, o[1] + (clamp(wx * c + wy * s, -1, 1) - o[1]) * k];
+        const tl = clamp(-wx * s + wy * c, -1, 1);
+        p.stk = [o[0] + (tl - o[0]) * k, o[1] + (clamp(wx * c + wy * s, -1, 1) - o[1]) * k];
+        // stahovačka: rychlé přehození pravé páčky ze strany na stranu s pukem = úkrok za pukem a krátká ochrana jako při kličce
+        if (Math.abs(tl) > 0.6) { const sd = sgn(tl); if (h.stSide && sd !== h.stSide && this.time - h.stT < 0.3 && pk.owner === p && this.state === 'play' && !(p.dekeT > 0) && this.time - (h.dragT || -9) > 0.9) { h.dragT = this.time; p.dekeT = 0.3; p.dekeAt = this.time; p.vx += -s * sd * 7; p.vy += c * sd * 7; this.sfx('stick', 0.5); this.pop('STAHOVAČKA', p.x, p.y, '#cfd8ea'); } h.stSide = sd; h.stT = this.time; }
       } else p.stk = null;
       // obranný postoj bez puku: držené LT nebo couvání (LB) = čelem k puku; hráč couvá a líp odebírá puk
       p.stance = null;
