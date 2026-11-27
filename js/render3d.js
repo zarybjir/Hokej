@@ -877,7 +877,7 @@ const G3 = {
     const ring0 = ring(D(rows));
     quadStrip(ring0.map(([x, y]) => [x, y, Z(rows - 1)]), ring0.map(([x, y]) => [x, y, Z(rows - 1) + 30]));
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
-    this.standMat = new THREE.MeshStandardMaterial({ color: 0x262b36, roughness: 0.85, side: THREE.DoubleSide });
+    this.standMat = new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.9, side: THREE.DoubleSide });   // tmavé hlediště, ať vyniknou diváci a led
     this.scene.add(new THREE.Mesh(geo, this.standMat));
     // ochoz mezi mantinelem a tribunou + LED pás
     const r0 = ring(D(0)), L0 = loopInfo(r0);
@@ -1533,7 +1533,24 @@ float wH(vec2 p) {
       }).catch(fail));
   },
   // hlediště v barvách zápasu: necelá polovina diváků má dres domácích, pár hostů, zbytek civil
+  // střídačky za mantinelem: lavice, náhradníci v dresech a dva trenéři za nimi (barvy podle týmů)
+  buildBenches() {
+    const grp = this.benchGrp = new THREE.Group(), std = (c, r = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+    const wood = std(0x2a2118), suit = std(0x1a1c22), skin = std(0xd8a582, 0.7), y0 = RINK.HW + 3.4;
+    const bodyG = new THREE.BoxGeometry(1.5, 1.9, 1.1), headG = new THREE.SphereGeometry(0.5, 12, 8), coachG = new THREE.CapsuleGeometry(0.55, 2.3, 4, 8), plank = new THREE.BoxGeometry(30, 0.35, 1.3), floor = new THREE.BoxGeometry(33, 0.7, 6.4);
+    const add = (geo, mat, x, h, y) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, h, -y); m.castShadow = true; grp.add(m); return m; };
+    this.benchMat = [0, 1].map(() => ({ j: std(0x888888, 0.75), h: std(0x222222, 0.35) }));
+    [-1, 1].forEach((s, side) => {
+      const M = this.benchMat[side], cx = s * 22;
+      add(floor, std(0x15171c), cx, 0.35, y0 + 1.2); add(plank, wood, cx, 1.75, y0);
+      for (let i = 0; i < 10; i++) { const x = cx - 13.5 + i * 3; add(bodyG, M.j, x, 2.85, y0); add(headG, M.h, x, 4.25, y0 - 0.1); }
+      for (const dx of [-6, 5]) { add(coachG, suit, cx + dx, 3.2, y0 + 2.6); add(headG, skin, cx + dx, 5.35, y0 + 2.6).scale.setScalar(0.85); }
+    });
+    grp.visible = false; this.scene.add(grp);
+  },
   crowdColors(g) {
+    if (!this.benchGrp) this.buildBenches();
+    if (g.teams && g.teams[0].jersey) g.teams.forEach((T, i) => { this.benchMat[i].j.color.set(T.jersey); this.benchMat[i].h.color.set(T.helmet || T.jersey); });
     if (!this.bodies || !this.seatCol || !g.teams || !g.teams[0].jersey) return;
     const col = new THREE.Color(), [A, B] = g.teams;
     this.seatCol.forEach((c, i) => { const f = this.seatFan[i]; col.set(f < 0.42 ? A.jersey : f < 0.5 ? B.jersey : c); if (f < 0.5) col.multiplyScalar(0.8 + (f * 37 % 1) * 0.35); this.bodies.setColorAt(i, col); });
@@ -1567,6 +1584,7 @@ float wH(vec2 p) {
     for (const m of this.modelMap.values()) if (!vis.has(m)) m.setVisible(false);
     this.puck.position.set(pk.x, (pk.z || 0) + 0.07, -pk.y);
     { const hz = pk.z || 0, hk = 1 + hz * 0.22, hs = this.sportOn === 'hockey' && !!g && !g.puck.held && g.state !== 'zamboni'; this.halo.visible = hs; this.halo.position.set(pk.x, 0.03, -pk.y); this.halo.scale.set(hk, 1, hk); this.halo.material.opacity = clamp(0.85 - hz * 0.05, 0.45, 0.85);
+      if (this.benchGrp) this.benchGrp.visible = this.sportOn === 'hockey';
       this.endNets.forEach((m, i) => { m.visible = this.sportOn === 'hockey' && (this.view === 'side' || !!this.rcam || i === 1); }); }   // v pohledu shora by bližší síť clonila
     this.puck.visible = this.sportOn === 'hockey' && !(g && g.puck.held && g.state !== 'replay');
     if (g && g.stones) {

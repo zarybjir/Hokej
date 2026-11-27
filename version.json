@@ -1,10 +1,10 @@
 {
-  "build": 111,
-  "version": "2.11",
+  "build": 112,
+  "version": "2.12",
   "date": "2026-11-27",
   "notes": [
-    "Dynamická kamera: při buly a v pásmu se přiblíží, ve středním pásmu a při brejku odjede",
-    "Šedé halo na ledě pod pukem – je vidět, kde je, i když letí vzduchem",
-    "Ochranné sítě za brankami"
+    "Střídačky s náhradníky a trenéry za mantinelem",
+    "Tmavé hlediště – diváci v barvách týmů víc vyniknou",
+    "Jméno ovládaného hráče je pod jeho kolečkem"
   ]
 }

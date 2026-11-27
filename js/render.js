@@ -61,7 +61,14 @@ const R = {
       ctx.fillStyle = full ? (Math.floor(t * 12) % 2 ? '#fff' : '#ff5a3c') : k > 0.6 ? '#ffb02e' : '#7dff8a'; ctx.fillRect(q[0] - w / 2, q[1] - 4, w * (p.windT < 0.22 ? 0.06 : 0.06 + 0.94 * k), 7);
     }
     // jmenovka nad hráčem s pukem
-    const o = g && opts.rings && g.puck.owner;
+    // jméno ovládaného hráče pod jeho kolečkem
+    if (g && opts.rings && Settings.data.tags !== false && g.humans) for (const h of g.humans) {
+      const p = h.player; if (!p || p.inBox) continue;
+      const k = g.sport === 'football' ? 0.66 : 1, q = G3.toScreen(p.x - VIEW.fx * 4.1 * k, p.y - VIEW.fy * 4.1 * k, 0); if (!q) continue;
+      ctx.font = 'italic 800 15px "Barlow Condensed", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const txt = p.name.toUpperCase(); ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.strokeText(txt, q[0], q[1]); ctx.fillStyle = '#14171d'; ctx.fillText(txt, q[0], q[1]);
+    }
+    const o = g && opts.rings && g.puck.owner && g.puck.owner.ctrl < 0 ? g.puck.owner : null;   // jmenovka nad hlavou jen u hráčů počítače
     if (o && Settings.data.tags !== false) {
       const sp = G3.toScreen(o.x, o.y, 7.8);
       if (sp) {
