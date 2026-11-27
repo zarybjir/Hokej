@@ -311,7 +311,8 @@ class Game {
       if (!p && this.state !== 'shootout') continue;
       const st = d.st;
       if (this.state === 'shootout') { this.soHuman(h); continue; }
-      if (d.pressed('lb')) this.requestChange(h.team, true);
+      // LB: krátké ťuknutí = střídání formace, držení = couvání (akce „bk“, dá se přemapovat jinam)
+      if (st.lb) h.lbT = (h.lbT || 0) + dt; else { if (h.lbT > 0 && h.lbT < 0.25) this.requestChange(h.team, true); h.lbT = 0; }
       const ax = st.lx, ay = -st.ly; // páčka → svět podle kamery
       p.inX = ax * VIEW.rx + ay * VIEW.fx; p.inY = ax * VIEW.ry + ay * VIEW.fy; p.turbo = st.rt || st.rb;
       // pravá páčka: kam držet hůl s pukem (vůči tělu hráče), plynule
@@ -320,11 +321,10 @@ class Game {
         const k = Math.min(1, dt * 14), o = p.stk || [p.hand * 0.4, 0];
         p.stk = [o[0] + (clamp(-wx * s + wy * c, -1, 1) - o[0]) * k, o[1] + (clamp(wx * c + wy * s, -1, 1) - o[1]) * k];
       } else p.stk = null;
-      // obranný postoj bez puku: LT = čelem k puku, pravá páčka = čelem zvoleným směrem; hráč couvá a líp odebírá puk
+      // obranný postoj bez puku: držené LT nebo couvání (LB) = čelem k puku; hráč couvá a líp odebírá puk
       p.stance = null;
       if (pk.owner !== p && this.state === 'play') {
-        if (st.rx || st.ry) p.stance = Math.atan2(st.rx * VIEW.ry - st.ry * VIEW.fy, st.rx * VIEW.rx - st.ry * VIEW.fx);
-        else if (st.lt) { const o = pk.owner || pk; p.stance = Math.atan2(o.y - p.y, o.x - p.x); }
+        if (st.lt || st.bk) { const o = pk.owner || pk; p.stance = Math.atan2(o.y - p.y, o.x - p.x); }
       }
       if (this.state === 'faceoff') {
         // páčka k soupeřově brance při stisku = vyhrát buly dopředu (na střelu), jinak dozadu k obránci

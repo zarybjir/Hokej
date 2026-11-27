@@ -14,7 +14,7 @@ const PRACTICE = [['shoot', 'STŘELBA A PŘIHRÁVKY', 'Celá formace proti brank
   ['so', 'NÁJEZDY – STŘÍLÍŠ', 'Nekonečné nájezdy na brankáře soupeře.'],
   ['sog', 'NÁJEZDY – CHYTÁŠ', 'Řídíš brankáře: páčka = postavení, X = vypíchnout puk.']];
 const BIND_ACTIONS = [['a', 'PŘIHRÁVKA / PŘEPNUTÍ HRÁČE'], ['x', 'STŘELA / BODYČEK'], ['b', 'KLIČKA / ŠŤOUCHNUTÍ'], ['y', 'LOB / NAHOZENÍ'],
-  ['lt', 'LT: O MANTINEL / ŠVIHOVKA / BLOK / HŮL'], ['rt', 'SPRINT'], ['lb', 'STŘÍDÁNÍ FORMACE'], ['start', 'PAUZA'], ['back', 'ZOOM']];
+  ['lt', 'LT: O MANTINEL / ŠVIHOVKA / BLOK / HŮL'], ['rt', 'SPRINT'], ['lb', 'STŘÍDÁNÍ FORMACE (ŤUKNUTÍ)'], ['bk', 'COUVÁNÍ / OBRANNÝ POSTOJ (DRŽET)'], ['start', 'PAUZA'], ['back', 'ZOOM']];
 const App = {
   screen: 'press', sel: 0, game: null, demo: null, t: 0, fps: 60, slots: {}, pauseSel: 0, helpFrom: 'title', speed: 1,
 
@@ -822,7 +822,7 @@ const App = {
       ['PRAVÁ PÁČKA', 'vedení míče do strany, před sebe, k tělu'],
       ['', ''], ['BEZ MÍČE', ''],
       ['A', 'přepnout na hráče nejblíž míči'], ['X', 'odebrání míče ve stoje'], ['B', 'skluz (pozor: do hráče = faul, zezadu karta)'],
-      ['drž LT / pravá páčka', 'obranný postoj čelem k míči / zvoleným směrem'],
+      ['drž LT nebo LB', 'obranný postoj čelem k míči, couvání'],
       ['LB', 'střídání pětky (při ručním střídání)'], ['VIEW (BACK)', 'zoom kamery'], ['MENU / START', 'pauza'],
     ] : [
       ['LEVÁ PÁČKA', 'bruslení; páčka proti směru = ostré zastavení a výpad'], ['RT / RB', 'sprint (zásoba na 2,5 s, sama se dobíjí)'],
@@ -834,7 +834,7 @@ const App = {
       ['PRAVÁ PÁČKA', 'vést puk do strany, před sebe nebo k tělu (krytí puku)'],
       ['BEZ PUKU', ''],
       ['A', 'přepnout na hráče nejblíž puku'], ['X / LT + X', 'bodyček (vestoje bokem) / lehnout do střely'], ['B / LT + B', 'šťouchnutí holí / zvednout hokejku'],
-      ['drž LT / pravá páčka', 'obranný postoj: čelem k puku / zvoleným směrem, couvání'],
+      ['drž LT nebo LB', 'obranný postoj: čelem k puku, couvání (LB jen ťuknout = střídání)'],
       ['BULY', 'A/X přesně při dopadu, páčkou k soupeři = vyhrát dopředu'],
       ['LB', 'střídání formace (při ručním střídání)'], ['VIEW (BACK)', 'zoom kamery'], ['MENU / START', 'pauza'],
     ];

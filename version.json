@@ -1,8 +1,10 @@
 {
-  "build": 108,
-  "version": "2.08",
+  "build": 109,
+  "version": "2.09",
   "date": "2026-11-27",
   "notes": [
-    "Hokejka: čepel přechází do násady krčkem a je zahnutá na správnou stranu"
+    "Kolečko a ukazatel výdrže jsou vidět i na ojetém ledě",
+    "Couvání je na LT a LB (držet) a dá se přemapovat; pravá páčka už postoj nezapíná",
+    "Krátké ťuknutí LB dál střídá formaci"
   ]
 }

@@ -1386,7 +1386,7 @@ float wH(vec2 p) {
             col = mix(col, uFill * (0.8 + 0.35 * smoothstep(0.115, 0.0, df)), fill); al = max(al, fill);
             if (al < 0.01) discard; gl_FragColor = vec4(col, al);
           }` });
-      const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.visible = false; this.scene.add(m);
+      const m = new THREE.Mesh(geo, mat); m.renderOrder = 4; m.visible = false; this.scene.add(m);   // nad stopami bruslí a sněhem na ledě (ty mají 2)
       return m;
     });
   },

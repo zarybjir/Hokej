@@ -1,18 +1,18 @@
 'use strict';
 // ---------- Vstup: gamepady (Gamepad API) + 2 klávesnicová schémata ----------
-const BTN = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'up', 'down', 'left', 'right'];
+const BTN = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 'start', 'up', 'down', 'left', 'right', 'bk'];   // bk = couvání (výchozí na stejném tlačítku jako LB)
 const KB_MAPS = [
   { name: 'Klávesnice 1', up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
-    a: ['KeyJ'], x: ['KeyK'], b: ['KeyL'], y: ['KeyI'], rt: ['Space', 'ShiftLeft'], start: ['Escape'], back: ['Tab'], lb: ['KeyQ'], rb: ['KeyE'], lt: ['KeyU'] },
+    a: ['KeyJ'], x: ['KeyK'], b: ['KeyL'], y: ['KeyI'], rt: ['Space', 'ShiftLeft'], start: ['Escape'], back: ['Tab'], lb: ['KeyQ'], rb: ['KeyE'], lt: ['KeyU'], bk: ['KeyQ'] },
   { name: 'Klávesnice 2', up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
     a: ['Numpad1', 'Comma'], x: ['Numpad2', 'Period'], b: ['Numpad3', 'Slash'], y: ['Numpad5', 'Semicolon'],
-    rt: ['Numpad0', 'ShiftRight'], start: ['Enter', 'NumpadEnter'], back: ['Backspace'], lb: ['Numpad4'], rb: ['Numpad6'], lt: ['Numpad7'] },
+    rt: ['Numpad0', 'ShiftRight'], start: ['Enter', 'NumpadEnter'], back: ['Backspace'], lb: ['Numpad4'], rb: ['Numpad6'], lt: ['Numpad7'], bk: ['Numpad4'] },
 ];
 
 // rozložení tlačítek: logické tlačítko → fyzické (číslo tlačítka, nebo osa „a5+“/„a6-“)
-const PAD_STD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
+const PAD_STD = { bk: 4, a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
 // ovladač bez „standard“ rozložení (Linux xpad/evdev): spouště a D-pad jsou osy
-const PAD_XPAD = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 'a2+', rt: 'a5+', back: 6, start: 7, up: 'a7-', down: 'a7+', left: 'a6-', right: 'a6+' };
+const PAD_XPAD = { bk: 4, a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 'a2+', rt: 'a5+', back: 6, start: 7, up: 'a7-', down: 'a7+', left: 'a6-', right: 'a6+' };
 const STD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'L3', 'R3', '↑', '↓', '←', '→', 'HOME'];
 function padSpecName(spec, std) {
   if (typeof spec === 'number') return std ? (STD_NAMES[spec] || 'TL. ' + spec) : 'TL. ' + spec;

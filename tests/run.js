@@ -289,6 +289,17 @@ test('arkádový režim: rozdíly mezi hráči jsou zhruba trojnásobné, běžn
   ok(g.state === 'final' && g.all.every((p) => isFinite(p.x + p.y)), 'arkádový zápas nedoběhl');
 });
 
+test('couvání: držené LT nebo LB dá obranný postoj, pravá páčka ne; ťuknutí LB střídá', (G) => {
+  ok(G.Input.padMap({ id: 'x', mapping: 'standard' }).bk === 4, 'couvání není ve výchozím mapování na LB');
+  const st = { lx: 0, ly: 0, rx: 0, ry: 0 }, dev = { st, pressed: () => false };
+  const g = new G.Game({ home: 0, away: 1, humans: [{ dev, team: 0, assist: 0 }], silent: true, autoChange: false }); while (g.state !== 'play') g.update(1 / 60);
+  const p = g.humans[0].player; g.puck.owner = g.teams[1].skaters[0]; let n = 0; g.requestChange = () => { n++; };
+  st.rx = 1; g.handleHumans(1 / 60); ok(p.stance == null, 'pravá páčka pořád zapíná obranný postoj'); st.rx = 0;
+  st.lt = true; g.handleHumans(1 / 60); ok(p.stance != null, 'LT nedává obranný postoj'); st.lt = false;
+  st.bk = st.lb = true; for (let i = 0; i < 40; i++) g.handleHumans(1 / 60); ok(p.stance != null, 'držené LB nedává couvání'); st.bk = st.lb = false; g.handleHumans(1 / 60);
+  ok(n === 0 && p.stance == null, 'držení LB vystřídalo formaci'); st.lb = true; for (let i = 0; i < 5; i++) g.handleHumans(1 / 60); st.lb = false; g.handleHumans(1 / 60); ok(n === 1, 'ťuknutí LB nestřídá');
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {
