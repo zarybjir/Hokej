@@ -636,7 +636,8 @@ class HModel {
     this.stick.visible = this.root.visible && !(p.noStick > 0);   // zlomená hůl: hráč je chvíli bez ní
     const heel = new THREE.Vector3(O.x + bo[0], bo[2] + 0.1, O.z - bo[1]);
     // vedení puku: puk leží před středem čepele (ne u paty hole), proto se pata posune o půl čepele zpět a kousek za puk
-    if (p.carry && !wind && !poke) { const ta0 = p.dir + p.hand * 0.7, na = ta0 - p.hand * Math.PI / 2; heel.x -= Math.cos(ta0) * 0.45 + Math.cos(na) * 0.34; heel.z -= -Math.sin(ta0) * 0.45 - Math.sin(na) * 0.34; }   // 0,34 = poloměr puku + půl tloušťky čepele: čepel se puku dotýká zezadu, nepřekrývá ho
+    const cta = p.carry && !wind && !poke ? 1.15 : 0.7;   // při vedení puku je čepel natočená víc napříč, puk leží rovně před ní a násada přes něj nevede
+    if (cta > 1) { const ta0 = p.dir + p.hand * cta, na = ta0 - p.hand * Math.PI / 2; heel.x -= Math.cos(ta0) * 0.45 + Math.cos(na) * 0.34; heel.z -= -Math.sin(ta0) * 0.45 - Math.sin(na) * 0.34; }   // 0,34 = poloměr puku + půl tloušťky čepele: čepel se puku dotýká zezadu, nepřekrývá ho
     const H = wpos(B.Hips);
     const topSide = -p.hand; // horní ruka je na opačné straně než čepel
     // horní ruka drží konec hole u boku těsně před tělem (hůl tak vychází dlouhá a položená, ne krátká a strmá)
@@ -662,7 +663,7 @@ class HModel {
     }
     aimBone(tH, tM, top.clone().addScaledVector(sdir, 0.5));
     aimBone(bH, bM, wpos(bH).addScaledVector(sdir, 0.5));
-    const ta = p.dir + p.hand * 0.7, toe = new THREE.Vector3(Math.cos(ta), 0, -Math.sin(ta));
+    const ta = p.dir + p.hand * cta, toe = new THREE.Vector3(Math.cos(ta), 0, -Math.sin(ta));
     this.placeStick(heel, top, toe, F);
   }
   // ---------- vodní pólo: tělo pod hladinou, kraul, šlapání vody, hod ----------
