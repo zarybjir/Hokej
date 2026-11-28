@@ -108,7 +108,6 @@ gameMixin(class {
     if (this.rec.length > 330) this.rec.shift();
   }
   endPeriod() {
-    this.sfx('buzzer');
     if (this.pending) { this.assess(this.pending); this.pending = null; }
     const [a, b] = this.teams;
     if (this.period >= 3 && a.score !== b.score) return this.finish();

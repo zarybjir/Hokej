@@ -27,6 +27,7 @@ const App = {
     if (q.get('screen')) this.screen = q.get('screen');
   },
   newDemo() {
+    if (typeof Sfx.hush === 'function') Sfx.hush();
     const a = Math.floor(Math.random() * TEAMS.length);
     let b = Math.floor(Math.random() * (TEAMS.length - 1)); if (b >= a) b++;
     this.demo = new Game({ home: a, away: b, periodLen: 240, silent: true, demo: true, humans: [] });

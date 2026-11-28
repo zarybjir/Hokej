@@ -331,6 +331,18 @@ test('stahovačka: rychlé přehození pravé páčky s pukem udělá úkrok, po
   ok(run(3) === 1, 'rychlé přehození páčky neudělalo stahovačku'); ok(run(40) === 0, 'pomalé přehození udělalo stahovačku');
 });
 
+test('sprint se rozjíždí postupně a po siréně hra chvíli dojíždí', (G) => {
+  const g = new G.Game({ home: 0, away: 1, silent: true }); while (g.state !== 'play') g.update(1 / 60); g.thinkAll = () => {};
+  const p = g.all.find((o) => !o.goalie); p.x = -60; p.y = 0; g.puck.owner = null; g.puck.x = 80; g.puck.y = 30; g.puck.vx = g.puck.vy = 0;
+  const run = (n, turbo) => { for (let i = 0; i < n; i++) { p.inX = 1; p.inY = 0; p.turbo = turbo; p.boost = 1; p.stamina = 1; p.ctrl = 0; g.movePlayers(1 / 60); } return Math.hypot(p.vx, p.vy); };
+  const v0 = run(240, false); p.x = -60; const v1 = run(12, true); const v2 = run(120, true);
+  ok(v2 > v0 * 1.18, 'sprint nepřidal rychlost: ' + v0.toFixed(1) + ' → ' + v2.toFixed(1));
+  ok(v1 - v0 < (v2 - v0) * 0.35, 'sprint zrychlil skokem: po 0,2 s ' + (v1 - v0).toFixed(1) + ' z ' + (v2 - v0).toFixed(1));
+  p.ctrl = -1; g.clock = 0.01; g.update(1 / 30); ok(g.state === 'horn', 'po vypršení času není stav siréna: ' + g.state);
+  for (let i = 0; i < 60; i++) g.update(1 / 60); ok(g.state === 'horn', 'přestávka přišla hned po siréně');
+  for (let i = 0; i < 120; i++) g.update(1 / 60); ok(g.state === 'periodEnd', 'po siréně nepřišla přestávka: ' + g.state);
+});
+
 test('kariéra: dvě sezóny s draftem a smlouvami', (G) => {
   const C = G.Career; C.newCareer(4); const c = C.c;
   for (let s = 0; s < 2; s++) {

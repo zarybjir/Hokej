@@ -247,7 +247,11 @@ class Game {
         this.checkIcing();
         this.updateInjuries(h);
         this.record();
-        if (this.clock <= 0 && this.state === 'play') { this.clock = 0; this.endPeriod(); }
+        if (this.clock <= 0 && this.state === 'play') { this.clock = 0; this.state = 'horn'; this.stateT = 0; this.sfx(this.fb ? 'whistle' : 'buzzer'); }
+        break;
+      case 'horn':   // siréna: hra chvíli dojíždí, teprve pak přestávka nebo konec zápasu
+        this.glide(); this.movePlayers(h); this.updatePuck(h);
+        if (this.stateT > 2.2) this.endPeriod();
         break;
       case 'stop':
         this.glide(); this.movePlayers(h); this.updatePuck(h); this.updateInjuries(h);

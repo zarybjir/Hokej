@@ -37,10 +37,11 @@ gameMixin(class {
       if (p.stance != null) maxV *= 0.8;   // v obranném postoji (couvání) pomaleji
       // sprint je zásoba: vydrží asi 2,5 s, dobíjí se 5 s; po vyčerpání se musí dobít na třetinu
       if (p.turbo && m > 0.3 && p.boost > 0 && !p.boostLock && p.stamina > 0.08 && !p.winding) {
-        maxV *= PH.TURBO; acc *= 1.3; p.sprint = true;
+        // sprint se rozjíždí: plná rychlost až po několika odrazech (asi 1,3 s), ne skokem
+        p.sprK = Math.min(1, (p.sprK || 0) + h / 1.3); maxV *= 1 + (PH.TURBO - 1) * p.sprK; acc *= 1 + 0.15 * p.sprK; p.sprint = true;
         p.boost = Math.max(0, p.boost - h / 2.5); p.stamina = Math.max(0, p.stamina - h * 0.014 * p.staMul);
         if (p.boost <= 0) p.boostLock = true;
-      } else { p.sprint = false; p.boost = Math.min(1, p.boost + h / 5); if (p.boost > 0.33) p.boostLock = false; }
+      } else { p.sprK = Math.max(0, (p.sprK || 0) - h * 1.5); maxV *= 1 + (PH.TURBO - 1) * p.sprK; p.sprint = false; p.boost = Math.min(1, p.boost + h / 5); if (p.boost > 0.33) p.boostLock = false; }
       if (p.recoverT > 0) acc *= 0.35;
       if (p.winding || p.swingT > 0) { const f = 1 - 1.3 * h; p.vx *= f; p.vy *= f; }
       else if (m > 0.12) {

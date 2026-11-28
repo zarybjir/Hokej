@@ -58,7 +58,7 @@ class WaterPolo extends Football {
   }
   // ---------- čtvrtiny ----------
   endPeriod() {
-    this.sfx('whistle'); this.pending = null;
+    this.pending = null;
     const [a, b] = this.teams;
     if (this.q < 4) { this.state = 'periodEnd'; this.stateT = 0; return; }
     if (a.score !== b.score) return this.finish();

@@ -54,7 +54,14 @@ const Sfx = {
   play(n, vol = 1, rate = 1) {
     const b = this.fx && this.fx[n]; if (!b || !this.ok()) return false;
     const c = this.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.playbackRate.value = rate * rand(0.94, 1.06); g.gain.value = vol; s.connect(g); g.connect(this.master); s.start();
+    (this.live = (this.live || []).filter((x) => !x.done)).push(s); s.onended = () => { s.done = true; };
     return true;
+  },
+  // ticho při odchodu ze zápasu: utne doznívající nahrávky i jásot publika
+  hush() {
+    this.roar = 0; this.excite = 0; this.target = 0;
+    for (const s of this.live || []) { try { s.stop(); } catch (e) {} } this.live = [];
+    if (this.ok() && this.appG) { const now = this.ctx.currentTime; for (const g of [this.appG, this.chG, this.crowdG]) { g.gain.cancelScheduledValues(now); g.gain.setTargetAtTime(0, now, 0.05); } }
   },
   tick(dt, base, skate = 0) {
     this.roar = Math.max(0, this.roar - dt * 0.18);

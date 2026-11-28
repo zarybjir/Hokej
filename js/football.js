@@ -255,7 +255,6 @@ class Football extends Game {
   goal(sN) { super.goal(sN); this.koTeam = this.teams.find((t) => t.dir !== sN); }   // rozehrává tým, který dostal gól
   afterGoal() { if (this.period > 3) return this.finish(); super.afterGoal(); }
   endPeriod() {
-    this.sfx('whistle');
     if (this.pending) this.pending = null;
     const [a, b] = this.teams;
     if (this.period === 1) { this.state = 'periodEnd'; this.stateT = 0; this.say('Konec prvního poločasu.', true); return; }
